@@ -1,0 +1,41 @@
+Write scraper:
+
+Download:
+- Take URL 
+  --> Save HTML
+  --> Find URLs and save them (which ones?)
+     --> over ons (main)
+     --> duurzaamheid / susteinability
+     --> annual report
+     --> privacy
+     --> contact / find kvk
+  --> Corporate group: https://api.opencorporates.com/documentation/API-Reference
+  --> https://opencorporates.com/api_accounts/open_data
+
+Extract:
+- Important info: https://github.com/buriy/python-readability
+- Important info using ML: https://github.com/dragnet-org/dragnet
+
+Testing:
+- Downloaded / followinf links
+
+
+Start --> requests + bs4 to get new links
+To be updated --> scrapy
+
+Folder structure:
+kvk / domain / time / date_url
+
+Common CSV file:
+- KvK / domain / path / time_date / parent_click / response_code
+
+----
+
+
+Questions for Casper:
+- Scrapy vs requests 
+- Things to avoid
+- How to detect
+
+Questions for  Peter:
+- https://drimble.nl/ ??

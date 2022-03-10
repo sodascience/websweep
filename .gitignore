@@ -2,3 +2,5 @@
 *.db
 *.log
 *.pyc
+data/scraped_data/*
+data/overview_urls.tsv
