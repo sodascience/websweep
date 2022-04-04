@@ -12,7 +12,6 @@ from urllib.parse import urlparse
 
 def get_domain(url):
     parsed = urlparse(url)
-    print(parsed.path)
     return parsed.path
 
 def train_classifier(urls, urls_importance):
@@ -46,6 +45,19 @@ def train_classifier(urls, urls_importance):
 # ]
 # urls = [get_domain(url) for url in urls]
 # pipeline = train_classifier(urls, [1, 1, 0, 0])
+
+
+
+with open("data/test_classifier.tsv", "r") as f:
+    urls = [get_domain(_) for _ in f.readlines()]
+    urls = [_ for _ in urls if len(_) > 0]
+
+urls = [part for domain in urls for part in domain.split('/') if len(part) > 0]
+
+
+from collections import Counter
+print(Counter(urls).most_common(50))
+
 
 
 
