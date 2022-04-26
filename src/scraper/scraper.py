@@ -159,43 +159,45 @@ class Scraper:
             # get list of dates when url was crawled
             # TODO: threshold variable + enhance removing www and http leaders
             sourcepath = "data/scraped_data/{}/{}".format(kvk, url.replace("www.", "").replace("http://", "").replace("https://", ""))
-            crawl_dates = [datetime.datetime.strptime(str(path).rsplit('/', 1)[1], '%Y-%m-%d').date() for path in Path(sourcepath).iterdir() if path.is_dir()]
+            print(sourcepath)
+            if Path(sourcepath).exists():
+                crawl_dates = [datetime.datetime.strptime(str(path).rsplit('/', 1)[1], '%Y-%m-%d').date() for path in Path(sourcepath).iterdir() if path.is_dir()]
+                # check if most recent crawldate is within threshold and if so, log finding and stop crawling for this company
+                if ((datetime.date.today() - max(crawl_dates)).days < 30):
+                    logger.info(f'scraper for {all_records[0]} finished in {time()-start:2.0f} seconds due to recent crawling threshold.')
+                    return
 
-            # check if most recent crawldate is within threshold
-            if ((datetime.date.today() - max(crawl_dates)).days > 30):
-                logger.info(f'scraper for {all_records[0]} finished in {time()-start:2.0f} seconds due to recent crawling threshold.')
-            else:
-                # Breath first search algorithm from urls
-                while (len(records) > 0) and (level < self.max_level):
-                    tasks = []
+            # Breath first search algorithm from urls
+            while (len(records) > 0) and (level < self.max_level):
+                tasks = []
 
-                    # fetch urls asynchroneously
-                    for url in records:
-                        task = asyncio.ensure_future(self.__fetch_one_url(url, kvk=kvk, level=level))
-                        tasks.append(task)
+                # fetch urls asynchroneously
+                for url in records:
+                    task = asyncio.ensure_future(self.__fetch_one_url(url, kvk=kvk, level=level))
+                    tasks.append(task)
 
-                    records = await asyncio.gather(*tasks)
+                records = await asyncio.gather(*tasks)
 
-                    # flatten list python and remove duplicates
-                    records = [item for sublist in records if sublist is not None for item in sublist]
+                # flatten list python and remove duplicates
+                records = [item for sublist in records if sublist is not None for item in sublist]
 
-                    # speed up search using a set (and remove www to avoid downloading twice the same url)
-                    temp_all_records = set([url.replace("www.", "") for url in all_records])
+                # speed up search using a set (and remove www to avoid downloading twice the same url)
+                temp_all_records = set([url.replace("www.", "") for url in all_records])
 
-                    # make sure the scraper doesn't run forever
-                    if len(temp_all_records) > 100:
-                        logger.warn(f'scraper downloaded over 100 subpages of "{url}"')
-                        break
+                # make sure the scraper doesn't run forever
+                if len(temp_all_records) > 100:
+                    logger.warn(f'scraper downloaded over 100 subpages of "{url}"')
+                    break
 
-                    # remove urls already downloaded
-                    records = list(set([url for url in records if url.replace("www.", "") not in temp_all_records]))
+                # remove urls already downloaded
+                records = list(set([url for url in records if url.replace("www.", "") not in temp_all_records]))
 
-                    # add new urls to list
-                    all_records += records
-                    level += 1
+                # add new urls to list
+                all_records += records
+                level += 1
 
-                    # reset waits for next level
-                    self.waits[kvk] = 0
+                # reset waits for next level
+                self.waits[kvk] = 0
 
                 logger.info(f'scraper for {all_records[0]} finished in {time()-start:2.0f} seconds with {len(temp_all_records)} processed and {len(all_records)} links found.')
                 # return all_records

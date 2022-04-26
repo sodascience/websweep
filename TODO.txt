@@ -9,6 +9,7 @@ Bjorn:
 
 - Downloaded 19793 pages from 1 urls to level 3 in 200.6 seconds > 200 HTML downloads > What does the 19793 come from?
 - Look into response url for url that has been searched to avoid duplicate folders from the same response url
+- Look into specific batch for failed crawlings
 
 
 Javier:
