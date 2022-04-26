@@ -161,7 +161,6 @@ class Scraper:
             # TODO: enhance removing www and http leaders
             # TODO: make this a called method
             sourcepath = "data/scraped_data/{}/{}".format(kvk, url.replace("www.", "").replace("http://", "").replace("https://", ""))
-            print(sourcepath)
             if Path(sourcepath).exists():
                 crawl_dates = [datetime.datetime.strptime(str(path).rsplit('/', 1)[1], '%Y-%m-%d').date() for path in Path(sourcepath).iterdir() if path.is_dir()]
                 # check if most recent crawldate is within threshold and if so, log finding and stop crawling for this company
