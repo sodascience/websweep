@@ -1,11 +1,19 @@
 Next steps:
 
 Bjorn:
-- Understand the code
 - Learn a bit about asyncio (and other async libraries: https://devopedia.org/asynchronous-programming-in-python) and beautifulsoup
-
 - Deal with the errors (retry downloading depending on error code)
-- Re-download only if the last download is not recent
+- Create batch for failed crawls
+
+- flag in command line to retry, make quite simple 
+- status code change when no connection, dont write whole error but just status code
+- flag in command line do not save .jpg and .png and .pdf etc in overview_urls
+- find beautiful soup XML as HTML error warning
+- exclude xml files
+- error flag in command retry batches if retry whole website again or only fetch the page alone, tell which level that url is, scraper will go to failed url and continue process normally
+
+- check the robot.txt page
+- check the file and make sure we dont download those files
 
 
 Javier:
