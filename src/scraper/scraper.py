@@ -157,7 +157,9 @@ class Scraper:
             records = [url]
 
             # get list of dates when url was crawled
-            # TODO: threshold variable + enhance removing www and http leaders
+            # TODO: threshold variable
+            # TODO: enhance removing www and http leaders
+            # TODO: make this a called method
             sourcepath = "data/scraped_data/{}/{}".format(kvk, url.replace("www.", "").replace("http://", "").replace("https://", ""))
             print(sourcepath)
             if Path(sourcepath).exists():
