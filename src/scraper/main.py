@@ -15,7 +15,7 @@ def classify_url(url, level):
     
     # Maybe if there are many links in one level we can skip it
 
-    # Download first level and important sites of the secodn level (level 0 = root website)
+    # Download first level and important sites of the second level (level 0 = root website)
     if level == 0:
         return True
     elif level == 1:

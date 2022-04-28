@@ -50,7 +50,7 @@ class Scraper:
     def __get_current_date(self):
         # return current day in format "YYYY-MM-DD"
         return datetime.datetime.now().strftime("%Y-%m-%d")
-            
+
     async def __fetch_one_url(self, url, kvk, level):
         """
         Fetch one url, save the html, and return the list of urls found on the page.
@@ -63,7 +63,7 @@ class Scraper:
                 f.write(f"{kvk}\t{urlparse(url).netloc.replace('www.','')}\t{level}\t{url}\t{-9}\t{self.__get_current_date()}\t\n")
             return []
 
-        # be nice and wait a second per url (non blocking)
+        # be nice and wait a second per url (non-blocking)
         self.waits[kvk] += 1
         await asyncio.sleep(self.waits[kvk])
 
@@ -71,7 +71,7 @@ class Scraper:
         # hash url to give an ID (collisions are possible)
         hash_url = hashlib.sha1(url.encode()).hexdigest()
 
-        #Create path
+        #Create path www.google.com/something --> data/[getal]/google.com/date/[getal]_something
         if url[-1] == "/":
             path = f"{self.base_path}/{kvk}/{urlparse(url).netloc.replace('www.','')}/{self.__get_current_date()}/{hash_url}_{url[:-1].split('/')[-1]}"
         else:
@@ -161,7 +161,7 @@ class Scraper:
             while (len(records) > 0) and (level < self.max_level):
                 tasks = []
 
-                # fetch urls asynchroneously
+                # fetch urls asynchronously
                 for url in records:
                     task = asyncio.ensure_future(self.__fetch_one_url(url, kvk=kvk, level=level))
                     tasks.append(task) 
@@ -169,7 +169,7 @@ class Scraper:
                 records = await asyncio.gather(*tasks) 
 
                 # flatten list python and remove duplicates
-                records = [item for sublist in records  if sublist is not None for item in sublist]
+                records = [item for sublist in records if sublist is not None for item in sublist]
 
                 # speed up search using a set (and remove www to avoid downloading twice the same url)
                 temp_all_records = set([url.replace("www.","") for url in all_records])

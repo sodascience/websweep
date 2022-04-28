@@ -60,9 +60,6 @@ print(Counter(urls).most_common(50))
 
 
 
-
-
-
 def get_urls_from_file(filename):
     with open(filename, 'r') as f:
         urls = f.read().splitlines()
