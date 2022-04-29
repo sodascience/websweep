@@ -3,15 +3,20 @@ import re
 from time import time
 from urllib.parse import urlparse
 from scraper import Scraper
-import cProfile
+
 
 def classify_url(url, level):
     """
     Classify url based on level
     """
 
+    #Avoid mailto and tel
+    if re.search(r"mailto:|tel:", url):
+        return False
+    
     # Keep the path only (avoid to reject websites such as "awesomeshop.nl/important_information")
     url = urlparse(url).path
+    
     
     # Maybe if there are many links in one level we can skip it
 
@@ -21,7 +26,8 @@ def classify_url(url, level):
     elif level == 1:
         # Cloudfare protection --> reject
         # regex = re.compile( "|".join(map(re.escape, keywords)))
-        regex = re.compile(r'^mailto:|^tel:|pdf$|collections|email\-protection|product|aanbod|assortiment|voorraad|koop|shop|artikelen|merken|wintersport|bouw|zoeken|search')
+        # TODO: Exclude *xml$
+        regex = re.compile(r'pdf$|jpeg$|gif$|svg$|jpg$|png$|collections|email\-protection|product|aanbod|assortiment|voorraad|koop|shop|artikelen|merken|wintersport|bouw|zoeken|search')
         if re.search(regex, url):
             return False
         # If only numbers and characters (e.g. https:/www.horstingkilder.nl/553-504") --> reject
@@ -31,7 +37,7 @@ def classify_url(url, level):
             return True
     elif level == 2:
         # Keep only if it seems important
-        regex = re.compile(r'over\-ons|contact|duurzaamheid|index\.php|al   gemene\-voorwaarden|vacatures|disclaimer|klantenservice|privacy\-policy|cookie\-policy|cookies|cookie|cookie\-beleid|over|overons|blogs|privacyverklaring|about|about\-us')
+        regex = re.compile(r'over\-ons|contact|duurzaamheid|index\.php|algemene\-voorwaarden|vacatures|disclaimer|klantenservice|privacy\-policy|cookie\-policy|cookies|cookie|cookie\-beleid|over|overons|blogs|privacyverklaring|about|about\-us')
         if re.search(regex, url):
             return True
         else:
@@ -39,6 +45,15 @@ def classify_url(url, level):
     else:
         return False
 
+#/Users/garci061/miniforge3/envs/backbone/bin/python -m cProfile -o /tmp/tmp.prof /Users/garci061/pCloud_sync/backbone/corporate_scraper/src/scraper/main.py
+#snakeviz /tmp/tmp.prof
+
+#kernprof -o /tmp/tmp.lprof -l  /Users/garci061/pCloud_sync/backbone/corporate_scraper/src/scraper/main.py
+#python -m line_profiler /tmp/tmp.lprof
+
+#pprofile  --out /tmp/temp.txt src/scraper/main.py
+#pprofile  --format callgrind --out /tmp/cachegrind.out.threads src/scraper/main.py
+#qcachegrind /tmp/cachegrind.out.threads
 if __name__ == "__main__":
     # urls = [
     #     (66939682, 'http://10printendruk.nl/'),
@@ -57,8 +72,11 @@ if __name__ == "__main__":
 
     # Run scraper
     # Start scraper, downloading 20 companies in parallel
-    scraper = Scraper(save_html=True, max_level=3, base_path="data/scraped_data", classifier=classify_url, concurrency=20)
-    scraper.scrape_companies(urls)
+    # Depending on the internet connection and CPU, the concurrency of downloading (threads_download, concurrency_companies) should be increased, or the concurrency of processing (threads_bs4) should be increased
+    scraper = Scraper(save_html=True, max_level=3, base_path="data/scraped_data", 
+                      classifier=classify_url, concurrency_companies=100, 
+                      threads_download=100, threads_bs4=10)
+    scraper.scrape_companies(urls[:100])
 
     #Read what we did
     with open("data/overview_urls.tsv") as f:
