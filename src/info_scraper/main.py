@@ -1,27 +1,34 @@
 from pathlib import Path
 import os
 from info_scraper import InfoScraper
-from timeit import timeit
-
+import time
+import glob
 
 def RunMainLoop():
-    main_dir = Path(__file__).parents[2]  # Get the folder 3 folders up,
-    data_dir = main_dir / 'data' / 'test_data'  # Add the 3 folders up folder with the 'data' and 'test_data' folders
-    for file in os.listdir(data_dir):
-        current_dir = GetDeepestFolder(data_dir, file)
-        cached_corporate = InfoScraper(current_dir)
+    start_time = time.perf_counter()
+    test_data_dir = Path(__file__).parents[2] / 'data' / 'test_data'  # Get the folder 3 folders up, then add /data/test_data to that filepath
+    time_dict = {}
+    for file in os.listdir(test_data_dir):
+        path = os.path.join(test_data_dir, file)
+        folder = GetFolder(path)
+        start_time_file = time.perf_counter()
+        cached_corporate = InfoScraper(working_dir=folder)
         cached_corporate.run_loops()
-        print(f"alles is gedaan in {cached_corporate.working_dir}")
+        end_time_file = time.perf_counter()
+        time_dict[folder] = end_time_file - start_time_file
+        #print(f"alles is gedaan in {cached_corporate.working_dir}")
+    end_time = time.perf_counter()
+    print(f"Total execution time is {end_time - start_time}, met deze spreid {time_dict}")
+
+# This evaluates all the folders in the last folder (the website folder) and opens the newest (most recent) folder
+def GetFolder(path):
+    next_folder = os.listdir(path)[0]
+    final_dir = os.path.join(path, next_folder)
+    list_of_files = os.listdir(final_dir)
+    list_of_files.sort(reverse=True)
+    return os.path.join(final_dir, list_of_files[0])
+
+if __name__ == "__main__":
+    RunMainLoop()
 
 
-# recursively keep adding the directory names until the last file is no longer a directory
-def GetDeepestFolder(path, file_name):
-    current_dir = os.path.join(path, file_name)
-    if os.path.isdir(current_dir):
-        return GetDeepestFolder(current_dir, os.listdir(current_dir)[0])
-    else:
-        # The above recursion will always go one file to deep, so this is to reel it in once
-        return Path(current_dir).parents[0]
-
-
-RunMainLoop()

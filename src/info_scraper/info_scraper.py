@@ -1,10 +1,12 @@
 import logging
 import os
 import re
-
+import time
 
 # logging.basicConfig(filename="logs/info_scraper.log", level=logging.INFO)
 # logger = logging.getLogger()
+import timeit
+
 
 class InfoScraper:
     def __init__(self, working_dir=None, phone_number: list = None, email: set = None, kvk: str = None,
@@ -24,9 +26,11 @@ class InfoScraper:
             self.scrape_phone(file_text)
             self.scrape_BTW(file_text)
             self.scrape_email(file_text)
+            open_file.close()
 
         self.clean_email()
         self.save_to_json()
+
 
     def scrape_address(self, file):
         return
