@@ -94,7 +94,7 @@ def get_todoer() -> scraper.Worker:
         source_file_path = config.get_source_file_path(config.CONFIG_FILE_PATH)
     else:
         typer.secho(
-            'Config file not found. Please, run "rptodo init"',
+            'Config file not found. Please, run "scraper init" or use scrape --help',
             fg=typer.colors.RED,
         )
         raise typer.Exit(1)
