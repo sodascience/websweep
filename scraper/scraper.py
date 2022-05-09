@@ -1,3 +1,10 @@
+"""This module provides the Scraper model-controller."""
+
+from pathlib import Path
+from typing import Any, Dict, List, NamedTuple
+
+from scraper import DB_READ_ERROR, ID_ERROR
+
 import asyncio
 from urllib.parse import urljoin, urlparse
 
@@ -11,18 +18,9 @@ from time import time
 import datetime
 import tldextract
 
+LOGGER = logging.getLogger()
 
-# logging
-logging.basicConfig(filename="logs/scraper.log", level=logging.INFO)
-logger = logging.getLogger()
-
-# if os.environ.get('scraper_logging_level', 'error') == "info":
-#     logger.setLevel(logging.INFO)
-# else:
-#     logger.setLevel(logging.ERROR)
-
-
-class Scraper:
+class Worker:
     def __init__(self, save_html=True, max_level=3, base_path="data/scraped_data", classifier=lambda url,level: True, verify_ssl=False, concurrency=20):
         self.save_html = save_html
         self.base_path = base_path
@@ -118,17 +116,17 @@ class Scraper:
 
 
                     if len(urls) == 0:
-                        logger.debug(f'scraper finished for {url}')
+                        LOGGER.debug(f'scraper finished for {url}')
                     else:
-                        logger.debug(f'scraper {len(urls)} urls found for {url}')
+                        LOGGER.debug(f'scraper {len(urls)} urls found for {url}')
                         
 
                 else:
-                    logger.error(f'scraper failed to scrape "{url}"\nResponse status: {status}')
+                    LOGGER.error(f'scraper failed to scrape "{url}"\nResponse status: {status}')
                     path = ""
 
         except Exception as e:
-            logger.error(f'scraper failed to scrape "{url}"\nException: {str(e)}')
+            LOGGER.error(f'scraper failed to scrape "{url}"\nException: {str(e)}')
             status = str(e)
             path = ""
 
@@ -176,7 +174,7 @@ class Scraper:
 
                 # make sure the scraper doesn't run forever
                 if len(temp_all_records) > 100:
-                    logger.warn(f'scraper downloaded over 100 subpages of "{url}"')
+                    LOGGER.warn(f'scraper downloaded over 100 subpages of "{url}"')
                     break
 
                 # remove urls alrady downloaded 
@@ -190,7 +188,7 @@ class Scraper:
                 self.waits[kvk] = 0
 
 
-            logger.info(f'scraper for {all_records[0]} finished in {time()-start:2.0f} seconds with {len(temp_all_records)} processed and {len(all_records)} links found.')
+            LOGGER.info(f'scraper for {all_records[0]} finished in {time()-start:2.0f} seconds with {len(temp_all_records)} processed and {len(all_records)} links found.')
             #return all_records
 
     async def __fetch_all(self, records):
@@ -207,7 +205,7 @@ class Scraper:
         #return _
     
     def scrape_companies(self, urls):
-        logger.info(f'scraper received {len(urls)} urls')
+        LOGGER.info(f'scraper received {len(urls)} urls')
         loop = asyncio.get_event_loop() 
 
         future = asyncio.ensure_future(self.__fetch_all(urls)) 
@@ -222,4 +220,3 @@ class Scraper:
         #         f.write(f"{url}\n")
 
         #return r
-
