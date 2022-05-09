@@ -42,7 +42,7 @@ def _save_source_file(source_file_path: str) -> int:
     config_parser.add_section('Source')
     config_parser.set('Source', 'source_file', source_file_path)
     try:
-        with CONFIG_FILE_PATH.open("a") as file:
+        with CONFIG_FILE_PATH.open("w") as file:
             config_parser.write(file)
     except OSError:
         return DB_WRITE_ERROR

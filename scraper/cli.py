@@ -102,7 +102,7 @@ def get_todoer() -> scraper.Worker:
         return scraper.Worker(source_file_path)
     else:
         typer.secho(
-            'Source file not found. Please, run "rptodo init"',
+            'Source file not found. Please, run "scraper init" or use scrape --help',
             fg=typer.colors.RED,
         )
         raise typer.Exit(1)
@@ -114,6 +114,8 @@ def scrape() -> None:
     Start scraping
     """
 
+    worker = get_todoer()
+
     start = time.time()
     
     with open(config.get_source_file_path(config.CONFIG_FILE_PATH), "r") as f:
@@ -121,8 +123,6 @@ def scrape() -> None:
         urls = [line.split(",") for line in f.readlines()]        
         urls = sorted([(kvk.strip(), f"https://www.{url}/") for url, kvk in urls])
     print(len(urls))
-
-    worker = get_todoer()
 
     # Run scraper
     # Start scraper, downloading 20 companies in parallel
@@ -145,7 +145,7 @@ def status() -> None:
     """
 
     typer.secho(
-        'Scraper status OK\n',
+        '\nScraper status OK\n',
         fg=typer.colors.GREEN,
     )
     typer.secho(
@@ -153,7 +153,7 @@ def status() -> None:
         fg=typer.colors.YELLOW,
     )
     typer.secho(
-        'Target folder: {}'.format(config.get_target_folder_path(config.CONFIG_FILE_PATH)),
+        'Target folder: {}\n'.format(config.get_target_folder_path(config.CONFIG_FILE_PATH)),
         fg=typer.colors.YELLOW,
     )
     
