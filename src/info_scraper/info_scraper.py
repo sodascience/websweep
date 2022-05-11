@@ -13,15 +13,16 @@ from pathlib import Path
 
 
 class InfoScraper:
-    def __init__(self, working_dir=None, phone=None, email=None, kvk=None,
+    def __init__(self, working_dir=None, website=None, phone=None, email=None, kvk=None,
                  adres=None, zip_code=None, fax=None, btw=None):
-        self.zip_code = zip_code
-        self.adres = adres
-        self.kvk = kvk
+        self.website = website
         self.email = email
         self.phone = phone
+        self.kvk = kvk
         self.fax = fax
         self.btw = btw
+        self.zip_code = zip_code
+        self.adres = adres
         self.working_dir = working_dir
 
 
@@ -39,10 +40,12 @@ class InfoScraper:
             open_file.close()
 
         self.clean_email()
-        self.save_to_json()
-        #self.mistake_warning()
+        self.jsonize()
+        # self.mistake_warning()
 
     def scrape_address(self, file):
+        if self.adres is None:
+            self.adres = set()
         return
 
     def scrape_zip(self, file):
@@ -53,7 +56,7 @@ class InfoScraper:
                                 """, re.VERBOSE)
         result_list = set(re.findall(pattern, file))
         for item in result_list:
-            self.zip_code.add(item)
+            break
         return
 
     def scrape_btw(self, file):
@@ -134,23 +137,14 @@ class InfoScraper:
         self.email = temp_emails
 
     # TODO FIX THIS
-    def save_to_json(self):
-        # file_path = Path(__file__).parents[2] / 'data' / 'Information'
-        # file_name = '\\' + str(date.today()) + '.json'
-        # saved_json = str(file_path) + file_name
-        # file = open(saved_json, 'a')
-        # to_write_dict = {
-        #     'Emails': list(self.email),
-        #     'Phone Numbers': list(self.phone),
-        #     'KVK Numbers': list(self.kvk),
-        #     'Adresses': list(self.adress),
-        #     'Zip codes': list(self.zip_code)
-        # }
-        # prettify = json.dumps(to_write_dict, indent=4)
-        # file.write(prettify)
-        # file.close()
-        print(f"Email: {self.email}, \nTelefoon: {self.phone}, \nKVK: {self.kvk}, \nAdress: {self.adres, self.zip_code}, \nFax: {self.fax}, \nbtw: {self.btw} \n")
-        return
+    def jsonize(self):
+        self.email = list(self.email)
+        self.phone = list(self.phone)
+        self.kvk = list(self.kvk)
+        self.fax = list(self.fax)
+        self.btw = list(self.btw)
+        self.zip_code = list(self.zip_code)
+        self.adres = list(self.adres)
 
     def mistake_warning(self):
         for key, value in self.__dict__.items():
