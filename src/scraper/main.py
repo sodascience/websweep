@@ -57,7 +57,7 @@ if __name__ == "__main__":
 
     # Run scraper
     # Start scraper, downloading 20 companies in parallel
-    scraper = Scraper(save_html=True, max_level=3, base_path="data/scraped_data", classifier=classify_url, concurrency=20)
+    scraper = Scraper(save_html=True, max_level=3, base_path="data/results", classifier=classify_url, concurrency=20)
     scraper.scrape_companies(urls)
 
     #Read what we did

@@ -23,7 +23,7 @@ logger = logging.getLogger()
 
 
 class Scraper:
-    def __init__(self, save_html=True, max_level=3, base_path="data/scraped_data", classifier=lambda url,level: True, verify_ssl=False, concurrency=20):
+    def __init__(self, save_html=True, max_level=3, base_path="data/results", classifier=lambda url,level: True, verify_ssl=False, concurrency=20):
         self.save_html = save_html
         self.base_path = base_path
         self.max_level = max_level

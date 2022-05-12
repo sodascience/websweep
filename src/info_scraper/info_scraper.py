@@ -1,11 +1,7 @@
-import logging
 import os
 import re
 from bcolors import bcolors
-import time
-import json
-from datetime import date
-from pathlib import Path
+
 
 # logging.basicConfig(filename="logs/info_scraper.log", level=logging.INFO)
 # logger = logging.getLogger()
@@ -41,7 +37,7 @@ class InfoScraper:
 
         self.clean_email()
         self.jsonize()
-        # self.mistake_warning()
+        print(f"finished off {self.website}")
 
     def scrape_address(self, file):
         if self.adres is None:
@@ -56,14 +52,14 @@ class InfoScraper:
                                 """, re.VERBOSE)
         result_list = set(re.findall(pattern, file))
         for item in result_list:
-            break
+            self.zip_code.add(item)
         return
 
     def scrape_btw(self, file):
         if self.btw is None:
             self.btw = set()
         pattern = re.compile(r"""
-                                (btw|BTW)(.+)(\bNL\d{9}B\d{2}|\bNL\b[0-9-_.B]+)
+                                (btw|BTW)(.+)(\bNL[0-9-_.]{9,12}B\d{2}|\bNL\b[0-9-_.B]+)
                                 """, re.VERBOSE)
         result_list = set(re.findall(pattern, file))
         for item in result_list:
@@ -74,7 +70,7 @@ class InfoScraper:
         if self.kvk is None:
             self.kvk = set()
         pattern = re.compile(r"""
-                                (kvk|KvK)(.+)(\b\d{8})
+                                (kvk|KvK|K.v.K.|k.v.k.)(.+)(\b\d{8})
                                 """, re.VERBOSE)
         result_list = set(re.findall(pattern, file))
         for item in result_list:
@@ -88,8 +84,10 @@ class InfoScraper:
                                 (Tel:\s*|
                                 tel:\s*|
                                 telefoon:\s*|
-                                Telefoon:\s*)
-                                (\+?(\s?\d-*){10,})
+                                Telefoon:\s*|
+                                T:\s*|
+                                t:\s)
+                                (\+?(\s?\d-*){10,11})
                                 """, re.VERBOSE)
         result_list = set(re.findall(pattern, file))
         for item in result_list:
@@ -101,7 +99,9 @@ class InfoScraper:
             self.fax = set()
         pattern = re.compile(r"""
                                 (Fax:\s|
-                                fax:\s)
+                                fax:\s|
+                                F:\s|
+                                f:\s)
                                 (\b(\d-*){10,})
                                 """, re.VERBOSE)
         result_list = set(re.findall(pattern, file))
@@ -115,7 +115,7 @@ class InfoScraper:
                         @                   # needs a @    
                         [a-zA-Z0-9-]+       # again, grab any number or letter
                         \.                  # the dot in the email
-                        [a-zA-Z0-9-.]+      # grab any combination of letters/numbers/dots, to ensure we also grab stuff like .co.uk
+                        [a-zA-Z-.]+      # grab any combination of letters/numbers/dots, to ensure we also grab stuff like .co.uk
                         )""", re.VERBOSE)
         emails = set(re.findall(pattern, file))
         if self.email is None:
@@ -136,7 +136,6 @@ class InfoScraper:
                 temp_emails.add(email)
         self.email = temp_emails
 
-    # TODO FIX THIS
     def jsonize(self):
         self.email = list(self.email)
         self.phone = list(self.phone)

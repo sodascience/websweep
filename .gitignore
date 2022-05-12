@@ -2,6 +2,6 @@
 *.db
 *.log
 *.pyc
-data/scraped_data/*
+data/results/*
 data/overview_urls.tsv
 /data/test_data/
