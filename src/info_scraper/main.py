@@ -9,7 +9,7 @@ from datetime import date
 def RunMainLoop():
     start_time = time.perf_counter()
     test_data_dir = Path(__file__).parents[
-                        2] / 'data' / 'test_data'  # Get the folder 3 folders up, then add /data/test_data to that filepath
+                        2] / 'data' / 'scraped_data'  # Get the folder 3 folders up, then add /data/test_data to that filepath
     time_dict = {}
     json_list = []
     i = 0
@@ -40,15 +40,20 @@ def RunMainLoop():
 def GetFolder(path):
     next_folder = os.listdir(path)[0]
     final_dir = os.path.join(path, next_folder)
-    list_of_files = os.listdir(final_dir)
-    list_of_files.sort(reverse=True)
-    return os.path.join(final_dir, list_of_files[0])
+    print(final_dir)
+    if os.path.isdir(final_dir):
+        list_of_files = os.listdir(final_dir)
+        list_of_files.sort(reverse=True)
+        return os.path.join(final_dir, list_of_files[0])
+    else:
+        return final_dir
 
 
 def SavePerformance(performance):
     prettify = json.dumps(performance, indent=4)
     file_path = Path(__file__).parents[2] / 'data' / 'performance_data'
-    file_name = '\\' + str(date.today()) + '.json'
+    Path(file_path).parent.mkdir(parents=True, exist_ok=True)
+    file_name = '/' + str(date.today()) + '.json'
     saved_json = str(file_path) + file_name
     file = open(saved_json, 'w')
     file.write(prettify)
@@ -58,9 +63,10 @@ def SavePerformance(performance):
 def SaveJson(json_list):
     prettify = json.dumps(json_list, indent=4)
     file_path = Path(__file__).parents[2] / 'data' / 'results'
-    file_name = '\\' + str(date.today()) + '.json'
+    Path(file_path).parent.mkdir(parents=True, exist_ok=True)
+    file_name = '/' + str(date.today()) + '.json'
     saved_json = str(file_path) + file_name
-    file = open(saved_json, 'w')
+    file = open(saved_json, 'w+')
     file.write(prettify)
     file.close()
 
