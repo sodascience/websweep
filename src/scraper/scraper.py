@@ -1,5 +1,7 @@
 import asyncio
+from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor
 from urllib.parse import urljoin, urlparse
+import functools
 
 from aiohttp import ClientSession, TCPConnector
 from bs4 import BeautifulSoup
@@ -22,9 +24,42 @@ logger = logging.getLogger()
 # else:
 #     logger.setLevel(logging.ERROR)
 
+def get_urls(r, url):
+    """
+    Parse code and return content and urls. Defined it here to be able to pickle it and process it in a thread pool.
+    """
+
+    # resp.content is a byte array, convert to string
+    contents = r.decode("utf-8", "ignore")
+
+    # parse
+    soup = BeautifulSoup(contents, 'html.parser')
+
+    # extract urls from html code in beautiful soup
+    # <a href="http://www.google.com/">Google</a>
+    urls = [a.attrs.get('href') for a in soup.select('a[href]')]
+    #print(urls)
+    
+    # filter out urls from other domains
+    # create base url
+    url_parsed = urlparse(url)
+    base_url = url_parsed.scheme + "://" + url_parsed.netloc
+
+    # add netloc/schema when missing
+    # TODO: do we want to keep mailto? mailto:info@frieslandbouwdetachering.nl?
+    urls = [urljoin(base_url, url_found) for url_found in urls]
+
+    # keep only the urls found within the same domain
+    urls = [url_found for url_found in urls if tldextract.extract(url_found).registered_domain == tldextract.extract(url).registered_domain]
+
+    # remove query string # bol.com/nl/producten/product/...?p=1
+    urls = [urlparse(url_found)._replace(query="").geturl() for url_found in urls]
+
+    return contents, urls
+
 
 class Scraper:
-    def __init__(self, save_html=True, max_level=3, base_path="data/scraped_data", classifier=lambda url, level: True, verify_ssl=False, concurrency=20):
+    def __init__(self, save_html=True, max_level=3, base_path="data/scraped_data", classifier=lambda url, level: True, verify_ssl=False, concurrency_companies=20, threads_bs4 = 10, threads_download = 100):
         self.save_html = save_html
         self.base_path = base_path
         self.max_level = max_level
@@ -36,7 +71,9 @@ class Scraper:
         self.classifier = classifier
 
         # Companies processed in parallel
-        self.sem_num_comps = asyncio.Semaphore(concurrency)
+        self.sem_num_comps = asyncio.Semaphore(concurrency_companies)
+        self.threads_bs4 = threads_bs4
+        self.threads_download = threads_download
 
         self.waits = dict()
         self.headers = {
@@ -50,13 +87,31 @@ class Scraper:
         # return current day in format "YYYY-MM-DD"
         return datetime.datetime.now().strftime("%Y-%m-%d")
 
+    
+    def __save_to_disk(self, path, contents):
+        """
+        Save all data to disk.
+        """
+        # create folder if it doesn't exist
+        Path(path).parent.mkdir(parents=True, exist_ok=True)
+
+        # write raw contents to file
+        with open(path, "w") as f:
+            f.write(contents)
+
+
+
     async def __fetch_one_url(self, url, kvk, level):
         """
         Fetch one url, save the html, and return the list of urls found on the page.
         """
+        # flag_download = await self.loop.run_in_executor(
+        #     self.io_executor,
+        #     functools.partial(self.classifier, url, level))
 
+        flag_download = self.classifier(url,level)
         # classify url to see if it should be crawled
-        if not self.classifier(url, level):
+        if not flag_download:#self.classifier(url, level):
             # add to file, without path
             with open("data/overview_urls.tsv", "a+") as f:
                 f.write(f"{kvk}\t{urlparse(url).netloc.replace('www.','')}\t{level}\t{url}\t{-9}\t{self.__get_current_date()}\t\n")
@@ -70,10 +125,11 @@ class Scraper:
         # hash url to give an ID (collisions are possible)
         hash_url = hashlib.sha1(url.encode()).hexdigest()
 
-        # create path
-        if url[-1] == "/":
+
+        # create path www.google.com/something/ --> something
+        if url[-1] == "/": 
             path = f"{self.base_path}/{kvk}/{urlparse(url).netloc.replace('www.','')}/{self.__get_current_date()}/{hash_url}_{url[:-1].split('/')[-1]}"
-        else:
+        else: #Create path www.google.com/something --> something
             path = f"{self.base_path}/{kvk}/{urlparse(url).netloc.replace('www.','')}/{self.__get_current_date()}/{hash_url}_{url.split('/')[-1]}"
         path = path.replace(" ", "_")
 
@@ -82,16 +138,14 @@ class Scraper:
                 r = await response.read()
                 status = response.status
                 if status == 200:
-                    # resp.content is a byte array, convert to string
-                    contents = r.decode("utf-8", "ignore")
+                    # # Parse the contents and extract URLS
+                    contents, urls = await self.loop.run_in_executor(
+                        self.cpu_executor,
+                        functools.partial(get_urls,r, url))
 
                     if self.save_html:
-                        # create folder if it doesn't exist
-                        Path(path).parent.mkdir(parents=True, exist_ok=True)
-
-                        # write raw contents to file
-                        with open(path, "w") as f:
-                            f.write(contents)
+                        # Save raw contents to file
+                        self.__save_to_disk(path, contents)
 
                     # parse
                     soup = BeautifulSoup(contents, 'html.parser')
@@ -203,6 +257,7 @@ class Scraper:
                 logger.info(f'scraper for {all_records[0]} finished in {time()-start:2.0f} seconds with {len(temp_all_records)} processed and {len(all_records)} links found.')
                 # return all_records
 
+    
     async def __fetch_all(self, records):
         """
         Fetch all urls in records up to a level max_level. Save html to file.
@@ -213,15 +268,16 @@ class Scraper:
         tasks = []
 
         # create HTTP client
-        async with ClientSession(headers=self.headers, trust_env=True, connector=TCPConnector(limit=100, ssl=self.verify_ssl)) as self.session:
+        async with ClientSession(headers=self.headers, trust_env=True, connector=TCPConnector(limit=self.threads_download, ssl=self.verify_ssl)) as self.session:
             # for each url, create asynchronous task to fetch company and append to tasks list
             for url in records:
                 task = asyncio.ensure_future(self.__fetch_one_company(url))
-                tasks.append(task)
+                tasks.append(task) 
             # create future and group tasks
-            await asyncio.gather(*tasks)
-        # return _
+            await asyncio.gather(*tasks) 
+        #return _
 
+    
     def scrape_companies(self, urls):
         """
         Create initial asynchronous task to fetch all urls
@@ -230,10 +286,11 @@ class Scraper:
         """
 
         logger.info(f'scraper received {len(urls)} urls')
-        loop = asyncio.get_event_loop()
 
-        future = asyncio.ensure_future(self.__fetch_all(urls))
-        loop.run_until_complete(future)
+        with ThreadPoolExecutor(max_workers=self.threads_bs4) as self.cpu_executor:#, ThreadPoolExecutor(max_workers=5) as self.io_executor:
+            self.loop = asyncio.get_event_loop() 
+            future = asyncio.ensure_future(self.__fetch_all(urls)) 
+            self.loop.run_until_complete(future) 
 
         # # flatten list python
         # r = [item for sublist in r  if sublist is not None for item in sublist]

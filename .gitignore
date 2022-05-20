@@ -2,5 +2,7 @@
 *.db
 *.log
 *.pyc
+*.key
 data/scraped_data/*
 data/overview_urls.tsv
+**/.DS_Store
