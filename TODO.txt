@@ -1,9 +1,6 @@
 Next steps:
 
 Bjorn:
-- Understand the code
-- Learn a bit about asyncio (and other async libraries: https://devopedia.org/asynchronous-programming-in-python) and beautifulsoup
-
 - Deal with the errors (retry downloading depending on error code)
 - Re-download only if the last download is not recent
 

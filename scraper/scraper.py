@@ -2,8 +2,7 @@
 
 from pathlib import Path
 from typing import Any, Dict, List, NamedTuple
-
-from scraper import DB_READ_ERROR, ID_ERROR
+from scraper import DB_READ_ERROR, ID_ERROR, config
 
 import asyncio
 from urllib.parse import urljoin, urlparse
@@ -13,20 +12,20 @@ from bs4 import BeautifulSoup
 from pathlib import Path
 
 import hashlib
-import logging
 from time import time
 import datetime
 import tldextract
+import logging
 
-LOGGER = logging.getLogger()
+logging.basicConfig(filename="logs/scraper.log", level=logging.INFO)
+logger = logging.getLogger()
 
 class Worker:
-    def __init__(self, save_html=True, max_level=3, base_path="data/scraped_data", classifier=lambda url,level: True, verify_ssl=False, concurrency=20):
+    def __init__(self, target_folder_path, save_html=True, max_level=3, verify_ssl=False, concurrency=20, classifier=lambda url, level: True):
+        self.target_folder_path = target_folder_path
+        self.base_path = self.target_folder_path / "data"
         self.save_html = save_html
-        self.base_path = base_path
         self.max_level = max_level
-
-        self.start = time()
 
         # Error in SSL certificates
         self.verify_ssl = verify_ssl
@@ -34,7 +33,6 @@ class Worker:
 
         # Companies processed in parallel
         self.sem_num_comps = asyncio.Semaphore(concurrency)
-
 
         self.waits = dict()
         self.headers =   {
@@ -44,11 +42,14 @@ class Worker:
             "Cookie": "cookielawinfo-checkbox-necessary=yes; cookielawinfo-checkbox-functional=no; cookielawinfo-checkbox-performance=no; cookielawinfo-checkbox-analytics=no; cookielawinfo-checkbox-advertisement=no; cookielawinfo-checkbox-others=no; CookieLawInfoConsent=eyJuZWNlc3NhcnkiOnRydWUsImZ1bmN0aW9uYWwiOmZhbHNlLCJwZXJmb3JtYW5jZSI6ZmFsc2UsImFuYWx5dGljcyI6ZmFsc2UsImFkdmVydGlzZW1lbnQiOmZhbHNlLCJvdGhlcnMiOmZhbHNlfQ==; viewed_cookie_policy=yes; optiMonkClientId=f299334f-0413-e0e3-489b-d0ae48a7beb5",
             "Upgrade-Insecure-Requests": "1"}
 
+        self.start = time()
+
 
     def __get_current_date(self):
         # return current day in format "YYYY-MM-DD"
         return datetime.datetime.now().strftime("%Y-%m-%d")
             
+
     async def __fetch_one_url(self, url, kvk, level):
         """
         Fetch one url, save the html, and return the list of urls found on the page.
@@ -57,7 +58,7 @@ class Worker:
         # classify url to see if it should be crawled
         if not self.classifier(url, level):
             # add to file, without path
-            with open("data/overview_urls.tsv", "a+") as f:
+            with open("{}/overview_urls.tsv".format(self.target_folder_path), "a+") as f:
                 f.write(f"{kvk}\t{urlparse(url).netloc.replace('www.','')}\t{level}\t{url}\t{-9}\t{self.__get_current_date()}\t\n")
             return []
 
@@ -116,26 +117,27 @@ class Worker:
 
 
                     if len(urls) == 0:
-                        LOGGER.debug(f'scraper finished for {url}')
+                        logging.debug(f'scraper finished for {url}')
                     else:
-                        LOGGER.debug(f'scraper {len(urls)} urls found for {url}')
+                        logging.debug(f'scraper {len(urls)} urls found for {url}')
                         
 
                 else:
-                    LOGGER.error(f'scraper failed to scrape "{url}"\nResponse status: {status}')
+                    logging.error(f'scraper failed to scrape "{url}"\nResponse status: {status}')
                     path = ""
 
         except Exception as e:
-            LOGGER.error(f'scraper failed to scrape "{url}"\nException: {str(e)}')
+            logging.error(f'scraper failed to scrape "{url}"\nException: {str(e)}')
             status = str(e)
             path = ""
 
         #print(f"{kvk}\t{urlparse(url).netloc}\t{level}\t{url}\t{status}\t{self.__get_current_date()}\t{path}")
         # save records to file
-        with open("data/overview_urls.tsv", "a+") as f:
+        with open("{}/overview_urls.tsv".format(self.target_folder_path), "a+") as f:
             f.write(f"{kvk}\t{urlparse(url).netloc.replace('www.','')}\t{level}\t{url}\t{status}\t{self.__get_current_date()}\t{path}\n")
 
         return urls
+
 
     async def __fetch_one_company(self, url):
         """
@@ -174,7 +176,7 @@ class Worker:
 
                 # make sure the scraper doesn't run forever
                 if len(temp_all_records) > 100:
-                    LOGGER.warn(f'scraper downloaded over 100 subpages of "{url}"')
+                    logging.warn(f'scraper downloaded over 100 subpages of "{url}"')
                     break
 
                 # remove urls alrady downloaded 
@@ -188,8 +190,9 @@ class Worker:
                 self.waits[kvk] = 0
 
 
-            LOGGER.info(f'scraper for {all_records[0]} finished in {time()-start:2.0f} seconds with {len(temp_all_records)} processed and {len(all_records)} links found.')
+            logging.info(f'scraper for {all_records[0]} finished in {time()-start:2.0f} seconds with {len(temp_all_records)} processed and {len(all_records)} links found.')
             #return all_records
+
 
     async def __fetch_all(self, records):
         """
@@ -204,8 +207,9 @@ class Worker:
             await asyncio.gather(*tasks) 
         #return _
     
+
     def scrape_companies(self, urls):
-        LOGGER.info(f'scraper received {len(urls)} urls')
+        logging.info(f'scraper received {len(urls)} urls')
         loop = asyncio.get_event_loop() 
 
         future = asyncio.ensure_future(self.__fetch_all(urls)) 

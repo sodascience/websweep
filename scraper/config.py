@@ -1,15 +1,12 @@
-"""This module provides the RP To-Do config functionality."""
-
+"""This module provides the Scraper config functionality."""
+import sys
 import configparser
 from pathlib import Path
-
 import typer
-
-from scraper import DB_WRITE_ERROR, DIR_ERROR, FILE_ERROR, SUCCESS, __app_name__
+from scraper import DB_WRITE_ERROR, DIR_ERROR, FILE_ERROR, SUCCESS, scraper, __app_name__
 
 CONFIG_DIR_PATH = Path(typer.get_app_dir(__app_name__))
 CONFIG_FILE_PATH = CONFIG_DIR_PATH / "config.ini"
-
 
 def init_app(source_file_path: str, target_folder_path: str) -> int:
     """Initialize the application."""
@@ -58,6 +55,7 @@ def get_source_file_path(config_file: Path) -> Path:
 def _save_target_folder(target_folder_path: str) -> int:
     try:
         Path(target_folder_path).mkdir(exist_ok=True)
+        Path(target_folder_path+"/data").mkdir(exist_ok=True)
     except OSError:
         return DIR_ERROR
 

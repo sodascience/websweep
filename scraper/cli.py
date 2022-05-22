@@ -5,7 +5,6 @@ from typing import List, Optional
 from tkinter import filedialog as fd
 from tkinter import Tk
 import time
-import logging
 
 import typer
 
@@ -24,11 +23,6 @@ def init() -> None:
         "\nWELCOME to the corporate scraper.\nFollow the instructions to set up the scraper and start scraping.\n", fg=typer.colors.YELLOW
     )
 
-    logging.basicConfig(filename="logs/scraper.log", level=logging.INFO)
-
-    typer.secho(
-        "Logger initialized\n", fg=typer.colors.GREEN
-    )
     time.sleep(0.5)
 
     ask_continue_file = typer.confirm("SELECT the .csv file with kvk and base url\nContinue?\n")
@@ -40,7 +34,7 @@ def init() -> None:
         raise typer.Exit(1)
 
     Tk().withdraw()
-    source_filename = fd.askopenfilename()
+    source_filename = fd.askopenfilename(filetypes=[("Excel files", ".csv")])
 
     typer.secho(
         "File {} selected\n".format(source_filename), fg=typer.colors.YELLOW
@@ -78,6 +72,12 @@ def init() -> None:
     )
     time.sleep(0.5)
 
+    #logging.basicConfig(filename="{}/scraper.log".format(folder), level=logging.INFO)
+
+    # typer.secho(
+    #     "Logger initialized at {}/scraper.log\n".format(folder), fg=typer.colors.GREEN
+    # )
+
     app_init_error = config.init_app(source_filename, "{}/{}".format(folder, data_filename))
     if app_init_error:
         typer.secho(
@@ -89,17 +89,17 @@ def init() -> None:
         typer.secho(f"Scraper is initialised and ready to use \nUse the --help command for instructions\n ", fg=typer.colors.GREEN)
 
 
-def get_todoer() -> scraper.Worker:
+def get_worker() -> scraper.Worker:
     if config.CONFIG_FILE_PATH.exists():
         source_file_path = config.get_source_file_path(config.CONFIG_FILE_PATH)
     else:
         typer.secho(
-            'Config file not found. Please, run "scraper init" or use scrape --help',
+            'Config file not found. Please, run "scraper init" or use scraper --help',
             fg=typer.colors.RED,
         )
         raise typer.Exit(1)
     if source_file_path.exists():
-        return scraper.Worker(source_file_path)
+        return scraper.Worker(target_folder_path = config.get_target_folder_path(config.CONFIG_FILE_PATH))
     else:
         typer.secho(
             'Source file not found. Please, run "scraper init" or use scrape --help',
@@ -114,7 +114,7 @@ def scrape() -> None:
     Start scraping
     """
 
-    worker = get_todoer()
+    worker = get_worker()
 
     start = time.time()
     
@@ -137,12 +137,13 @@ def scrape() -> None:
     print(f"Downloaded {count} pages from {len(urls)} urls to level {3} in {time() - start:2.1f} seconds.")
 
 
-
 @app.command()
 def status() -> None:
     """
     Get status and parameters of current application
     """
+
+    get_worker()
 
     typer.secho(
         '\nScraper status OK\n',
