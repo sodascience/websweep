@@ -193,10 +193,10 @@ def scrape() -> None:
     json_list = []
     i = 0
 
-    file_perm = config.get_target_folder_path(config.CONFIG_FILE_PATH)  /  (str(date.today()) + '.json')
+    file_perm = config.get_target_folder_path(config.CONFIG_FILE_PATH)  /  ('performance_' + str(date.today()) + '.json')
     Path(file_perm).parent.mkdir(parents=True, exist_ok=True)
 
-    file_res = config.get_target_folder_path(config.CONFIG_FILE_PATH)  /  (str(date.today()) + '.json')
+    file_res = config.get_target_folder_path(config.CONFIG_FILE_PATH)  /  ('scraped_data_' + str(date.today()) + '.json')
     Path(file_res).parent.mkdir(parents=True, exist_ok=True)
 
     # Create path to files
