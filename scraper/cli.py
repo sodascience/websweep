@@ -5,6 +5,10 @@ from typing import List, Optional
 from tkinter import filedialog as fd
 from tkinter import Tk
 import time
+import os
+import json
+from datetime import date
+from multiprocessing import Pool
 
 import typer
 
@@ -12,7 +16,63 @@ from scraper import ERRORS, __app_name__, __version__, config, scraper
 
 app = typer.Typer()
 
+# Helper method for main callback of Typer app
+def _version_callback(value: bool) -> None:
+    if value:
+        typer.echo(f"{__app_name__} v{__version__}")
+        raise typer.Exit()
 
+
+# Helper for scraping
+def _create_results(path):
+    folder = _get_folder(path)
+
+    start_time_file = time.perf_counter()
+    website_name = os.path.basename(Path(folder).parents[0])
+    # TODO: integrate get scraper into _get_worker method since now no checks are performed if target folders exist
+    cached_corporate = scraper.Scraper(working_dir=folder, website=website_name)
+    cached_corporate.run_loops()
+    end_time_file = time.perf_counter()
+    json_dict = cached_corporate.__dict__
+    json_dict.pop("working_dir")
+
+    return ({folder: end_time_file - start_time_file }, json_dict)
+
+# Helper for scraping
+def _get_folder(path):
+    # Remove hidden files
+    next_folder = [_ for _ in os.listdir(path) if not _.startswith(".")][0]
+    final_dir = os.path.join(path, next_folder)
+    
+    # This should be a parameter of the code instead of finding it automatically (TODO). It could use if no parameter is passed.
+    if os.path.isdir(final_dir):
+        list_of_files = os.listdir(final_dir)
+        list_of_files = [_ for _ in list_of_files if not _.startswith(".")]
+        list_of_files.sort(reverse=True)
+        return os.path.join(final_dir, list_of_files[0])
+    else:
+        return None
+
+# Helper for all called CLI methods that need to be provided with a WORKER unit
+def _get_worker() -> scraper.Cacher:
+    if config.CONFIG_FILE_PATH.exists():
+        source_file_path = config.get_source_file_path(config.CONFIG_FILE_PATH)
+    else:
+        typer.secho(
+            'Config file not found. Please, run "scraper init" or use scraper --help',
+            fg=typer.colors.RED,
+        )
+        raise typer.Exit(1)
+    if source_file_path.exists():
+        return scraper.Cacher(target_folder_path = config.get_target_folder_path(config.CONFIG_FILE_PATH))
+    else:
+        typer.secho(
+            'Source file not found. Please, run "scraper init" or use scrape --help',
+            fg=typer.colors.RED,
+        )
+        raise typer.Exit(1)
+
+# Init command
 @app.command(name = "init")
 def init() -> None:
     """
@@ -89,32 +149,16 @@ def init() -> None:
         typer.secho(f"Scraper is initialised and ready to use \nUse the --help command for instructions\n ", fg=typer.colors.GREEN)
 
 
-def get_worker() -> scraper.Worker:
-    if config.CONFIG_FILE_PATH.exists():
-        source_file_path = config.get_source_file_path(config.CONFIG_FILE_PATH)
-    else:
-        typer.secho(
-            'Config file not found. Please, run "scraper init" or use scraper --help',
-            fg=typer.colors.RED,
-        )
-        raise typer.Exit(1)
-    if source_file_path.exists():
-        return scraper.Worker(target_folder_path = config.get_target_folder_path(config.CONFIG_FILE_PATH))
-    else:
-        typer.secho(
-            'Source file not found. Please, run "scraper init" or use scrape --help',
-            fg=typer.colors.RED,
-        )
-        raise typer.Exit(1)
+
 
 
 @app.command()
-def scrape() -> None:
+def cache() -> None:
     """
-    Start scraping
+    Start caching websites
     """
 
-    worker = get_worker()
+    worker = _get_worker()
 
     start = time.time()
     
@@ -138,12 +182,61 @@ def scrape() -> None:
 
 
 @app.command()
+def scrape() -> None:
+    """
+    Start scraping the data from cached website files
+    """
+
+    start_time = time.perf_counter()
+    test_data_dir = config.get_target_folder_path(config.CONFIG_FILE_PATH) / 'data'  # Get the folder 3 folders up, then add /data/test_data to that filepath
+    time_dict = {}
+    json_list = []
+    i = 0
+
+    file_perm = config.get_target_folder_path(config.CONFIG_FILE_PATH)  /  (str(date.today()) + '.json')
+    Path(file_perm).parent.mkdir(parents=True, exist_ok=True)
+
+    file_res = config.get_target_folder_path(config.CONFIG_FILE_PATH)  /  (str(date.today()) + '.json')
+    Path(file_res).parent.mkdir(parents=True, exist_ok=True)
+
+    # Create path to files
+    files = [os.path.join(test_data_dir, file) for file in os.listdir(test_data_dir) if not file.startswith(".")]
+    # Check if they are directories
+    files = [file for file in files if os.path.isdir(file)]
+    
+    # Parallelize loop (it may not work on Windows unless you keep "create_results" in a different file)
+    with Pool() as pool, open(file_perm, "w+") as f_perm, open(file_res, "w+") as f_res:
+        i = 0
+        
+        for result in pool.imap_unordered(_create_results, files):
+            i += 1
+            if i % 100 == 0:
+                print(f"Finished {i} files out of {len(files)}")
+            time_dict_temp, json_dict = result
+            time_dict.update(time_dict_temp)
+            json_list.append(json_dict)
+
+        # Write data to file  (TODO: it should be line by line to avoid using update/append. 
+        prettify = json.dumps(time_dict, indent=4)
+        f_perm.write(prettify)
+
+        prettify = json.dumps(json_list, indent=4)
+        f_res.write(prettify)
+
+
+    end_time = time.perf_counter()
+    total_runtime = end_time - start_time
+    time_dict["total runtime: "] = total_runtime
+
+
+
+@app.command()
 def status() -> None:
     """
     Get status and parameters of current application
     """
 
-    get_worker()
+    _get_worker()
 
     typer.secho(
         '\nScraper status OK\n',
@@ -159,13 +252,6 @@ def status() -> None:
     )
     
 
-
-def _version_callback(value: bool) -> None:
-    if value:
-        typer.echo(f"{__app_name__} v{__version__}")
-        raise typer.Exit()
-
-
 @app.callback()
 def main(
     version: Optional[bool] = typer.Option(
@@ -178,3 +264,10 @@ def main(
     )
 ) -> None:
     return
+
+
+
+
+
+
+
