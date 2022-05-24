@@ -1,4 +1,4 @@
-"""Top-level package for RP To-Do."""
+"""Top-level package for Scraper"""
 
 __app_name__ = "scraper"
 __version__ = "0.1.0"
