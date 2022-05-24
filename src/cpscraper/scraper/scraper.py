@@ -2,7 +2,6 @@
 
 from pathlib import Path
 from typing import Any, Dict, List, NamedTuple
-from scraper import DB_READ_ERROR, ID_ERROR, config
 
 import asyncio
 from urllib.parse import urljoin, urlparse
@@ -21,7 +20,7 @@ import logging
 logging.basicConfig(filename="logs/scraper.log", level=logging.INFO)
 logger = logging.getLogger()
 
-class Cacher:
+class Scraper:
     def __init__(self, target_folder_path, save_html=True, max_level=3, verify_ssl=False, concurrency=20, classifier=lambda url, level: True):
         self.target_folder_path = target_folder_path
         self.base_path = self.target_folder_path / "data"

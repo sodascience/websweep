@@ -1,5 +1,4 @@
-"""This module provides the RP To-Do CLI."""
-
+import typer
 from pathlib import Path
 from typing import List, Optional
 from tkinter import filedialog as fd
@@ -10,17 +9,11 @@ import json
 from datetime import date
 from multiprocessing import Pool
 
-import typer
-
-from scraper import ERRORS, __app_name__, __version__, config, scraper
+from .scraper.scraper import Scraper
+from .extractor.extractor import Extractor
+from src.cpscraper import ERRORS, __app_name__, __version__, config
 
 app = typer.Typer()
-
-# Helper method for main callback of Typer app
-def _version_callback(value: bool) -> None:
-    if value:
-        typer.echo(f"{__app_name__} v{__version__}")
-        raise typer.Exit()
 
 
 # Helper for scraping
@@ -30,7 +23,7 @@ def _create_results(path):
     start_time_file = time.perf_counter()
     website_name = os.path.basename(Path(folder).parents[0])
     # TODO: integrate get scraper into _get_worker method since now no checks are performed if target folders exist
-    cached_corporate = scraper.Scraper(working_dir=folder, website=website_name)
+    cached_corporate = Extractor(working_dir=folder, website=website_name)
     cached_corporate.run_loops()
     end_time_file = time.perf_counter()
     json_dict = cached_corporate.__dict__
@@ -53,8 +46,16 @@ def _get_folder(path):
     else:
         return None
 
+
+# Helper method for main callback of Typer app
+def _version_callback(value: bool) -> None:
+    if value:
+        typer.echo(f"{__app_name__} v{__version__}")
+        raise typer.Exit()
+
+
 # Helper for all called CLI methods that need to be provided with a WORKER unit
-def _get_worker() -> scraper.Cacher:
+def _get_worker() -> Scraper:
     if config.CONFIG_FILE_PATH.exists():
         source_file_path = config.get_source_file_path(config.CONFIG_FILE_PATH)
     else:
@@ -64,13 +65,14 @@ def _get_worker() -> scraper.Cacher:
         )
         raise typer.Exit(1)
     if source_file_path.exists():
-        return scraper.Cacher(target_folder_path = config.get_target_folder_path(config.CONFIG_FILE_PATH))
+        return Scraper(target_folder_path = config.get_target_folder_path(config.CONFIG_FILE_PATH))
     else:
         typer.secho(
             'Source file not found. Please, run "scraper init" or use scrape --help',
             fg=typer.colors.RED,
         )
         raise typer.Exit(1)
+
 
 # Init command
 @app.command(name = "init")
@@ -132,12 +134,6 @@ def init() -> None:
     )
     time.sleep(0.5)
 
-    #logging.basicConfig(filename="{}/scraper.log".format(folder), level=logging.INFO)
-
-    # typer.secho(
-    #     "Logger initialized at {}/scraper.log\n".format(folder), fg=typer.colors.GREEN
-    # )
-
     app_init_error = config.init_app(source_filename, "{}/{}".format(folder, data_filename))
     if app_init_error:
         typer.secho(
@@ -149,11 +145,8 @@ def init() -> None:
         typer.secho(f"Scraper is initialised and ready to use \nUse the --help command for instructions\n ", fg=typer.colors.GREEN)
 
 
-
-
-
 @app.command()
-def cache() -> None:
+def scrape() -> None:
     """
     Start caching websites
     """
@@ -181,8 +174,22 @@ def cache() -> None:
     print(f"Downloaded {count} pages from {len(urls)} urls to level {3} in {time() - start:2.1f} seconds.")
 
 
+@app.callback()
+def main(
+    version: Optional[bool] = typer.Option(
+        None,
+        "--version",
+        "-v",
+        help="Show the application's version and exit.",
+        callback=_version_callback,
+        is_eager=True,
+    )
+) -> None:
+    return
+
+
 @app.command()
-def scrape() -> None:
+def extract() -> None:
     """
     Start scraping the data from cached website files
     """
@@ -227,45 +234,6 @@ def scrape() -> None:
     end_time = time.perf_counter()
     total_runtime = end_time - start_time
     time_dict["total runtime: "] = total_runtime
-
-
-
-@app.command()
-def status() -> None:
-    """
-    Get status and parameters of current application
-    """
-
-    _get_worker()
-
-    typer.secho(
-        '\nScraper status OK\n',
-        fg=typer.colors.GREEN,
-    )
-    typer.secho(
-        'Source file: {}'.format(config.get_source_file_path(config.CONFIG_FILE_PATH)),
-        fg=typer.colors.YELLOW,
-    )
-    typer.secho(
-        'Target folder: {}\n'.format(config.get_target_folder_path(config.CONFIG_FILE_PATH)),
-        fg=typer.colors.YELLOW,
-    )
-    
-
-@app.callback()
-def main(
-    version: Optional[bool] = typer.Option(
-        None,
-        "--version",
-        "-v",
-        help="Show the application's version and exit.",
-        callback=_version_callback,
-        is_eager=True,
-    )
-) -> None:
-    return
-
-
 
 
 

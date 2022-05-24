@@ -1,7 +1,5 @@
-"""Top-level package for Scraper"""
-
-__app_name__ = "scraper"
-__version__ = "0.1.0"
+__version__ = '0.1.0'
+__app_name__ = "cpscraper"
 
 (
     SUCCESS,

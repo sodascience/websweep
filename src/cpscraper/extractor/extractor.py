@@ -1,9 +1,10 @@
 
 import os
 import re
+import typer
 
 
-class Scraper:
+class Extractor:
     def __init__(self, working_dir=None, website=None, phone=None, email=None, kvk=None,
                  adres=None, zip_code=None, fax=None, btw=None):
         self.website = website
@@ -143,4 +144,7 @@ class Scraper:
     def mistake_warning(self):
         for key, value in self.__dict__.items():
             if not value:
-                print(f"{bcolors.FAIL} No value could be found for {key} at {self.working_dir}{bcolors.RESET}")
+                typer.secho(
+                    'No value could be found for {key} at {self.working_dir}',
+                    fg=typer.colors.RED,
+                )
