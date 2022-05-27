@@ -221,6 +221,15 @@ class Scraper:
         future = asyncio.ensure_future(self.__fetch_all(urls)) 
         loop.run_until_complete(future) 
 
+        #Read what we did
+        with open(self.overview_path) as f:
+            count = 0
+            for line in f:
+                if line.split("\t")[4] == "200":
+                    count += 1
+        print(f"Downloaded {count} pages from {len(urls)} urls to level {3} in {time() - start:2.1f} seconds.")
+
+
         # # flatten list python
         # r = [item for sublist in r  if sublist is not None for item in sublist]
 
