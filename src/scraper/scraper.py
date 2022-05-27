@@ -1,8 +1,3 @@
-"""This module provides the Scraper model-controller."""
-
-from pathlib import Path
-from typing import Any, Dict, List, NamedTuple
-
 import asyncio
 from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor
 from urllib.parse import urljoin, urlparse
@@ -13,12 +8,14 @@ from bs4 import BeautifulSoup
 from pathlib import Path
 
 import hashlib
+import logging
 from time import time
 import datetime
 import tldextract
-import logging
-import os
+import regex as re
 
+
+# logging
 logging.basicConfig(filename="logs/scraper.log", level=logging.INFO)
 logger = logging.getLogger()
 
@@ -72,6 +69,7 @@ class Scraper:
                 f.write("id\tdomain\tlevel\turl\tstatus\tdate\tpath\n")
 
         self.save_html = save_html
+        self.base_path = base_path
         self.max_level = max_level
 
         # Avoid error in SSL certificates
@@ -91,13 +89,23 @@ class Scraper:
             "Cookie": "cookielawinfo-checkbox-necessary=yes; cookielawinfo-checkbox-functional=no; cookielawinfo-checkbox-performance=no; cookielawinfo-checkbox-analytics=no; cookielawinfo-checkbox-advertisement=no; cookielawinfo-checkbox-others=no; CookieLawInfoConsent=eyJuZWNlc3NhcnkiOnRydWUsImZ1bmN0aW9uYWwiOmZhbHNlLCJwZXJmb3JtYW5jZSI6ZmFsc2UsImFuYWx5dGljcyI6ZmFsc2UsImFkdmVydGlzZW1lbnQiOmZhbHNlLCJvdGhlcnMiOmZhbHNlfQ==; viewed_cookie_policy=yes; optiMonkClientId=f299334f-0413-e0e3-489b-d0ae48a7beb5",
             "Upgrade-Insecure-Requests": "1"}
 
-        self.start = time()
-
-
     def __get_current_date(self):
         # return current day in format "YYYY-MM-DD"
         return datetime.datetime.now().strftime("%Y-%m-%d")
-            
+
+    
+    def __save_to_disk(self, path, contents):
+        """
+        Save all data to disk.
+        """
+        # create folder if it doesn't exist
+        Path(path).parent.mkdir(parents=True, exist_ok=True)
+
+        # write raw contents to file
+        with open(path, "w") as f:
+            f.write(contents)
+
+
 
     async def __fetch_one_url(self, url, kvk, level):
         """
@@ -125,7 +133,7 @@ class Scraper:
 
 
         # create path www.google.com/something/ --> something
-        if url[-1] == "/":
+        if url[-1] == "/": 
             path = f"{self.base_path}/{kvk}/{urlparse(url).netloc.replace('www.','')}/{self.__get_current_date()}/{hash_url}_{url[:-1].split('/')[-1]}"
         else: #Create path www.google.com/something --> something
             path = f"{self.base_path}/{kvk}/{urlparse(url).netloc.replace('www.','')}/{self.__get_current_date()}/{hash_url}_{url.split('/')[-1]}"
@@ -136,13 +144,13 @@ class Scraper:
                 r = await response.read()
                 status = response.status
                 if status == 200:
-                    # parse the contents and extract URLS
+                    # # Parse the contents and extract URLS
                     contents, urls = await self.loop.run_in_executor(
                         self.cpu_executor,
                         functools.partial(get_urls,r, url))
 
                     if self.save_html:
-                        # save raw contents to file
+                        # Save raw contents to file
                         self.__save_to_disk(path, contents)
 
                     # parse
@@ -168,16 +176,16 @@ class Scraper:
                     urls = [urlparse(url_found)._replace(query="").geturl() for url_found in urls]
 
                     if len(urls) == 0:
-                        logging.debug(f'scraper finished for {url}')
+                        logger.debug(f'scraper finished for {url}')
                     else:
-                        logging.debug(f'scraper {len(urls)} urls found for {url}')
+                        logger.debug(f'scraper {len(urls)} urls found for {url}')
 
                 else:
-                    logging.error(f'scraper failed to scrape "{url}"\nResponse status: {status}')
+                    logger.error(f'scraper failed to scrape "{url}"\nResponse status: {status}')
                     path = ""
 
         except Exception as e:
-            logging.error(f'scraper failed to scrape "{url}"\nException: {str(e)}')
+            logger.error(f'scraper failed to scrape "{url}"\nException: {str(e)}')
             status = str(e)
             path = ""
 
@@ -187,7 +195,6 @@ class Scraper:
             f.write(f"{kvk}\t{urlparse(url).netloc.replace('www.','')}\t{level}\t{url}\t{status}\t{self.__get_current_date()}\t{path}\n")
 
         return urls
-
 
     async def __fetch_one_company(self, url):
         """
@@ -218,7 +225,7 @@ class Scraper:
                 crawl_dates = [datetime.datetime.strptime(str(path).rsplit('/', 1)[1], '%Y-%m-%d').date() for path in Path(sourcepath).iterdir() if path.is_dir()]
                 # check if most recent crawldate is within threshold and if so, log finding and stop crawling for this company
                 if ((datetime.date.today() - max(crawl_dates)).days < 30):
-                    logging.info(f'scraper for {all_records[0]} finished in {time()-start:2.0f} seconds due to recent crawling threshold.')
+                    logger.info(f'scraper for {all_records[0]} finished in {time()-start:2.0f} seconds due to recent crawling threshold.')
                     return
 
             # Breath first search algorithm from urls
@@ -240,7 +247,7 @@ class Scraper:
 
                 # make sure the scraper doesn't run forever
                 if len(temp_all_records) > 100:
-                    logging.warn(f'scraper downloaded over 100 subpages of "{url}"')
+                    logger.warn(f'scraper downloaded over 100 subpages of "{url}"')
                     break
 
                 # remove urls already downloaded
@@ -277,7 +284,6 @@ class Scraper:
         #return _
 
     
-
     def scrape_companies(self, urls):
         """
         Create initial asynchronous task to fetch all urls
