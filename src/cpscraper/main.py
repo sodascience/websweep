@@ -11,7 +11,7 @@ from multiprocessing import Pool
 
 from .scraper.scraper import Scraper
 from .extractor.extractor import Extractor
-from src.cpscraper import ERRORS, __app_name__, __version__, config
+from cpscraper import ERRORS, __app_name__, __version__, config
 
 app = typer.Typer()
 

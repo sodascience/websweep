@@ -15,7 +15,7 @@ from time import time
 import datetime
 import tldextract
 import logging
-
+import os
 
 logging.basicConfig(filename="logs/scraper.log", level=logging.INFO)
 logger = logging.getLogger()
