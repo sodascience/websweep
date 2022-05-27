@@ -2,7 +2,7 @@
 import os
 import re
 import typer
-
+import tika
 
 class Extractor:
     def __init__(self, working_dir=None, website=None, phone=None, email=None, kvk=None,
@@ -148,3 +148,48 @@ class Extractor:
                     'No value could be found for {key} at {self.working_dir}',
                     fg=typer.colors.RED,
                 )
+
+    def extract_metadata(self, file_path):
+        """        
+        This function is used to extract the metadata from the file, and return it as a dictionary.
+
+        # Example of metadata
+        {'Content-Encoding': 'UTF-8',
+        'Content-Language': 'nl',
+        'Content-Type': 'text/html; charset=UTF-8',
+        'Content-Type-Hint': 'text/html; charset=UTF-8',
+        'X-Parsed-By': ['org.apache.tika.parser.DefaultParser',
+        'org.apache.tika.parser.html.HtmlParser'],
+        'X-TIKA:content_handler': 'ToTextContentHandler',
+        'X-TIKA:embedded_depth': '0',
+        'X-TIKA:parse_time_millis': '18',
+        'dc:title': 'Over Webo | WEBO Heftrucks B.V.',
+        'description': "We schrijven begin jaren '50. Nederland is letterlijk een land in opbouw en mensen doen hun uiterste best om de enorme schade van de tweede wereldoorlog te hers...",
+        'og:description': "We schrijven begin jaren '50. Nederland is letterlijk een land in opbouw en mensen doen hun uiterste best om de enorme schade van de tweede wereldoorlog te hers...",
+        'og:locale': '_',
+        'og:site_name': 'WEBO Heftrucks B.V.',
+        'og:title': 'Over Webo | WEBO Heftrucks B.V.',
+        'og:url': 'https://www.weboheftrucks.nl/over-webo/',
+        'resourceName': "b'1a0b97173df88eceedc23673381c49afa3f2f927_over-webo'",
+        'title': 'Over Webo | WEBO Heftrucks B.V.',
+        'viewport': 'width=device-width, initial-scale=1.0'}
+        """
+    
+        parsed = tika.parser.from_file(file_path, requestOptions={'timeout': 120})
+        if parsed["status"] != 200:
+            # TODO: Add to log file
+            return {}
+
+        text = self._clean_html(parsed["content"])
+        metadata = parsed["metadata"]
+        metadata["text"] = text
+
+        return metadata
+            
+    def _clean_html(self, text):
+        """
+        Clean text extracted by tika
+        """
+        # keep only > 100 characters
+        text = "\n".join([_ for _ in text.split("\n") if len(_) > 100])
+        return text
