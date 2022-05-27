@@ -66,11 +66,13 @@ class Extractor:
         if self.kvk is None:
             self.kvk = set()
         pattern = re.compile(r"""
-                                (kvk|KvK|K.v.K.|k.v.k.)(.+)(\b\d{8})
-                                """, re.VERBOSE)
-        result_list = set(re.findall(pattern, file))
+                                k\.?v\.?k.{0,12}?(\b\d{8}) | (\b\d{8}).{0,5}?k\.?v\.?k
+                                """, re.VERBOSE, re.IGNORECASE)
+        result_list = re.findall(pattern, file)
         for item in result_list:
-            self.kvk.add(item[2])
+            for subitem in item:
+                if len(subitem) > 0:
+                    self.kvk.add(subitem)
         return
 
     def scrape_phone(self, file):
