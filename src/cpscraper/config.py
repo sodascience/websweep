@@ -3,7 +3,7 @@ import sys
 import configparser
 from pathlib import Path
 import typer
-from src.cpscraper import DB_WRITE_ERROR, DIR_ERROR, FILE_ERROR, SUCCESS, __app_name__
+from cpscraper import DIR_ERROR, FILE_ERROR, SUCCESS, __app_name__
 
 CONFIG_DIR_PATH = Path(typer.get_app_dir(__app_name__))
 CONFIG_FILE_PATH = CONFIG_DIR_PATH / "config.ini"
@@ -42,7 +42,7 @@ def _save_source_file(source_file_path: str) -> int:
         with CONFIG_FILE_PATH.open("w") as file:
             config_parser.write(file)
     except OSError:
-        return DB_WRITE_ERROR
+        return FILE_ERROR
     return SUCCESS
 
 def get_source_file_path(config_file: Path) -> Path:
@@ -66,7 +66,7 @@ def _save_target_folder(target_folder_path: str) -> int:
         with CONFIG_FILE_PATH.open("a") as file:
             config_parser.write(file)
     except OSError:
-        return DB_WRITE_ERROR
+        return FILE_ERROR
     return SUCCESS
 
 def get_target_folder_path(config_file: Path) -> Path:
