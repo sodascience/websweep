@@ -1,3 +1,8 @@
+"""This module provides the Scraper model-controller."""
+
+from pathlib import Path
+from typing import Any, Dict, List, NamedTuple
+
 import asyncio
 from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor
 from urllib.parse import urljoin, urlparse
@@ -8,14 +13,12 @@ from bs4 import BeautifulSoup
 from pathlib import Path
 
 import hashlib
-import logging
 from time import time
 import datetime
 import tldextract
-import regex as re
+import logging
+import os
 
-
-# logging
 logging.basicConfig(filename="logs/scraper.log", level=logging.INFO)
 logger = logging.getLogger()
 
@@ -61,18 +64,12 @@ def get_urls(r, url):
 class Scraper:
     def __init__(self, target_folder_path, save_html=True, max_level=3, base_path="data/scraped_data", classifier=lambda url, level: True, verify_ssl=False, concurrency_companies=20, threads_bs4 = 10, threads_download = 100):
         self.target_folder_path = target_folder_path
-        self.base_path = self.target_folder_path / "data"
-        self.overview_path = f"{self.target_folder_path}/overview_urls.tsv"
-        # Check if overview file exists, if not create it
-        if not Path(self.overview_path).is_file():
-            with open(self.overview_path, "w") as f:
-                f.write("id\tdomain\tlevel\turl\tstatus\tdate\tpath\n")
+        self.base_path = self.target_folder_path / "data" 
 
         self.save_html = save_html
-        self.base_path = base_path
         self.max_level = max_level
 
-        # Avoid error in SSL certificates
+        # Error in SSL certificates
         self.verify_ssl = verify_ssl
         self.classifier = classifier
 
@@ -89,23 +86,13 @@ class Scraper:
             "Cookie": "cookielawinfo-checkbox-necessary=yes; cookielawinfo-checkbox-functional=no; cookielawinfo-checkbox-performance=no; cookielawinfo-checkbox-analytics=no; cookielawinfo-checkbox-advertisement=no; cookielawinfo-checkbox-others=no; CookieLawInfoConsent=eyJuZWNlc3NhcnkiOnRydWUsImZ1bmN0aW9uYWwiOmZhbHNlLCJwZXJmb3JtYW5jZSI6ZmFsc2UsImFuYWx5dGljcyI6ZmFsc2UsImFkdmVydGlzZW1lbnQiOmZhbHNlLCJvdGhlcnMiOmZhbHNlfQ==; viewed_cookie_policy=yes; optiMonkClientId=f299334f-0413-e0e3-489b-d0ae48a7beb5",
             "Upgrade-Insecure-Requests": "1"}
 
+        self.start = time()
+
+
     def __get_current_date(self):
         # return current day in format "YYYY-MM-DD"
         return datetime.datetime.now().strftime("%Y-%m-%d")
-
-    
-    def __save_to_disk(self, path, contents):
-        """
-        Save all data to disk.
-        """
-        # create folder if it doesn't exist
-        Path(path).parent.mkdir(parents=True, exist_ok=True)
-
-        # write raw contents to file
-        with open(path, "w") as f:
-            f.write(contents)
-
-
+            
 
     async def __fetch_one_url(self, url, kvk, level):
         """
@@ -119,7 +106,7 @@ class Scraper:
         # classify url to see if it should be crawled
         if not flag_download:#self.classifier(url, level):
             # add to file, without path
-            with open(self.overview_path, "a+") as f:
+            with open("{}/overview_urls.tsv".format(self.target_folder_path), "a+") as f:
                 f.write(f"{kvk}\t{urlparse(url).netloc.replace('www.','')}\t{level}\t{url}\t{-9}\t{self.__get_current_date()}\t\n")
             return []
 
@@ -133,7 +120,7 @@ class Scraper:
 
 
         # create path www.google.com/something/ --> something
-        if url[-1] == "/": 
+        if url[-1] == "/":
             path = f"{self.base_path}/{kvk}/{urlparse(url).netloc.replace('www.','')}/{self.__get_current_date()}/{hash_url}_{url[:-1].split('/')[-1]}"
         else: #Create path www.google.com/something --> something
             path = f"{self.base_path}/{kvk}/{urlparse(url).netloc.replace('www.','')}/{self.__get_current_date()}/{hash_url}_{url.split('/')[-1]}"
@@ -144,13 +131,13 @@ class Scraper:
                 r = await response.read()
                 status = response.status
                 if status == 200:
-                    # # Parse the contents and extract URLS
+                    # parse the contents and extract URLS
                     contents, urls = await self.loop.run_in_executor(
                         self.cpu_executor,
                         functools.partial(get_urls,r, url))
 
                     if self.save_html:
-                        # Save raw contents to file
+                        # save raw contents to file
                         self.__save_to_disk(path, contents)
 
                     # parse
@@ -176,25 +163,26 @@ class Scraper:
                     urls = [urlparse(url_found)._replace(query="").geturl() for url_found in urls]
 
                     if len(urls) == 0:
-                        logger.debug(f'scraper finished for {url}')
+                        logging.debug(f'scraper finished for {url}')
                     else:
-                        logger.debug(f'scraper {len(urls)} urls found for {url}')
+                        logging.debug(f'scraper {len(urls)} urls found for {url}')
 
                 else:
-                    logger.error(f'scraper failed to scrape "{url}"\nResponse status: {status}')
+                    logging.error(f'scraper failed to scrape "{url}"\nResponse status: {status}')
                     path = ""
 
         except Exception as e:
-            logger.error(f'scraper failed to scrape "{url}"\nException: {str(e)}')
+            logging.error(f'scraper failed to scrape "{url}"\nException: {str(e)}')
             status = str(e)
             path = ""
 
         # print(f"{kvk}\t{urlparse(url).netloc}\t{level}\t{url}\t{status}\t{self.__get_current_date()}\t{path}")
         # save records to file
-        with open(self.overview_path, "a+") as f:
+        with open("{}/overview_urls.tsv".format(self.target_folder_path), "a+") as f:
             f.write(f"{kvk}\t{urlparse(url).netloc.replace('www.','')}\t{level}\t{url}\t{status}\t{self.__get_current_date()}\t{path}\n")
 
         return urls
+
 
     async def __fetch_one_company(self, url):
         """
@@ -225,7 +213,7 @@ class Scraper:
                 crawl_dates = [datetime.datetime.strptime(str(path).rsplit('/', 1)[1], '%Y-%m-%d').date() for path in Path(sourcepath).iterdir() if path.is_dir()]
                 # check if most recent crawldate is within threshold and if so, log finding and stop crawling for this company
                 if ((datetime.date.today() - max(crawl_dates)).days < 30):
-                    logger.info(f'scraper for {all_records[0]} finished in {time()-start:2.0f} seconds due to recent crawling threshold.')
+                    logging.info(f'scraper for {all_records[0]} finished in {time()-start:2.0f} seconds due to recent crawling threshold.')
                     return
 
             # Breath first search algorithm from urls
@@ -247,7 +235,7 @@ class Scraper:
 
                 # make sure the scraper doesn't run forever
                 if len(temp_all_records) > 100:
-                    logger.warn(f'scraper downloaded over 100 subpages of "{url}"')
+                    logging.warn(f'scraper downloaded over 100 subpages of "{url}"')
                     break
 
                 # remove urls already downloaded
@@ -284,6 +272,7 @@ class Scraper:
         #return _
 
     
+
     def scrape_companies(self, urls):
         """
         Create initial asynchronous task to fetch all urls
@@ -297,15 +286,6 @@ class Scraper:
             self.loop = asyncio.get_event_loop() 
             future = asyncio.ensure_future(self.__fetch_all(urls)) 
             self.loop.run_until_complete(future) 
-
-        #Read what we did
-        with open(self.overview_path) as f:
-            count = 0
-            for line in f:
-                if line.split("\t")[4] == "200":
-                    count += 1
-        print(f"Downloaded {count} pages from {len(urls)} urls to level {3} in {time() - start:2.1f} seconds.")
-
 
         # # flatten list python
         # r = [item for sublist in r  if sublist is not None for item in sublist]

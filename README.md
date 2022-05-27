@@ -1,10 +1,19 @@
-# corporate_scraper
+# corporate-scraper
+# The corporate-scraper is installable as a package now, both PIP and Script (python -m)
 
-Scraper of corporate websites
+# When pip installing, run the following commands:
+# $ cd to the cpscraper folder
+# $ poetry install
+# $ poetry build
+# $ pip install [PATH].whl
 
-### Setup
+# When updated the project and re-installing it, run the following commands:
+# $ cd to the cpscraper folder
+# $ poetry install
+# $ poetry build
+# $ pip install --force-reinstall [PATH].whl
+# $ cpscraper [COMMAND]
 
-```bash
-# Install the required Python modules
-pip install -r requirements.txt
-```
+# When using as script (and not installing with pip), run the following commands:
+# $ cd to the cpscraper folder
+# $ python(3) -m src.cpscraper [COMMAND]

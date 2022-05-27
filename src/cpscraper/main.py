@@ -211,15 +211,6 @@ def extract() -> None:
     # Check if they are directories
     files = [file for file in files if os.path.isdir(file)]
     
-    try:
-        import tika
-        # initialize Tika
-        tika.initVM()
-        # TODO: set up tika log and get data from tika
-        use_tika = True
-    except:
-        use_tika = False
-
     # Parallelize loop (it may not work on Windows unless you keep "create_results" in a different file)
     with Pool() as pool, open(file_perm, "w+") as f_perm, open(file_res, "w+") as f_res:
         i = 0
