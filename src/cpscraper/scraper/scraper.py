@@ -64,12 +64,17 @@ def get_urls(r, url):
 class Scraper:
     def __init__(self, target_folder_path, save_html=True, max_level=3, base_path="data/scraped_data", classifier=lambda url, level: True, verify_ssl=False, concurrency_companies=20, threads_bs4 = 10, threads_download = 100):
         self.target_folder_path = target_folder_path
-        self.base_path = self.target_folder_path / "data" 
+        self.base_path = self.target_folder_path / "data"
+        self.overview_path = f"{self.target_folder_path}/overview_urls.tsv"
+        # Check if overview file exists, if not create it
+        if not Path(self.overview_path).is_file():
+            with open(self.overview_path, "w") as f:
+                f.write("id\tdomain\tlevel\turl\tstatus\tdate\tpath\n")
 
         self.save_html = save_html
         self.max_level = max_level
 
-        # Error in SSL certificates
+        # Avoid error in SSL certificates
         self.verify_ssl = verify_ssl
         self.classifier = classifier
 
@@ -106,7 +111,7 @@ class Scraper:
         # classify url to see if it should be crawled
         if not flag_download:#self.classifier(url, level):
             # add to file, without path
-            with open("{}/overview_urls.tsv".format(self.target_folder_path), "a+") as f:
+            with open(self.overview_path, "a+") as f:
                 f.write(f"{kvk}\t{urlparse(url).netloc.replace('www.','')}\t{level}\t{url}\t{-9}\t{self.__get_current_date()}\t\n")
             return []
 
@@ -178,7 +183,7 @@ class Scraper:
 
         # print(f"{kvk}\t{urlparse(url).netloc}\t{level}\t{url}\t{status}\t{self.__get_current_date()}\t{path}")
         # save records to file
-        with open("{}/overview_urls.tsv".format(self.target_folder_path), "a+") as f:
+        with open(self.overview_path, "a+") as f:
             f.write(f"{kvk}\t{urlparse(url).netloc.replace('www.','')}\t{level}\t{url}\t{status}\t{self.__get_current_date()}\t{path}\n")
 
         return urls
@@ -286,6 +291,15 @@ class Scraper:
             self.loop = asyncio.get_event_loop() 
             future = asyncio.ensure_future(self.__fetch_all(urls)) 
             self.loop.run_until_complete(future) 
+
+        #Read what we did
+        with open(self.overview_path) as f:
+            count = 0
+            for line in f:
+                if line.split("\t")[4] == "200":
+                    count += 1
+        print(f"Downloaded {count} pages from {len(urls)} urls to level {3} in {time() - start:2.1f} seconds.")
+
 
         # # flatten list python
         # r = [item for sublist in r  if sublist is not None for item in sublist]
