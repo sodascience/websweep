@@ -5,4 +5,8 @@ jellyfish>=0.7
 moment>=1.0
 pandas>=0.25
 peewee>=3.13
+<<<<<<< HEAD
 regex>=2022.3.2
+=======
+regex>=2022.3.2
+>>>>>>> master
