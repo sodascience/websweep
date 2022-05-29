@@ -86,11 +86,11 @@ class Extractor:
         if self.phone is None:
             self.phone = set()
         pattern = re.compile(r"""
-                                (Tel:\s*|
-                                tel:\s*|
-                                telefoon:\s*|
-                                Telefoon:\s*|
-                                T:\s*|
+                                (Tel:\s?|
+                                tel:\s?|
+                                telefoon:\s?|
+                                Telefoon:\s?|
+                                T:\s?|
                                 t:\s:
                                 T\s)
                                 (\+?(\s?\d-*){10,11})
