@@ -1,4 +1,3 @@
-
 import os
 import re
 import typer
@@ -33,7 +32,14 @@ class Extractor:
 
         self.clean_email()
         self.jsonize()
-        print(f"finished {self.website}")
+        if self.mistake_warning():
+            print(f"finished {self.website}")
+        else:
+            typer.secho(
+                    f'No values could be found for {self.website}',
+                    fg=typer.colors.RED,
+                )
+        
 
     def scrape_address(self, file):
         if self.adres is None:
@@ -153,9 +159,7 @@ class Extractor:
         self.adres = list(self.adres)
 
     def mistake_warning(self):
-        for key, value in self.__dict__.items():
-            if not value:
-                typer.secho(
-                    'No value could be found for {key} at {self.working_dir}',
-                    fg=typer.colors.RED,
-                )
+        if not self.__dict__['email'] and not self.__dict__['kvk'] and not self.__dict__['phone'] and not self.__dict__['btw'] and not self.__dict__['fax'] and not self.__dict__['zip_code']:
+            return False
+        else:
+            return True
