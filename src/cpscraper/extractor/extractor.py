@@ -33,7 +33,7 @@ class Extractor:
 
         self.clean_email()
         self.jsonize()
-        print(f"finished off {self.website}")
+        print(f"finished {self.website}")
 
     def scrape_address(self, file):
         if self.adres is None:
@@ -44,7 +44,7 @@ class Extractor:
         if self.zip_code is None:
             self.zip_code = set()
         pattern = re.compile(r"""
-                                (\b\d{4}\s?[a-zA-Z]{2}\b)
+                                (\b\d{4}\s?(?!SS)(?!SD)(?!SA)[A-Z]{2}\b)
                                 """, re.VERBOSE)
         result_list = set(re.findall(pattern, file))
         for item in result_list:
@@ -70,7 +70,16 @@ class Extractor:
                                 """, re.VERBOSE)
         result_list = set(re.findall(pattern, file))
         for item in result_list:
-            self.kvk.add(item[2])
+            temp = item[0]+' '+item[2]
+            self.kvk.add(temp)
+
+        pattern2 = re.compile(r"""
+                                (\b\d{8})(.{0,4})(kvk|KvK|K.v.K.|k.v.k.)
+                                """, re.VERBOSE)
+        result_list2 = set(re.findall(pattern2, file))
+        for item in result_list2:
+            temp = item[0]+' '+item[2]
+            self.kvk.add(temp)
         return
 
     def scrape_phone(self, file):
@@ -82,12 +91,14 @@ class Extractor:
                                 telefoon:\s*|
                                 Telefoon:\s*|
                                 T:\s*|
-                                t:\s)
+                                t:\s:
+                                T\s)
                                 (\+?(\s?\d-*){10,11})
                                 """, re.VERBOSE)
         result_list = set(re.findall(pattern, file))
         for item in result_list:
-            self.phone.add(item[1])
+            temp = item[0] + ' ' + item[1]
+            self.phone.add(temp)
         return
 
     def scrape_fax(self, file):
@@ -109,9 +120,9 @@ class Extractor:
         pattern = re.compile(r"""
                         ([a-zA-Z0-9_.+-]+   # one (or more) sets of all characters which numbers, letters or a subset of punctuations
                         @                   # needs a @    
-                        [a-zA-Z0-9-]+       # again, grab any number or letter
+                        [a-zA-Z0-9-]{1,20}   # again, grab any number or letter
                         \.                  # the dot in the email
-                        [a-zA-Z-.]+      # grab any combination of letters/numbers/dots, to ensure we also grab stuff like .co.uk
+                        (?!png)(?!jpg)[a-zA-Z-.]{1,8}     # grab any combination of letters/numbers/dots, to ensure we also grab stuff like .co.uk
                         )""", re.VERBOSE)
         emails = set(re.findall(pattern, file))
         if self.email is None:
