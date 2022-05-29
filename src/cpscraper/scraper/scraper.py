@@ -19,8 +19,13 @@ import tldextract
 import logging
 import os
 
-logging.basicConfig(filename="logs/scraper.log", level=logging.INFO)
-logger = logging.getLogger()
+if os.path.isdir("logs"):
+    logging.basicConfig(filename="logs/scraper.log", level=logging.INFO)
+    logger = logging.getLogger()
+else:
+    os.mkdir("logs")
+    logging.basicConfig(filename="logs/scraper.log", level=logging.INFO)
+    logger = logging.getLogger()
 
 # if os.environ.get('scraper_logging_level', 'error') == "info":
 #     logger.setLevel(logging.INFO)
