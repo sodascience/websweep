@@ -56,7 +56,7 @@ class Extractor:
         if self.zip_code is None:
             self.zip_code = set()
         pattern = re.compile(r"""
-                                (\b\d{4}\s?(?!SS)(?!SD)(?!SA)[A-Z]{2}\b)
+                                (\b\d{4}\s?(?!SS)(?!SD)(?!SA)(?!px)(?!em)(?!rm)[A-Z]{2}\b)
                                 """, re.VERBOSE)
         result_list = set(re.findall(pattern, file))
         for item in result_list:
@@ -69,7 +69,7 @@ class Extractor:
         if self.btw is None:
             self.btw = set()
         pattern = re.compile(r"""
-                                (btw|BTW)(.+)(\bNL[0-9-_.]{9,12}B\d{2}|\bNL\b[0-9-_.B]+)
+                                (btw|BTW|VAT|vat)(.+)(\bNL\s*[0-9-_.]{9,12}\s*[B 0-9\.]{0,4}|\bNL\b[0-9-_.B]+)
                                 """, re.VERBOSE)
         result_list = set(re.findall(pattern, file))
         for item in result_list:
@@ -83,7 +83,7 @@ class Extractor:
         if self.kvk is None:
             self.kvk = set()
         pattern = re.compile(r"""
-                                (kvk|KvK|K.v.K.|k.v.k.)(.+)(\b\d{8})
+                                (kvk|KvK|KVK|K.v.K.|K.V.K|k.v.k.)(.+)(\b\d{8})
                                 """, re.VERBOSE)
         result_list = set(re.findall(pattern, file))
         for item in result_list:
@@ -91,7 +91,7 @@ class Extractor:
             self.kvk.add(temp)
         # Note that there are 2 patterns, one for [kvk] [number], and one for [number] [kvk]
         pattern2 = re.compile(r"""
-                                (\b\d{8})(.{0,4})(kvk|KvK|K.v.K.|k.v.k.)
+                                (\b\d{8})(.{0,4})(kvk|KvK|K.v.K.|k.v.k.|KVK)
                                 """, re.VERBOSE)
         result_list2 = set(re.findall(pattern2, file))
         for item in result_list2:
@@ -106,19 +106,20 @@ class Extractor:
         if self.phone is None:
             self.phone = set()
         pattern = re.compile(r"""
-                                (Tel:\s?|
-                                tel:\s?|
-                                telefoon:\s?|
-                                Telefoon:\s?|
-                                T:\s?|
-                                t:\s?|
-                                T\s?)
-                                (\+?(\s?\d-\"*){10,11})
+                                (Tel:\s{0,4}|
+                                tel:\s{0,4}|
+                                telefoon:\s{0,4}|
+                                Telefoon:\s{0,4}|
+                                T:\s{0,4}|
+                                t:\s{0,4}|
+                                T\s{0,4})
+                                (&nbsp;|/{0,2})?
+                                ((\+?|\"?)(\d|\s|\(|\)|-){10,22})
                                 """, re.VERBOSE)
                                 # Phone numbers can be indicated by a variety of different ways, this regex tries to incorporate all of those as a possibillity
         result_list = set(re.findall(pattern, file))
         for item in result_list:
-            temp = item[0] + ' ' + item[1]
+            temp = item[0] + ' ' + item[2]
             self.phone.add(temp)
         
 
