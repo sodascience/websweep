@@ -22,6 +22,7 @@ html2text = "^2020.1.16"
 jellyfish = "^0.9.0"
 moment = "^0.12.1"
 peewee = "^3.14.10"
+aiohttp = "^3.8.1"
 
 [tool.poetry.dev-dependencies]
 pytest = "^5.2"
