@@ -96,8 +96,7 @@ class Extractor:
                                 """, re.VERBOSE)
         result_list = set(re.findall(pattern, text))
         for item in result_list:
-            temp = item[0]+' '+item[2]
-            self.kvk.add(temp)
+            self.kvk.add(item[2])
         # Note that there are 2 patterns, one for [kvk] [number], and one for [number] [kvk]
         pattern2 = re.compile(r"""
                                 (\b\d{8})(.{0,4})(kvk|KvK|K.v.K.|k.v.k.|KVK)
