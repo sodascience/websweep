@@ -7,7 +7,7 @@ Developed for the [Firm Backbone Project](https://firmbackbone.nl)
 ## Installation (LOCAL - PIP)
 
 Use the package manager [pip]() to install cpscraper.
-You need to have poetry installed: ```pip install poetry```
+You need to have poetry installed (```pip install poetry```), do remember to either restart your pc or add poetry to your PATH variables
 
 ```bash
 cd to the cpscraper folder
@@ -19,11 +19,11 @@ $ pip install [PATH].whl
 
 ## Installation (LOCAL - SCRIPT)
 
-Package can also be used as a script without installation.
+Package can also be used as a script without installation. Do make sure that poetry is installed (```pip install poetry```) and to either restart your pc or add poetry to your PATH variables
 
 ```bash
-cd to the source folder, containing the cpscraper module
-$ python(3) -m cpscraper init
+cd ~/home/[wherever the folder is located]/corporate_scraper
+$ python(3) -m src.cpscraper init
 ```
 
 
@@ -43,6 +43,10 @@ $ cpscraper --help
 
 # initialise the scraper (scraper will not run without configuration)
 $ cpscraper init [--headless]
+
+# after initialization, the scraper can both scrape websites, and extract information from files
+$ cpscraper extract
+$ cpscraper scrape
 ```
 
 ## Contributing
