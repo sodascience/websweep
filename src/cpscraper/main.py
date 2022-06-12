@@ -212,7 +212,7 @@ def extract() -> None:
     files = [file for file in files if os.path.isdir(file)]
     
     # Parallelize loop (it may not work on Windows unless you keep "create_results" in a different file)
-    with Pool() as pool, open(file_perm, "w+") as f_perm, open(file_res, "w+") as f_res:
+    with Pool() as pool, open(file_perm, "w+") as f_perm, open(file_res, "w+", encoding='UTF-8') as f_res:
         i = 0
         
         for result in pool.imap_unordered(_create_results, files):
@@ -224,11 +224,8 @@ def extract() -> None:
             json_list.append(json_dict)
 
         # Write data to file  (TODO: it should be line by line to avoid using update/append. 
-        prettify = json.dumps(time_dict, indent=4)
-        f_perm.write(prettify)
-
-        prettify = json.dumps(json_list, indent=4)
-        f_res.write(prettify)
+        json.dump(time_dict, fp = f_perm, ensure_ascii = False, indent=4)
+        json.dump(json_list, fp = f_res, ensure_ascii = False, indent=4)
 
 
     end_time = time.perf_counter()
