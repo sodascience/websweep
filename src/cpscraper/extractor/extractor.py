@@ -1,5 +1,6 @@
 import os
 import re
+from xmlrpc.client import Boolean
 import typer
 from bs4 import BeautifulSoup
 
@@ -43,7 +44,7 @@ class Extractor:
                 )
         
 
-    def scrape_adres(self, text):
+    def scrape_adres(self, text) -> None:
         """
         Scrape the adres from the input file, and add found adres to self.adres in set form
         """
@@ -57,7 +58,7 @@ class Extractor:
                 self.adres.add(item[1])
         
 
-    def scrape_zip(self, text):
+    def scrape_zip(self, text) -> None:
         """
         Scrape the zipcode from the input file, and add found zipcodes to self.zip_code in set form
         """
@@ -70,7 +71,7 @@ class Extractor:
         for item in result_list:
             self.zip_code.add(item)
 
-    def scrape_btw(self, text):
+    def scrape_btw(self, text) -> None:
         """
         Scrape the BTW number from the input file, and add found BTW Numbers (usually only 1) to self.btw in list form
         """
@@ -84,7 +85,7 @@ class Extractor:
             self.btw.add(item[2])
         
 
-    def scrape_kvk(self, text):
+    def scrape_kvk(self, text) -> None:
         """
         Scrape the KVK number from the input file, and add found KVK number to self.kvk in set form
         """
@@ -106,7 +107,7 @@ class Extractor:
             self.kvk.add(item[2])
         
 
-    def scrape_phone(self, text):
+    def scrape_phone(self, text) -> None:
         """
         Scrape the phone number from the input file, and add found phone numbers to self.phone in set form
         """
@@ -129,7 +130,7 @@ class Extractor:
             self.phone.add(item[2])
         
 
-    def scrape_fax(self, text):
+    def scrape_fax(self, text) -> None:
         """
         Scrape the fax number from the input file, and add found fax numbers to self.fax in set form
         """
@@ -147,7 +148,7 @@ class Extractor:
             self.fax.add(item[1])
         
 
-    def scrape_email(self, text):
+    def scrape_email(self, text) -> None:
         """
         Scrape the Email adress from the input file, and adds the found email adress to self.email in set form
         """
@@ -164,7 +165,7 @@ class Extractor:
         else:
             self.email.update(emails)
 
-    def clean_email(self):
+    def clean_email(self) -> None:
         """
         Cleans the self.emails list, as Emails occasionally have an extra '.' at the end of the email adress.
         """
@@ -176,7 +177,10 @@ class Extractor:
                 temp_emails.add(email)
         self.email = temp_emails
 
-    def jsonize(self):
+    def jsonize(self) -> None:
+        """
+        Converts all atributes into a form which can be jsonized
+        """
         self.email = list(self.email)
         self.phone = list(self.phone)
         self.kvk = list(self.kvk)
@@ -185,13 +189,19 @@ class Extractor:
         self.zip_code = list(self.zip_code)
         self.adres = list(self.adres)
 
-    def mistake_warning(self):
+    def mistake_warning(self) -> "Boolean":
+        """
+        Checks if the extractor has ANY values at all, if it found none, it will return False
+        """
         if not self.__dict__['email'] and not self.__dict__['kvk'] and not self.__dict__['phone'] and not self.__dict__['btw'] and not self.__dict__['fax'] and not self.__dict__['zip_code']:
             return False
         else:
             return True
 
-    def zipcode_warning(self):
+    def zipcode_warning(self) -> None:
+        """
+        If the extractor did find a zipcode, but not an address, there is probably a bug. This notifies the user.=
+        """
         if self.zip_code != [] and self.adres == []:
             typer.secho(
                     f'Found zipcodes, but found no address for {self.website}, this is probably a bug',
