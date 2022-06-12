@@ -1,7 +1,7 @@
 import os
 import re
 import typer
-
+from bs4 import BeautifulSoup
 
 class Extractor:
     def __init__(self, working_dir=None, website=None, phone=None, email=None, kvk=None,
@@ -20,18 +20,20 @@ class Extractor:
     def run_loops(self):
         for file in os.scandir(self.working_dir):
             open_file = open(file, "r", encoding="UTF-8")
-            file_text = open_file.read()
-            self.scrape_adres(file_text)
-            self.scrape_zip(file_text)
-            self.scrape_phone(file_text)
-            self.scrape_email(file_text)
-            self.scrape_fax(file_text)
-            self.scrape_kvk(file_text)
-            self.scrape_btw(file_text)
+            html_text = open_file.read()
+
+            self.scrape_zip(html_text)
+            self.scrape_adres(html_text)
+            self.scrape_phone(html_text)
+            self.scrape_email(html_text)
+            self.scrape_fax(html_text)
+            self.scrape_kvk(html_text)
+            self.scrape_btw(html_text)
             open_file.close()
 
         self.clean_email()
         self.jsonize()
+        self.zipcode_warning()
         if self.mistake_warning():
             print(f"finished {self.website}")
         else:
@@ -41,15 +43,21 @@ class Extractor:
                 )
         
 
-    def scrape_adres(self, file):
+    def scrape_adres(self, text):
         """
         Scrape the adres from the input file, and add found adres to self.adres in set form
         """
         if self.adres is None:
             self.adres = set()
+        soup = BeautifulSoup(text, 'html.parser')
+        for zipcode in self.zip_code:
+            pattern = r'(((\b[a-zA-ZÀ-ÿ]+)\s+[0-9][0-9-_a-z,]*)(\s+(?=(' + zipcode + r'))|(?=(' + zipcode + '))))'
+            findall = re.findall(pattern, soup.text)
+            for item in findall:
+                self.adres.add(item[1])
         
 
-    def scrape_zip(self, file):
+    def scrape_zip(self, text):
         """
         Scrape the zipcode from the input file, and add found zipcodes to self.zip_code in set form
         """
@@ -58,11 +66,11 @@ class Extractor:
         pattern = re.compile(r"""
                                 (\b\d{4}\s?(?!SS)(?!SD)(?!SA)(?!px)(?!em)(?!rm)[A-Z]{2}\b)
                                 """, re.VERBOSE)
-        result_list = set(re.findall(pattern, file))
+        result_list = set(re.findall(pattern, text))
         for item in result_list:
             self.zip_code.add(item)
 
-    def scrape_btw(self, file):
+    def scrape_btw(self, text):
         """
         Scrape the BTW number from the input file, and add found BTW Numbers (usually only 1) to self.btw in list form
         """
@@ -71,12 +79,12 @@ class Extractor:
         pattern = re.compile(r"""
                                 (btw|BTW|VAT|vat)(.+)(\bNL\s*[0-9-_.]{9,12}\s*[B 0-9\.]{0,4}|\bNL\b[0-9-_.B]+)
                                 """, re.VERBOSE)
-        result_list = set(re.findall(pattern, file))
+        result_list = set(re.findall(pattern, text))
         for item in result_list:
             self.btw.add(item[2])
         
 
-    def scrape_kvk(self, file):
+    def scrape_kvk(self, text):
         """
         Scrape the KVK number from the input file, and add found KVK number to self.kvk in set form
         """
@@ -85,7 +93,7 @@ class Extractor:
         pattern = re.compile(r"""
                                 (kvk|KvK|KVK|K.v.K.|K.V.K|k.v.k.)(.+)(\b\d{8})
                                 """, re.VERBOSE)
-        result_list = set(re.findall(pattern, file))
+        result_list = set(re.findall(pattern, text))
         for item in result_list:
             temp = item[0]+' '+item[2]
             self.kvk.add(temp)
@@ -93,13 +101,12 @@ class Extractor:
         pattern2 = re.compile(r"""
                                 (\b\d{8})(.{0,4})(kvk|KvK|K.v.K.|k.v.k.|KVK)
                                 """, re.VERBOSE)
-        result_list2 = set(re.findall(pattern2, file))
+        result_list2 = set(re.findall(pattern2, text))
         for item in result_list2:
-            temp = item[0]+' '+item[2]
-            self.kvk.add(temp)
+            self.kvk.add(item[2])
         
 
-    def scrape_phone(self, file):
+    def scrape_phone(self, text):
         """
         Scrape the phone number from the input file, and add found phone numbers to self.phone in set form
         """
@@ -117,13 +124,12 @@ class Extractor:
                                 ((\+?|\"?)(\d|\s|\(|\)|-){10,22})
                                 """, re.VERBOSE)
                                 # Phone numbers can be indicated by a variety of different ways, this regex tries to incorporate all of those as a possibillity
-        result_list = set(re.findall(pattern, file))
+        result_list = set(re.findall(pattern, text))
         for item in result_list:
-            temp = item[0] + ' ' + item[2]
-            self.phone.add(temp)
+            self.phone.add(item[2])
         
 
-    def scrape_fax(self, file):
+    def scrape_fax(self, text):
         """
         Scrape the fax number from the input file, and add found fax numbers to self.fax in set form
         """
@@ -134,25 +140,25 @@ class Extractor:
                                 fax:\s|
                                 F:\s|
                                 f:\s)
-                                (\b(\d-*){10,})
+                                ((\+?|\"?)(\d|\s|\(|\)|-){10,22})
                                 """, re.VERBOSE)
-        result_list = set(re.findall(pattern, file))
+        result_list = set(re.findall(pattern, text))
         for item in result_list:
             self.fax.add(item[1])
         
 
-    def scrape_email(self, file):
+    def scrape_email(self, text):
         """
         Scrape the Email adress from the input file, and adds the found email adress to self.email in set form
         """
         pattern = re.compile(r"""
                         ([a-zA-Z0-9_.+-]+   # one (or more) sets of all characters which numbers, letters or a subset of punctuations
                         @                   # needs a @    
-                        [a-zA-Z0-9-]{1,20}  # again, grab any number or letter
+                        [a-zA-Z0-9-]{1,25}  # again, grab any number or letter
                         \.                  # the dot in the email
                         (?!png)(?!jpg)[a-zA-Z-.]{1,8}     # grab any combination of letters/numbers/dots, to ensure we also grab stuff like .co.uk
                         )""", re.VERBOSE)
-        emails = set(re.findall(pattern, file))
+        emails = set(re.findall(pattern, text))
         if self.email is None:
             self.email = emails
         else:
@@ -184,3 +190,10 @@ class Extractor:
             return False
         else:
             return True
+
+    def zipcode_warning(self):
+        if self.zip_code != [] and self.adres == []:
+            typer.secho(
+                    f'Found zipcodes, but found no address for {self.website}, this is probably a bug',
+                    fg=typer.colors.YELLOW,
+                )
