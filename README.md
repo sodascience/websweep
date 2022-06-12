@@ -19,7 +19,7 @@ $ pip install [PATH].whl
 
 ## Installation (LOCAL - SCRIPT)
 
-Package can also be used as a script without installation. Do make sure that poetry is installed (```pip install poetry```) and to either restart your pc or add poetry to your PATH variables
+Package can also be used as a script without installation. 
 
 ```bash
 cd ~/home/[wherever the folder is located]/corporate_scraper
