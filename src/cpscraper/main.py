@@ -5,9 +5,9 @@ from tkinter import filedialog as fd
 from tkinter import Tk
 import time
 import os
-import json
+import ndjson
 from datetime import date
-from multiprocessing import Pool
+from multiprocess import Pool
 
 from .scraper.scraper import Scraper
 from .extractor.extractor import Extractor
@@ -18,18 +18,17 @@ app = typer.Typer()
 
 # Helper for scraping
 def _create_results(path):
-    folder = _get_folder(path)
+    [id, domain, level, url, date, path] = path
+    #folder = _get_folder(path)
 
     start_time_file = time.perf_counter()
-    website_name = os.path.basename(Path(folder).parents[0])
+    #website_name = os.path.basename(Path(folder).parents[0])
     # TODO: integrate get scraper into _get_worker method since now no checks are performed if target folders exist
-    cached_corporate = Extractor(working_dir=folder, website=website_name)
-    cached_corporate.run_loops()
+    cached_corporate = Extractor([id, domain, level, url, date, path])
+    metadata = cached_corporate.run_loops()
     end_time_file = time.perf_counter()
-    json_dict = cached_corporate.__dict__
-    json_dict.pop("working_dir")
-
-    return ({folder: end_time_file - start_time_file }, json_dict)
+    
+    return ({path: end_time_file - start_time_file }, metadata)
 
 # Helper for scraping
 def _get_folder(path):
@@ -145,8 +144,14 @@ def init() -> None:
         typer.secho(f"Scraper is initialised and ready to use \nUse the --help command for instructions\n ", fg=typer.colors.GREEN)
 
 
-@app.command()
-def scrape() -> None:
+@app.command(name = "scrape")
+def _scrape() -> None:
+    """
+    Start caching websites
+    """
+    scrape(config.get_source_file_path(config.CONFIG_FILE_PATH))
+
+def scrape(config_file) -> None:
     """
     Start caching websites
     """
@@ -155,7 +160,7 @@ def scrape() -> None:
 
     start = time.time()
     
-    with open(config.get_source_file_path(config.CONFIG_FILE_PATH), "r") as f:
+    with open(config_file, "r") as f:
         f.readline() #header
         urls = [line.split(",") for line in f.readlines()]        
         urls = sorted([(kvk.strip(), f"https://www.{url}/") for url, kvk in urls])
@@ -203,32 +208,48 @@ def extract() -> None:
     file_perm = config.get_target_folder_path(config.CONFIG_FILE_PATH)  /  ('performance_' + str(date.today()) + '.json')
     Path(file_perm).parent.mkdir(parents=True, exist_ok=True)
 
-    file_res = config.get_target_folder_path(config.CONFIG_FILE_PATH)  /  ('scraped_data_' + str(date.today()) + '.json')
+    file_res = config.get_target_folder_path(config.CONFIG_FILE_PATH)  /  ('scraped_data_' + str(date.today()) + '.ndjson')
     Path(file_res).parent.mkdir(parents=True, exist_ok=True)
 
-    # Create path to files
-    files = [os.path.join(test_data_dir, file) for file in os.listdir(test_data_dir) if not file.startswith(".")]
-    # Check if they are directories
-    files = [file for file in files if os.path.isdir(file)]
-    
+    # Read file
+    with open("data/overview_urls.tsv") as f:
+        f.readline() #header
+        results = []
+        for line in f:
+            id, domain, level, url, status, date, path = line.split("\t")
+            # TODO: filter by date, do this in sqlite
+            if status == "200":
+                results.append([id, domain, level, url, date, path.strip()])
+
+    try:
+        import tika
+        # initialize Tika
+        tika.initVM()
+        # TODO: set up tika log and get data from tika
+        # TODO: detect this while setting up the app
+        use_tika = True
+    except:
+        use_tika = False
+
     # Parallelize loop (it may not work on Windows unless you keep "create_results" in a different file)
     with Pool() as pool, open(file_perm, "w+") as f_perm, open(file_res, "w+") as f_res:
         i = 0
         
-        for result in pool.imap_unordered(_create_results, files):
+        for result in pool.imap_unordered(_create_results, results):
             i += 1
             if i % 100 == 0:
-                print(f"Finished {i} files out of {len(files)}")
-            time_dict_temp, json_dict = result
-            time_dict.update(time_dict_temp)
-            json_list.append(json_dict)
+                print(f"Finished {i} files out of {len(results)}")
+            time_dict, json_dict = result
 
-        # Write data to file  (TODO: it should be line by line to avoid using update/append. 
-        prettify = json.dumps(time_dict, indent=4)
-        f_perm.write(prettify)
+            #time_dict.update(time_dict_temp)
+            #json_list.append(json_dict)
 
-        prettify = json.dumps(json_list, indent=4)
-        f_res.write(prettify)
+            # Write data to file  (TODO: it should be line by line to avoid using update/append. 
+            prettify = ndjson.dumps([time_dict])+"\n"#, indent=4)
+            f_perm.write(prettify)
+
+            prettify = ndjson.dumps([json_dict])+"\n"#json.dumps(json_list, indent=4)
+            f_res.write(prettify)
 
 
     end_time = time.perf_counter()
