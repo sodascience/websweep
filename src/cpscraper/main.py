@@ -3,14 +3,11 @@ from pathlib import Path
 from typing import List, Optional
 from tkinter import filedialog as fd
 from tkinter import Tk
-import re
-from urllib.parse import urlparse
 import time
 import os
-import json
+import ndjson
 from datetime import date
-from multiprocessing import Pool
-import sys
+from multiprocess import Pool
 
 from .scraper.scraper import Scraper
 from .extractor.extractor import Extractor
@@ -21,18 +18,17 @@ app = typer.Typer()
 
 # Helper for scraping
 def _create_results(path):
-    folder = _get_folder(path)
+    [id, domain, level, url, date, path] = path
+    #folder = _get_folder(path)
 
     start_time_file = time.perf_counter()
-    website_name = os.path.basename(Path(folder).parents[0])
+    #website_name = os.path.basename(Path(folder).parents[0])
     # TODO: integrate get scraper into _get_worker method since now no checks are performed if target folders exist
-    cached_corporate = Extractor(working_dir=folder, website=website_name)
-    cached_corporate.run_loops()
+    cached_corporate = Extractor([id, domain, level, url, date, path])
+    metadata = cached_corporate.run_loops()
     end_time_file = time.perf_counter()
-    json_dict = cached_corporate.__dict__
-    json_dict.pop("working_dir")
-
-    return ({folder: end_time_file - start_time_file }, json_dict)
+    
+    return ({path: end_time_file - start_time_file }, metadata)
 
 # Helper for scraping
 def _get_folder(path):
@@ -57,41 +53,6 @@ def _version_callback(value: bool) -> None:
         raise typer.Exit()
 
 
-def classify_url(url, level):
-    """
-    Classify url based on level
-    """
-
-    # Keep the path only (avoid to reject websites such as "awesomeshop.nl/important_information")
-    url = urlparse(url).path
-    
-    # Maybe if there are many links in one level we can skip it
-
-    # Download first level and important sites of the secodn level (level 0 = root website)
-    if level == 0:
-        return True
-    elif level == 1:
-        # Cloudfare protection --> reject
-        # regex = re.compile( "|".join(map(re.escape, keywords)))
-        regex = re.compile(r'^mailto:|^tel:|pdf$|collections|email\-protection|product|aanbod|assortiment|voorraad|koop|shop|artikelen|merken|wintersport|bouw|zoeken|search')
-        if re.search(regex, url):
-            return False
-        # If only numbers and characters (e.g. https:/www.horstingkilder.nl/553-504") --> reject
-        elif re.search("^[^a-zA-Z]+$",url):
-            return False
-        else:
-            return True
-    elif level == 2:
-        # Keep only if it seems important
-        regex = re.compile(r'over\-ons|contact|duurzaamheid|index\.php|algemene\-voorwaarden|vacatures|disclaimer|klantenservice|privacy\-policy|cookie\-policy|cookies|cookie|cookie\-beleid|over|overons|blogs|privacyverklaring|about|about\-us')
-        if re.search(regex, url):
-            return True
-        else:
-            return False
-    else:
-        return False
-
-
 # Helper for all called CLI methods that need to be provided with a WORKER unit
 def _get_worker() -> Scraper:
     if config.CONFIG_FILE_PATH.exists():
@@ -103,7 +64,7 @@ def _get_worker() -> Scraper:
         )
         raise typer.Exit(1)
     if source_file_path.exists():
-        return Scraper(classifier = classify_url, target_folder_path = config.get_target_folder_path(config.CONFIG_FILE_PATH))
+        return Scraper(target_folder_path = config.get_target_folder_path(config.CONFIG_FILE_PATH))
     else:
         typer.secho(
             'Source file not found. Please, run "scraper init" or use scrape --help',
@@ -114,78 +75,44 @@ def _get_worker() -> Scraper:
 
 # Init command
 @app.command(name = "init")
-def init(headless: bool = typer.Argument(False, help="Run without GUI elements")) -> None:
+def init() -> None:
     """
     Initialise the scraper
     """
 
-    if headless == False:
-        try:
-            if sys.stdin.isatty():
-                headless = False
-        except:
-            headless = True
-
     typer.secho(
-        "\nWELCOME to the corporate scraper.\nFollow the instructions to set up the scraper and start scraping.\n", fg=typer.colors.GREEN
+        "\nWELCOME to the corporate scraper.\nFollow the instructions to set up the scraper and start scraping.\n", fg=typer.colors.YELLOW
     )
-
-    if headless == True:
-        typer.secho(
-            "headless mode turned on\n", fg=typer.colors.YELLOW
-        )
-    else:
-        typer.secho(
-            "headless mode turned off\n", fg=typer.colors.YELLOW
-        )
 
     time.sleep(0.5)
 
-    if headless == False:
-        ask_continue_file = typer.confirm("SELECT the .csv file with kvk and base url\nContinue?\n")
-        if not ask_continue_file:
-            typer.secho(
-                f'Initalisation stopped\n',
-                fg=typer.colors.RED,
-            )
-            raise typer.Exit(1)
-        try:
-            Tk().withdraw()
-            source_filename = fd.askopenfilename(filetypes=[("Excel files", ".csv")])
-        except:
-            typer.secho(
-                "\nGUI Interface failed to load", fg=typer.colors.RED
-            )
-            source_filename = typer.prompt("ENTER source file PATH\n")
-    else:
-        source_filename = typer.prompt("ENTER source file PATH\n")
+    ask_continue_file = typer.confirm("SELECT the .csv file with kvk and base url\nContinue?\n")
+    if not ask_continue_file:
+        typer.secho(
+            f'Initalisation stopped\n',
+            fg=typer.colors.RED,
+        )
+        raise typer.Exit(1)
 
-    # TODO: CHECK if file exists
+    Tk().withdraw()
+    source_filename = fd.askopenfilename(filetypes=[("Excel files", ".csv")])
+
     typer.secho(
         "File {} selected\n".format(source_filename), fg=typer.colors.YELLOW
     )
     time.sleep(0.5)
 
-    if headless == False:
-        ask_continue_folder = typer.confirm("SELECT a folder to store the scraper output\nContinue?\n")
-        if not ask_continue_folder:
-            typer.secho(
-                f'Initalisation stopped\n',
-                fg=typer.colors.RED,
-            )
-            raise typer.Exit(1)
-        try:
-            Tk().withdraw()
-            folder = fd.askdirectory()
-        except:
-            typer.secho(
-                "\nGUI Interface failed to load", fg=typer.colors.RED
-            )
-            folder = typer.prompt("ENTER target folder base PATH\n")
-    else:
-        folder = typer.prompt("ENTER target folder base PATH\n")
+    ask_continue_folder = typer.confirm("SELECT a folder to store the scraper output\nContinue?\n")
+    if not ask_continue_folder:
+        typer.secho(
+            f'Initalisation stopped\n',
+            fg=typer.colors.RED,
+        )
+        raise typer.Exit(1)
 
-    # TODO: CHECK if folder exists    
+    Tk().withdraw()
+    folder = fd.askdirectory()
+
     typer.secho(
         "Folder {} selected\n".format(folder), fg=typer.colors.YELLOW
     )
@@ -199,7 +126,7 @@ def init(headless: bool = typer.Argument(False, help="Run without GUI elements")
         )
         time.sleep(0.5)
 
-        data_filename = typer.prompt("ENTER target folder name", "scraper_data")
+        data_filename = typer.prompt("Target folder name", "scraper_data")
 
     typer.secho(
         "Target folder {}/{} saved\n".format(folder, data_filename), fg=typer.colors.YELLOW
@@ -217,8 +144,14 @@ def init(headless: bool = typer.Argument(False, help="Run without GUI elements")
         typer.secho(f"Scraper is initialised and ready to use \nUse the --help command for instructions\n ", fg=typer.colors.GREEN)
 
 
-@app.command()
-def scrape() -> None:
+@app.command(name = "scrape")
+def _scrape() -> None:
+    """
+    Start caching websites
+    """
+    scrape(config.get_source_file_path(config.CONFIG_FILE_PATH))
+
+def scrape(config_file) -> None:
     """
     Start caching websites
     """
@@ -227,7 +160,7 @@ def scrape() -> None:
 
     start = time.time()
     
-    with open(config.get_source_file_path(config.CONFIG_FILE_PATH), "r") as f:
+    with open(config_file, "r") as f:
         f.readline() #header
         urls = [line.split(",") for line in f.readlines()]        
         urls = sorted([(kvk.strip(), f"https://www.{url}/") for url, kvk in urls])
@@ -251,10 +184,11 @@ def main(
     version: Optional[bool] = typer.Option(
         None,
         "--version",
+        "-v",
         help="Show the application's version and exit.",
         callback=_version_callback,
         is_eager=True,
-    ), 
+    )
 ) -> None:
     return
 
@@ -274,37 +208,55 @@ def extract() -> None:
     file_perm = config.get_target_folder_path(config.CONFIG_FILE_PATH)  /  ('performance_' + str(date.today()) + '.json')
     Path(file_perm).parent.mkdir(parents=True, exist_ok=True)
 
-    file_res = config.get_target_folder_path(config.CONFIG_FILE_PATH)  /  ('scraped_data_' + str(date.today()) + '.json')
+    file_res = config.get_target_folder_path(config.CONFIG_FILE_PATH)  /  ('scraped_data_' + str(date.today()) + '.ndjson')
     Path(file_res).parent.mkdir(parents=True, exist_ok=True)
 
-    # Create path to files
-    files = [os.path.join(test_data_dir, file) for file in os.listdir(test_data_dir) if not file.startswith(".")]
-    # Check if they are directories
-    files = [file for file in files if os.path.isdir(file)]
-    
+    # Read file
+    with open("data/overview_urls.tsv") as f:
+        f.readline() #header
+        results = []
+        for line in f:
+            id, domain, level, url, status, date, path = line.split("\t")
+            # TODO: filter by date, do this in sqlite
+            if status == "200":
+                results.append([id, domain, level, url, date, path.strip()])
+
+    try:
+        import tika
+        # initialize Tika
+        tika.initVM()
+        # TODO: set up tika log and get data from tika
+        # TODO: detect this while setting up the app
+        use_tika = True
+    except:
+        use_tika = False
+
     # Parallelize loop (it may not work on Windows unless you keep "create_results" in a different file)
-    with Pool() as pool, open(file_perm, "w+") as f_perm, open(file_res, "w+") as f_res:
+    with Pool() as pool, open(file_perm, "w+") as f_perm, open(file_res, "w+", encoding='UTF-8') as f_res:
         i = 0
         
-        for result in pool.imap_unordered(_create_results, files):
+        for result in pool.imap_unordered(_create_results, results):
             i += 1
             if i % 100 == 0:
-                print(f"Finished {i} files out of {len(files)}")
-            time_dict_temp, json_dict = result
-            time_dict.update(time_dict_temp)
-            json_list.append(json_dict)
+                print(f"Finished {i} files out of {len(results)}")
+            time_dict, json_dict = result
 
-        # Write data to file  (TODO: it should be line by line to avoid using update/append. 
-        prettify = json.dumps(time_dict, indent=4)
-        f_perm.write(prettify)
+            #time_dict.update(time_dict_temp)
+            #json_list.append(json_dict)
 
-        prettify = json.dumps(json_list, indent=4)
-        f_res.write(prettify)
+            # Write data to file  (TODO: it should be line by line to avoid using update/append. 
+            ndjson.dump(f_perm, [time_dict])+"\n"#, indent=4)
+            
+
+            ndjson.dump(f_res, [json_dict])+"\n"#json.dumps(json_list, indent=4)
+            
 
 
     end_time = time.perf_counter()
     total_runtime = end_time - start_time
     time_dict["total runtime: "] = total_runtime
+
+
 
 
 
