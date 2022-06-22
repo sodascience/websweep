@@ -1,39 +1,39 @@
 import os
 import re
 import typer
+from xmlrpc.client import Boolean
 from tika import parser
 
 class Extractor:
     def __init__(self, info):
-        self.id, self.domain, self.level, self.website, self.date, self.path = info
+        self.metadata = dict()
+        self.metadata["id"], self.metadata["domain"], self.metadata["level"], self.metadata["website"], self.metadata["date"], self.metadata["path"] = info
         
+
     def run_loops(self):
         # Get metadata
-        metadata = self.extract_metadata(self.path)
-        metadata["id"] = self.id
-        metadata["domain"] = self.domain
-        metadata["level"] = self.level
-        metadata["website"] = self.website
-        metadata["date"] = self.date
-        metadata["path"] = self.path
+        self.extract_metadata(self.path)
 
         # TODO: Log this behavior
         if self.text is None:
-            return metadata
+            return self.metadata
 
-        metadata["address"] = self.scrape_adres()
-        metadata["postcode"] = self.scrape_zip()
-        metadata["kvk"] = self.scrape_kvk()
-        metadata["btw"] = self.scrape_btw()
-        metadata["text"] = self._clean_html(self.text)
+        self.scrape_zip()
+        self.scrape_adres()
+        self._zipcode_warning()
 
-        # Phone/emails/fax can be found in the HTML
+        self.scrape_kvk()
+        self.scrape_btw()
+        
+        self._clean_html(self.text)
+
+        # Phone/emails/fax can be found in the HTML?
         with open(self.path, "r", encoding="UTF-8") as file:
             self.text = file.read()
 
-        metadata["phone"] = self.scrape_phone()
-        metadata["email"] = self.scrape_email()
-        metadata["fax"] = self.scrape_fax()
+        self.scrape_phone()
+        self.scrape_email()
+        self.scrape_fax()
  
         
         if self.mistake_warning():
@@ -44,33 +44,36 @@ class Extractor:
                     fg=typer.colors.RED,
                 )
         
-        return metadata
+        return self.metadata
 
-    def scrape_adres(self):
+    def scrape_adres(self) -> None:
         """
         Scrape the adres from the input file, and add found adres to self.adres in set form
         """
-        return []
+        add_found = []
+        for zipcode in self.metadata["postcode"]:
+            pattern = r'(((\b[a-zA-ZÀ-ÿ]+)\s+[0-9][0-9-_a-z,]*)(\s+(?=(' + zipcode + r'))|(?=(' + zipcode + '))))'
+            findall = re.findall(pattern, self.text)
+            add_found += [item[1] for item in findall]
+        
+        self.metadata["address"] = add_found
         
 
-    def scrape_zip(self):
+    def scrape_zip(self) -> None:
         """
         Scrape the zipcode from the input file, and add found zipcodes to self.zip_code in set form
         """
-        
-        self.zip_code = set()
-
+    
         pattern = re.compile(r"""
                                 (\b\d{4}\s?(?!SS)(?!SD)(?!SA)(?!px)(?!em)(?!rm)[A-Z]{2}\b)
                                 """, re.VERBOSE)
-        result_list = set(re.findall(pattern, self.text))
-        for item in result_list:
-            self.zip_code.add(item)
+        zip_codes = list(set(re.findall(pattern, self.text)))
+        
+        self.metadata["postcode"] = zip_codes
+        
 
-        return list(self.zip_code)
 
-
-    def scrape_btw(self):
+    def scrape_btw(self) -> None:
         """
         Scrape the BTW number from the input file, and add found BTW Numbers (usually only 1) to self.btw in list form
         """
@@ -85,7 +88,7 @@ class Extractor:
         
         return list(self.btw)
 
-    def scrape_kvk(self):
+    def scrape_kvk(self) -> None:
         """
         Scrape the KVK number from the input file, and add found KVK number to self.kvk in set form
         """
@@ -101,12 +104,14 @@ class Extractor:
             for subitem in item:
                 if len(subitem) > 0:
                     self.kvk.add(subitem)
-        return list(self.kvk)
+
+        self.metadata["kvk"] = list(self.kvk)
+        
         
   
         
 
-    def scrape_phone(self):
+    def scrape_phone(self) -> None:
         """
         Scrape the phone number from the input file, and add found phone numbers to self.phone in set form
         """
@@ -128,10 +133,10 @@ class Extractor:
         for item in result_list:
             temp = item[0] + ' ' + item[2]
             self.phone.add(temp)
+        self.metadata["phone"] = list(self.phone)
         
-        return list(self.phone)
 
-    def scrape_fax(self):
+    def scrape_fax(self) -> None:
         """
         Scrape the fax number from the input file, and add found fax numbers to self.fax in set form
         """
@@ -142,31 +147,32 @@ class Extractor:
                                 fax:\s|
                                 F:\s|
                                 f:\s)
-                                (\b(\d-*){10,})
+                                ((\+?|\"?)(\d|\s|\(|\)|-){10,22})
                                 """, re.VERBOSE)
         result_list = set(re.findall(pattern, self.text))
         for item in result_list:
             self.fax.add(item[1])
         
-        return list(self.fax)
+        self.metadata["fax"] = list(self.fax)
 
-    def scrape_email(self):
+    def scrape_email(self) -> None:
         """
         Scrape the Email adress from the input file, and adds the found email adress to self.email in set form
         """
         pattern = re.compile(r"""
                         ([a-zA-Z0-9_.+-]+   # one (or more) sets of all characters which numbers, letters or a subset of punctuations
                         @                   # needs a @    
-                        [a-zA-Z0-9-]{1,20}  # again, grab any number or letter
+                        [a-zA-Z0-9-]{1,25}  # again, grab any number or letter
                         \.                  # the dot in the email
                         (?!png)(?!jpg)[a-zA-Z-.]{1,8}     # grab any combination of letters/numbers/dots, to ensure we also grab stuff like .co.uk
                         )""", re.VERBOSE)
         self.email = set(re.findall(pattern, self.text))
+        emails = [email[:-1] if email[-1] == '.' else email for email in self.email]
+        self.metadata["email"] = emails
         
-        return [email[:-1] if email[-1] == '.' else email for email in self.email]
  
 
-    def mistake_warning(self):
+    def mistake_warning(self) -> "Boolean":
         if not self.__dict__['email'] and not self.__dict__['kvk'] and not self.__dict__['phone'] and not self.__dict__['btw'] and not self.__dict__['fax'] and not self.__dict__['zip_code']:
             return False
         else:
@@ -174,7 +180,7 @@ class Extractor:
 
 
 
-    def extract_metadata(self, file_path):
+    def extract_metadata(self, file_path) -> None:
         """        
         This function is used to extract the metadata from the file, and return it as a dictionary.
         # Example of metadata
@@ -199,22 +205,41 @@ TF-8',
         'title': 'Over Webo | WEBO Heftrucks B.V.',
         'viewport': 'width=device-width, initial-scale=1.0'}
         """
-
+        # TODO: check if tika is active, if it's not default to BS4
+        # from bs4 import BeautifulSoup
+        # self.text = BeautifulSoup(text, 'html.parser').text
         parsed = parser.from_file(file_path, requestOptions={'timeout': 120})
         if parsed["status"] != 200:
             # TODO: Add to log file
             return {}
-
         
-        metadata = parsed["metadata"]
+        self.metadata.update(parsed["metadata"])
         self.text = parsed["content"]
 
-        return metadata
+    def mistake_warning(self) -> "Boolean":
+        """
+        Checks if the extractor has ANY values at all, if it found none, it will return False
+        """
+        if not self.metadata['email'] and not self.metadata['id'] and not self.metadata['phone'] and not self.metadata['btw'] and not self.metadata['fax'] and not self.metadata['postcode']:
+            return False
+        else:
+            return True
 
-    def _clean_html(self, text):
+    def _zipcode_warning(self) -> None:
+        """
+        If the extractor did find a zipcode, but not an address, there is probably a bug. This notifies the user.=
+        """
+        if (len(self.metadata["postcode"]) > 0) and (len(self.metadata["address"]) == 0):
+            typer.secho(
+                    f'Found zipcodes, but found no address for {self.website}, this is probably a bug',
+                    fg=typer.colors.YELLOW,
+                )
+
+    def _clean_html(self, text) -> None:
         """
         Clean text extracted by tika
         """
         # keep only > 100 characters
         text = "\n".join([_ for _ in text.split("\n") if len(_) > 100])
-        return text 
+        self.metadata["text"] = text
+        

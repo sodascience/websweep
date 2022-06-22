@@ -232,7 +232,7 @@ def extract() -> None:
         use_tika = False
 
     # Parallelize loop (it may not work on Windows unless you keep "create_results" in a different file)
-    with Pool() as pool, open(file_perm, "w+") as f_perm, open(file_res, "w+") as f_res:
+    with Pool() as pool, open(file_perm, "w+") as f_perm, open(file_res, "w+", encoding='UTF-8') as f_res:
         i = 0
         
         for result in pool.imap_unordered(_create_results, results):
@@ -245,16 +245,18 @@ def extract() -> None:
             #json_list.append(json_dict)
 
             # Write data to file  (TODO: it should be line by line to avoid using update/append. 
-            prettify = ndjson.dumps([time_dict])+"\n"#, indent=4)
-            f_perm.write(prettify)
+            prettify = ndjson.dump(f_perm, [time_dict])+"\n"#, indent=4)
+            
 
-            prettify = ndjson.dumps([json_dict])+"\n"#json.dumps(json_list, indent=4)
-            f_res.write(prettify)
+            prettify = ndjson.dump(prettify, [json_dict])+"\n"#json.dumps(json_list, indent=4)
+            
 
 
     end_time = time.perf_counter()
     total_runtime = end_time - start_time
     time_dict["total runtime: "] = total_runtime
+
+
 
 
 

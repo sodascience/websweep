@@ -12,7 +12,7 @@ from aiohttp import ClientSession, TCPConnector
 from bs4 import BeautifulSoup
 from pathlib import Path
 
-import hashlib
+#import hashlib
 from time import time
 import datetime
 import tldextract
@@ -137,14 +137,14 @@ class Scraper:
 
         urls = []
         # hash url to give an ID (collisions are possible)
-        hash_url = hashlib.sha1(url.encode()).hexdigest()
+        #hash_url = hashlib.sha1(url.encode()).hexdigest()
 
 
         # create path www.google.com/something/ --> something
         if url[-1] == "/":
-            path = f"{self.base_path}/{kvk}/{urlparse(url).netloc.replace('www.','')}/{self.__get_current_date()}/{hash_url}_{url[:-1].split('/')[-1]}"
+            path = f"{self.base_path}/{kvk}/{urlparse(url).netloc.replace('www.','')}/{self.__get_current_date()}/{url[:-1].split('/')[-1]}"
         else: #Create path www.google.com/something --> something
-            path = f"{self.base_path}/{kvk}/{urlparse(url).netloc.replace('www.','')}/{self.__get_current_date()}/{hash_url}_{url.split('/')[-1]}"
+            path = f"{self.base_path}/{kvk}/{urlparse(url).netloc.replace('www.','')}/{self.__get_current_date()}/{url.split('/')[-1]}"
         path = path.replace(" ", "_")
 
         try:
