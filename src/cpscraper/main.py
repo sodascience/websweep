@@ -245,11 +245,11 @@ def extract() -> None:
             #json_list.append(json_dict)
 
             # Write data to file  (TODO: it should be line by line to avoid using update/append. 
-            ndjson.dump(f_perm, [time_dict])+"\n"#, indent=4)
-            
+            ndjson.dump(f_perm, [time_dict])#+"\n"#, indent=4)
+            f_perm.write("\n")
 
-            ndjson.dump(f_res, [json_dict])+"\n"#json.dumps(json_list, indent=4)
-            
+            ndjson.dump(f_res, [json_dict])#+"\n"#json.dumps(json_list, indent=4)
+            f_res.write("\n")
 
 
     end_time = time.perf_counter()
