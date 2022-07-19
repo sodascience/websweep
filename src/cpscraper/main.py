@@ -120,13 +120,11 @@ def init() -> None:
 
     data_filename = typer.prompt("Target folder name, ENTER for default", "scraper_data")
 
-    while Path("{}/{}".format(folder, data_filename)).exists():
+    # Create folder 
+    if Path("{}/{}".format(folder, data_filename)).exists():
         typer.secho(
-            "Target folder {}/{} does already exist, choose other folder name\n".format(folder, data_filename), fg=typer.colors.RED
+            "Target folder {}/{} does already exist and will be re-used".format(folder, data_filename), fg=typer.colors.YELLOW
         )
-        time.sleep(0.5)
-
-        data_filename = typer.prompt("Target folder name", "scraper_data")
 
     typer.secho(
         "Target folder {}/{} saved\n".format(folder, data_filename), fg=typer.colors.YELLOW
