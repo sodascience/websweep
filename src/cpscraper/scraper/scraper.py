@@ -18,10 +18,13 @@ import datetime
 import tldextract
 import logging
 import os
-from cpscraper import config
 
-logging.basicConfig(filename="{}/logs/scraper.log".format(config.PACKAGE_DIRECTORY), level=logging.INFO)
-logger = logging.getLogger()
+try:
+    from cpscraper import config
+    logging.basicConfig(filename="{}/logs/scraper.log".format(config.PACKAGE_DIRECTORY), level=logging.INFO)
+    logger = logging.getLogger()
+except:
+    print("Could not find config")
 
 # if os.environ.get('scraper_logging_level', 'error') == "info":
 #     logger.setLevel(logging.INFO)
