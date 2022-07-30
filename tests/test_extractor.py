@@ -1,25 +1,20 @@
 import os
 import sys
-script_dir = os.path.dirname( __file__ )
-mymodule_dir = os.path.join( script_dir, '..', 'src', 'cpscraper', 'extractor' )
-sys.path.append( mymodule_dir )
-print(mymodule_dir)
+from tomlkit import boolean
+
+#This mumbo jumbo is required to properly import the Extractor class, I don't quite understand how it works, but it does
+sys.path.append( os.path.join( os.path.dirname( __file__ ), '..', 'src', 'cpscraper', 'extractor' ))
 from extractor import Extractor as E
 
-def phones_pass():
+def phones_pass(text) -> boolean: 
     aList = ["id", "domain", "level", "url", "date", "path"]
     tester = E(aList)
-    tester.text = "Tel: +316313737 T:0631313737 t: 06-09-02-03-05-088 wat random tekst, tel\"4861321  en daarna nog gwn 051341698"
-    expected_result = ""
+    tester.text = text
+    expected_result = {'T:  0631313737 ', 'tel: +316-3131-3737 ', 'Tel:  06-31-31-37-37 ', 't:  +31631313737'}
     tester.scrape_phone()
-    print(tester.phone)
     if tester.phone == expected_result:
         return True
     else:
         return False
 
-def phones_fail():
-    aList = ["id", "domain", "level", "url", "date", "path"]
-    tester = E(aList)
-    tester.text = "Tel: +316313737 T:0631313737 t: 06-09-02-03-05-088 wat random tekst, tel\"4861321  en daarna nog gwn 051341698"
     
