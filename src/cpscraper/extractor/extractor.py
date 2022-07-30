@@ -170,16 +170,6 @@ class Extractor:
         emails = [email[:-1] if email[-1] == '.' else email for email in self.email]
         self.metadata["email"] = emails
         
- 
-
-    def mistake_warning(self) -> "Boolean":
-        if not self.__dict__['email'] and not self.__dict__['kvk'] and not self.__dict__['phone'] and not self.__dict__['btw'] and not self.__dict__['fax'] and not self.__dict__['zip_code']:
-            return False
-        else:
-            return True
-
-
-
     def extract_metadata(self, file_path) -> None:
         """        
         This function is used to extract the metadata from the file, and return it as a dictionary.
