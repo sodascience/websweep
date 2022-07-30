@@ -7,10 +7,9 @@ from tika import parser
 class Extractor:
     def __init__(self, info):
         self.metadata = dict()
-        self.metadata["id"], self.metadata["domain"], self.metadata["level"], self.metadata["website"], self.metadata["date"], self.metadata["path"] = info
-        
+        self.metadata["id"], self.metadata["domain"], self.metadata["level"], self.metadata["website"], self.metadata["date"], self.metadata["path"] = info    
 
-    def run_loops(self):
+    def extracting(self):
         # Get metadata
         self.extract_metadata(self.path)
 
@@ -57,7 +56,6 @@ class Extractor:
             add_found += [item[1] for item in findall]
         
         self.metadata["address"] = add_found
-        
 
     def scrape_zip(self) -> None:
         """
@@ -71,8 +69,6 @@ class Extractor:
         
         self.metadata["postcode"] = zip_codes
         
-
-
     def scrape_btw(self) -> None:
         """
         Scrape the BTW number from the input file, and add found BTW Numbers (usually only 1) to self.btw in list form
@@ -107,10 +103,6 @@ class Extractor:
 
         self.metadata["kvk"] = list(self.kvk)
         
-        
-  
-        
-
     def scrape_phone(self) -> None:
         """
         Scrape the phone number from the input file, and add found phone numbers to self.phone in set form
@@ -135,7 +127,6 @@ class Extractor:
             self.phone.add(temp)
         self.metadata["phone"] = list(self.phone)
         
-
     def scrape_fax(self) -> None:
         """
         Scrape the fax number from the input file, and add found fax numbers to self.fax in set form
@@ -170,15 +161,11 @@ class Extractor:
         emails = [email[:-1] if email[-1] == '.' else email for email in self.email]
         self.metadata["email"] = emails
         
- 
-
     def mistake_warning(self) -> "Boolean":
         if not self.__dict__['email'] and not self.__dict__['kvk'] and not self.__dict__['phone'] and not self.__dict__['btw'] and not self.__dict__['fax'] and not self.__dict__['zip_code']:
             return False
         else:
             return True
-
-
 
     def extract_metadata(self, file_path) -> None:
         """        

@@ -6,7 +6,7 @@ from tkinter import Tk
 import time
 import os
 import ndjson
-from datetime import date
+from datetime import date as datelib
 from multiprocess import Pool
 import sys
 
@@ -27,7 +27,7 @@ def _create_results(path):
     #website_name = os.path.basename(Path(folder).parents[0])
     # TODO: integrate get scraper into _get_worker method since now no checks are performed if target folders exist
     cached_corporate = Extractor([id, domain, level, url, date, path])
-    metadata = cached_corporate.run_loops()
+    metadata = cached_corporate.extracting()
     end_time_file = time.perf_counter()
     
     return ({path: end_time_file - start_time_file }, metadata)
@@ -205,10 +205,10 @@ def extract() -> None:
     json_list = []
     i = 0
 
-    file_perm = config.get_target_folder_path(config.CONFIG_FILE_PATH)  /  ('performance_' + str(date.today()) + '.json')
+    file_perm = config.get_target_folder_path(config.CONFIG_FILE_PATH)  /  ('performance_' + str(datelib.today()) + '.json')
     Path(file_perm).parent.mkdir(parents=True, exist_ok=True)
 
-    file_res = config.get_target_folder_path(config.CONFIG_FILE_PATH)  /  ('scraped_data_' + str(date.today()) + '.ndjson')
+    file_res = config.get_target_folder_path(config.CONFIG_FILE_PATH)  /  ('scraped_data_' + str(datelib.today()) + '.ndjson')
     Path(file_res).parent.mkdir(parents=True, exist_ok=True)
 
     # Read file

@@ -6,12 +6,20 @@ sys.path.append( mymodule_dir )
 print(mymodule_dir)
 from extractor import Extractor as E
 
-def test_phone():
-    to_test = "+31313737 0631313737 06-09-02-03-05-088"
+def phones_pass():
+    aList = ["id", "domain", "level", "url", "date", "path"]
+    tester = E(aList)
+    tester.text = "Tel: +316313737 T:0631313737 t: 06-09-02-03-05-088 wat random tekst, tel\"4861321  en daarna nog gwn 051341698"
     expected_result = ""
-
-
-    tester = E()
-    tester.text = "+31313737 0631313737 06-09-02-03-05-088"
     tester.scrape_phone()
+    print(tester.phone)
+    if tester.phone == expected_result:
+        return True
+    else:
+        return False
+
+def phones_fail():
+    aList = ["id", "domain", "level", "url", "date", "path"]
+    tester = E(aList)
+    tester.text = "Tel: +316313737 T:0631313737 t: 06-09-02-03-05-088 wat random tekst, tel\"4861321  en daarna nog gwn 051341698"
     
