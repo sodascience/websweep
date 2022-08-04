@@ -1,3 +1,4 @@
+from cgi import test
 import os
 import sys
 from tomlkit import boolean
@@ -10,7 +11,7 @@ def phones_pass(text) -> boolean:
     aList = ["id", "domain", "level", "url", "date", "path"]
     tester = E(aList)
     tester.text = text
-    expected_result = {'T:  0631313737 ', 'tel: +316-3131-3737 ', 'Tel:  06-31-31-37-37 ', 't:  +31631313737'}
+    expected_result = {'T.  0318 - 57 50 70', 'tel: +31511472025', 'tel: +0511472025', 'Tel:  0318 - 57 50 70', 'Telefoon:  038 8211 455 01 01'}
     tester.scrape_phone()
     if tester.phone == expected_result:
         return True
@@ -38,3 +39,65 @@ def btw_pass(text) -> boolean:
         return True
     else:
         return False
+
+def email_pass(text) -> boolean:
+    aList = ["id", "domain", "level", "url", "date", "path"]
+    tester = E(aList)
+    tester.text = text
+    expected_result = {'info@applebee.nl', 'info@staalbouw-barneveld.nl', 'info@bosgra.nl', 'info@advocaatruis.nl', 'info@ijsselkern.nl'}
+    tester.scrape_email()
+    if tester.email == expected_result:
+        return True
+    else:
+        return False
+
+def fax_pass(text) -> boolean:
+    aList = ["id", "domain", "level", "url", "date", "path"]
+    tester = E(aList)
+    tester.text = text
+    expected_result = {'0648515987'}
+    tester.scrape_fax()
+    if tester.fax == expected_result:
+        return True
+    else:
+        return False
+
+def zip_pass(text) -> boolean:
+    aList = ["id", "domain", "level", "url", "date", "path"]
+    tester = E(aList)
+    tester.text = text
+    expected_result = ['3927 GH', '8013 AG', '3437ZE', '8021 CD', '3403 AE', '9254 DD', '7941LX']
+    tester.scrape_zip()
+    res = tester.metadata["postcode"]
+
+    if len(res) != len(expected_result):
+        return False
+
+    expected_result.sort()
+    res.sort()
+    if res == expected_result:
+        return True
+    else:
+        return False
+
+def adress_pass(text) -> boolean:
+    aList = ["id", "domain", "level", "url", "date", "path"]
+    tester = E(aList)
+    tester.text = text
+    expected_result = ['Ceintuurbaan 106', 'Hofstraat 5,', 'Hortensiastraat 72,', 'Rijksstraatweg 137/139', 'Overeem 4']
+    tester.scrape_zip()
+    tester.scrape_adres()
+    res = tester.metadata["address"]
+
+    if len(res) != len(expected_result):
+        return False
+
+    expected_result.sort()
+    res.sort()
+
+    if res == expected_result:
+        return True
+    else:
+        return False
+
+

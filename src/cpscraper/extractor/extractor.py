@@ -51,7 +51,7 @@ class Extractor:
         """
         add_found = []
         for zipcode in self.metadata["postcode"]:
-            pattern = r'(((\b[a-zA-ZÀ-ÿ]+)\s+[0-9][0-9-_a-z,]*)(\s+(?=(' + zipcode + r'))|(?=(' + zipcode + '))))'
+            pattern = r'(((\b[a-zA-ZÀ-ÿ]+)\s+[0-9][0-9-_a-z,/]*)(\s+(?=(' + zipcode + r'))|(?=(' + zipcode + '))))'
             findall = re.findall(pattern, self.text)
             add_found += [item[1] for item in findall]
         
@@ -116,9 +116,10 @@ class Extractor:
                                 Telefoon:\s{0,4}|
                                 T:\s{0,4}|
                                 t:\s{0,4}|
-                                T\s{0,4})
+                                T\s{0,4}|
+                                T\.\s{0,4})
                                 (&nbsp;|/{0,2})?
-                                ((\+?|\"?)(\d|\s|\(|\)|-){9,22})\d
+                                ((\+?|\"?)(\d|\s|\(|\)|-){9,22}\d)
                                 """, re.VERBOSE)
                                 # Phone numbers can be indicated by a variety of different ways, this regex tries to incorporate all of those as a possibillity
         result_list = set(re.findall(pattern, self.text))
@@ -138,7 +139,7 @@ class Extractor:
                                 fax:\s|
                                 F:\s|
                                 f:\s)
-                                ((\+?|\"?)(\d|\s|\(|\)|-){10,22})
+                                ((\+?|\"?)(\d|\s|\(|\)|-){9,22}\d)
                                 """, re.VERBOSE)
         result_list = set(re.findall(pattern, self.text))
         for item in result_list:

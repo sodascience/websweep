@@ -17,6 +17,18 @@ class TestRegMethods(unittest.TestCase):
     def test_btw(self) -> None:
         self.assertTrue(TE.btw_pass(self.text))
 
+    def test_email(self) -> None:
+        self.assertTrue(TE.email_pass(self.text))   
+
+    def test_fax(self) -> None:
+        self.assertTrue(TE.fax_pass(self.text))
+
+    def test_zip(self) -> None:
+        self.assertTrue(TE.zip_pass(self.text))
+
+    def test_adress(self) -> None:
+        self.assertTrue(TE.adress_pass(self.text))
+
     def tearDown(self) -> None:
         self.testfile.close()
         return super().tearDown()

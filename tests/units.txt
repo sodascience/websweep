@@ -5,7 +5,7 @@ This is file is read by the tests with all the containing units to be tested
 
 tel:+0511472025
 tel:+31511472025
-Telefoon: 038 8211; 455 01 01
+Telefoon: 038 8211 455 01 01
 T. 0318 - 57 50 70
 Tel: 0318 - 57 50 70
 
@@ -25,10 +25,14 @@ Hortensiastraat 72, 8013 AG, Zwolle
 Hofstraat 5, 8021 CD, Zwolle
 Groot Overeem 4
 3927 GH Renswoude
+3403 AE 
+3437ZE
+3437ZE
 
 KvK nummer: 01051548
 KVK NR 11030697
 
+Fax: 0648515987
 
 BTW-nummer: NL.0069.34.857.B.01
 
