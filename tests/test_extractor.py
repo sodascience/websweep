@@ -17,4 +17,24 @@ def phones_pass(text) -> boolean:
     else:
         return False
 
-    
+def kvk_pass(text) -> boolean:
+    aList = ["id", "domain", "level", "url", "date", "path"]
+    tester = E(aList)
+    tester.text = text
+    expected_result = {'01051548', '11030697'}
+    tester.scrape_kvk()
+    if tester.kvk == expected_result:
+        return True
+    else:
+        return False
+
+def btw_pass(text) -> boolean:
+    aList = ["id", "domain", "level", "url", "date", "path"]
+    tester = E(aList)
+    tester.text = text
+    expected_result = {'NL.0069.34.857.B.01'}
+    tester.scrape_btw()
+    if tester.btw == expected_result:
+        return True
+    else:
+        return False

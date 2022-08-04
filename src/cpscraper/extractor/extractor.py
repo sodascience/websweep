@@ -76,7 +76,7 @@ class Extractor:
         self.btw = set()
 
         pattern = re.compile(r"""
-                                (btw|BTW|VAT|vat)(.+)(\bNL\s*[0-9-_.]{9,12}\s*[B 0-9\.]{0,4}|\bNL\b[0-9-_.B]+)
+                                (btw|BTW|VAT|vat)(.+)(\bNL\s*[0-9-_.]{9,12}\s*[B 0-9\.]{0,5}|\bNL\b[0-9-_.B]+)
                                 """, re.VERBOSE)
         result_list = set(re.findall(pattern, self.text))
         for item in result_list:
@@ -118,7 +118,7 @@ class Extractor:
                                 t:\s{0,4}|
                                 T\s{0,4})
                                 (&nbsp;|/{0,2})?
-                                ((\+?|\"?)(\d|\s|\(|\)|-){10,22})
+                                ((\+?|\"?)(\d|\s|\(|\)|-){9,22})\d
                                 """, re.VERBOSE)
                                 # Phone numbers can be indicated by a variety of different ways, this regex tries to incorporate all of those as a possibillity
         result_list = set(re.findall(pattern, self.text))

@@ -1,13 +1,12 @@
 # Corporate Scraper - Firm Backbone Project
 
-Corporate Scraper - cpscraper - is a Python package, used for web scraping purposes. 
+Corporate Scraper - cpscraper - is a Python package, used for web scraping purposes.
 Developed for the [Firm Backbone Project](https://firmbackbone.nl)
-
 
 ## Installation (LOCAL - PIP)
 
 Use the package manager [pip]() to install cpscraper.
-You need to have poetry installed (```pip install poetry```), do remember to either restart your pc or add poetry to your PATH variables
+You need to have poetry installed (``pip install poetry``), do remember to either restart your pc or add poetry to your PATH variables
 
 ```bash
 cd to the cpscraper folder
@@ -16,16 +15,15 @@ $ poetry build
 $ pip install [PATH].whl
 ```
 
-
 ## Installation (LOCAL - SCRIPT)
 
-Package can also be used as a script without installation. 
+Package can also be used as a script without installation.
+When using windows, remember to use cd \ followed by the drive letter to change drives
 
 ```bash
 cd ~/home/[wherever the folder is located]/corporate_scraper
 $ python(3) -m src.cpscraper init
 ```
-
 
 ## Installation (PIP)
 
@@ -45,13 +43,16 @@ $ cpscraper --help
 $ cpscraper init [--headless]
 
 # after initialization, the scraper can both scrape websites, and extract information from files
-$ cpscraper extract
 $ cpscraper scrape
+$ cpscraper extract
+
 ```
 
 ## Contributing
+
 Pull requests are welcome. For major changes, please open an issue first to discuss what you would like to change.
 Please make sure to update tests as appropriate.
 
 ## License
+
 [MIT](https://choosealicense.com/licenses/mit/)
