@@ -6,7 +6,10 @@ Developed for the [Firm Backbone Project](https://firmbackbone.nl)
 ## Installation (LOCAL - PIP)
 
 Use the package manager [pip]() to install cpscraper.
-You need to have poetry installed (``pip install poetry``), do remember to either restart your pc or add poetry to your PATH variables
+
+You need to have poetry installed (```pip install poetry```), do remember to either restart your pc or add poetry to your PATH variables.
+If you get a warning that dependencies are not up to date, run ```poetry update``` first.
+
 
 ```bash
 cd to the cpscraper folder
