@@ -66,7 +66,7 @@ def get_urls(r, url):
 
 
 class Scraper:
-    def __init__(self, target_folder_path, save_html=True, max_level=3, base_path="data/scraped_data", classifier=lambda url, level: True, verify_ssl=False, concurrency_companies=20, threads_bs4 = 10, threads_download = 100):
+    def __init__(self, target_folder_path=Path("./"), save_html=True, max_level=3, base_path="data/scraped_data", classifier=lambda url, level: True, verify_ssl=False, concurrency_companies=20, threads_bs4 = 10, threads_download = 100):
         self.target_folder_path = target_folder_path
         self.base_path = self.target_folder_path / "data" 
         self.overview_path = f"{self.target_folder_path}/overview_urls.tsv"

@@ -13,6 +13,7 @@ import sys
 
 from .scraper.scraper import Scraper
 from .extractor.extractor import Extractor
+from .utils.utils import classify_url
 from cpscraper import ERRORS, __app_name__, __version__, config
 
 app = typer.Typer()
@@ -66,7 +67,7 @@ def _get_worker() -> Scraper:
         )
         raise typer.Exit(1)
     if source_file_path.exists():
-        return Scraper(target_folder_path = config.get_target_folder_path(config.CONFIG_FILE_PATH))
+        return Scraper(target_folder_path = config.get_target_folder_path(config.CONFIG_FILE_PATH), classifier=classify_url)
     else:
         typer.secho(
             'Source file not found. Please, run "scraper init" or use scrape --help',

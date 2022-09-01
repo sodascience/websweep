@@ -11,7 +11,7 @@ class Extractor:
 
     def extracting(self):
         # Get metadata
-        self.extract_metadata(self.path)
+        self.extract_metadata(self.metadata["path"])
 
         # TODO: Log this behavior
         if self.text is None:
@@ -27,7 +27,7 @@ class Extractor:
         self._clean_html(self.text)
 
         # Phone/emails/fax can be found in the HTML?
-        with open(self.path, "r", encoding="UTF-8") as file:
+        with open(self.metadata["path"], "r", encoding="UTF-8") as file:
             self.text = file.read()
 
         self.scrape_phone()
