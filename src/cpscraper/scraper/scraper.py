@@ -300,6 +300,7 @@ class Scraper:
         :param urls: List of all level 0 urls to visit
         """
 
+        start = time()
         logger.info(f'scraper received {len(urls)} urls')
 
         with ThreadPoolExecutor(max_workers=self.threads_bs4) as self.cpu_executor:#, ThreadPoolExecutor(max_workers=5) as self.io_executor:
