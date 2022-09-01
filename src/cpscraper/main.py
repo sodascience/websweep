@@ -27,7 +27,7 @@ def _create_results(path):
     #website_name = os.path.basename(Path(folder).parents[0])
     # TODO: integrate get scraper into _get_worker method since now no checks are performed if target folders exist
     cached_corporate = Extractor([id, domain, level, url, date, path])
-    metadata = cached_corporate.run_loops()
+    metadata = cached_corporate.extracting()
     end_time_file = time.perf_counter()
     
     return ({path: end_time_file - start_time_file }, metadata)
