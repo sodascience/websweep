@@ -77,44 +77,78 @@ def _get_worker() -> Scraper:
 
 
 @app.command(name = "init")
-def init() -> None:
+def init(headless: bool = typer.Option(False, help="Run without GUI elements")) -> None:
     """
     Initialise the scraper
     """
 
+    if headless == False:
+        try:
+            if sys.stdin.isatty():
+                headless = False
+        except:
+            headless = True
+
     typer.secho(
-        "\nWELCOME to the corporate scraper.\nFollow the instructions to set up the scraper and start scraping.\n", fg=typer.colors.YELLOW
+        "\nWELCOME to the corporate scraper.\nFollow the instructions to set up the scraper and start scraping.\n", fg=typer.colors.GREEN
     )
+
+    if headless == True:
+        typer.secho(
+            "headless mode turned on\n", fg=typer.colors.YELLOW
+        )
+    else:
+        typer.secho(
+            "headless mode turned off\n", fg=typer.colors.YELLOW
+        )
 
     time.sleep(0.5)
 
-    ask_continue_file = typer.confirm("SELECT the .csv file with kvk and base url\nContinue?\n")
-    if not ask_continue_file:
-        typer.secho(
-            f'Initalisation stopped\n',
-            fg=typer.colors.RED,
-        )
-        raise typer.Exit(1)
+    if headless == False:
+        ask_continue_file = typer.confirm("SELECT the .csv file with kvk and base url\nContinue?\n")
+        if not ask_continue_file:
+            typer.secho(
+                f'Initalisation stopped\n',
+                fg=typer.colors.RED,
+            )
+            raise typer.Exit(1)
+        try:
+            Tk().withdraw()
+            source_filename = fd.askopenfilename(filetypes=[("Excel files", ".csv")])
+        except:
+            typer.secho(
+                "\nGUI Interface failed to load", fg=typer.colors.RED
+            )
+            source_filename = typer.prompt("ENTER source file PATH\n")
+    else:
+        source_filename = typer.prompt("ENTER source file PATH\n")
 
-    Tk().withdraw()
-    source_filename = fd.askopenfilename(filetypes=[("Excel files", ".csv")])
-
+    # TODO: CHECK if file exists
     typer.secho(
         "File {} selected\n".format(source_filename), fg=typer.colors.YELLOW
     )
     time.sleep(0.5)
 
-    ask_continue_folder = typer.confirm("SELECT a folder to store the scraper output\nContinue?\n")
-    if not ask_continue_folder:
-        typer.secho(
-            f'Initalisation stopped\n',
-            fg=typer.colors.RED,
-        )
-        raise typer.Exit(1)
+    if headless == False:
+        ask_continue_folder = typer.confirm("SELECT a folder to store the scraper output\nContinue?\n")
+        if not ask_continue_folder:
+            typer.secho(
+                f'Initalisation stopped\n',
+                fg=typer.colors.RED,
+            )
+            raise typer.Exit(1)
+        try:
+            Tk().withdraw()
+            folder = fd.askdirectory()
+        except:
+            typer.secho(
+                "\nGUI Interface failed to load", fg=typer.colors.RED
+            )
+            folder = typer.prompt("ENTER target folder base PATH\n")
+    else:
+        folder = typer.prompt("ENTER target folder base PATH\n")
 
-    Tk().withdraw()
-    folder = fd.askdirectory()
-
+    # TODO: CHECK if folder exists    
     typer.secho(
         "Folder {} selected\n".format(folder), fg=typer.colors.YELLOW
     )
@@ -122,18 +156,27 @@ def init() -> None:
 
     data_filename = typer.prompt("Target folder name, ENTER for default", "scraper_data")
 
-    # Create folder 
-    if Path("{}/{}".format(folder, data_filename)).exists():
+    while Path("{}/{}".format(folder, data_filename)).exists():
         typer.secho(
-            "Target folder {}/{} does already exist and will be re-used".format(folder, data_filename), fg=typer.colors.YELLOW
+            "Target folder {}/{} does already exist, choose other folder name\n".format(folder, data_filename), fg=typer.colors.RED
         )
+        time.sleep(0.5)
+
+        data_filename = typer.prompt("ENTER target folder name", "scraper_data")
 
     typer.secho(
         "Target folder {}/{} saved\n".format(folder, data_filename), fg=typer.colors.YELLOW
     )
     time.sleep(0.5)
 
-    app_init_error = config.init_app(source_filename, "{}/{}".format(folder, data_filename))
+    ask_delete_files = typer.confirm("Remove raw files after extractor processing?\n")
+
+    typer.secho(
+        f"Raw files will be removed: {ask_delete_files}\n".format(folder, data_filename), fg=typer.colors.YELLOW
+    )
+    time.sleep(0.5)
+
+    app_init_error = config.init_app(source_filename, "{}/{}".format(folder, data_filename), ask_delete_files)
     if app_init_error:
         typer.secho(
             f'Creating config file failed with "{ERRORS[app_init_error]}"',
@@ -155,28 +198,22 @@ def scrape(config_file) -> None:
     """
     Start caching websites
     """
+    print(config.CONFIG_FILE_PATH)
+    typer.secho(f"Scraper is started with instructions:", fg=typer.colors.YELLOW)
+    typer.secho(f"- source file: {config.get_source_file_path(config.CONFIG_FILE_PATH)}", fg=typer.colors.YELLOW)
+    typer.secho(f"- target folder: {config.get_target_folder_path(config.CONFIG_FILE_PATH)}", fg=typer.colors.YELLOW)
+    typer.secho(f"- delete extracted files: {config.get_extractor_delete(config.CONFIG_FILE_PATH)}\n", fg=typer.colors.YELLOW)
 
     worker = _get_worker()
-
-    start = time.time()
     
     with open(config_file, "r") as f:
         f.readline() #header
         urls = [line.split(",") for line in f.readlines()]        
         urls = sorted([(kvk.strip(), f"https://www.{url}/") for url, kvk in urls])
-    print(len(urls))
 
     # Run scraper
     # Start scraper, downloading 20 companies in parallel
     worker.scrape_companies(urls)
-
-    #Read what we did
-    with open("data/overview_urls.tsv") as f:
-        count = 0
-        for line in f:
-            if line.split("\t")[4] == "200":
-                count += 1
-    print(f"Downloaded {count} pages from {len(urls)} urls to level {3} in {time() - start:2.1f} seconds.")
 
 
 @app.command(name="config")
