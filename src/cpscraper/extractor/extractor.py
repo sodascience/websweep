@@ -7,12 +7,11 @@ from tika import parser
 class Extractor:
     def __init__(self, info):
         self.metadata = dict()
-        self.metadata["id"], self.metadata["domain"], self.metadata["level"], self.metadata["website"], self.metadata["date"], self.metadata["path"] = info
-        
+        self.metadata["id"], self.metadata["domain"], self.metadata["level"], self.metadata["website"], self.metadata["date"], self.metadata["path"] = info    
 
-    def run_loops(self):
+    def extracting(self):
         # Get metadata
-        self.extract_metadata(self.path)
+        self.extract_metadata(self.metadata["path"])
 
         # TODO: Log this behavior
         if self.text is None:
@@ -28,7 +27,7 @@ class Extractor:
         self._clean_html(self.text)
 
         # Phone/emails/fax can be found in the HTML?
-        with open(self.path, "r", encoding="UTF-8") as file:
+        with open(self.metadata["path"], "r", encoding="UTF-8") as file:
             self.text = file.read()
 
         self.scrape_phone()
@@ -52,12 +51,11 @@ class Extractor:
         """
         add_found = []
         for zipcode in self.metadata["postcode"]:
-            pattern = r'(((\b[a-zA-ZÀ-ÿ]+)\s+[0-9][0-9-_a-z,]*)(\s+(?=(' + zipcode + r'))|(?=(' + zipcode + '))))'
+            pattern = r'(((\b[a-zA-ZÀ-ÿ]+)\s+[0-9][0-9-_a-z,/]*)(\s+(?=(' + zipcode + r'))|(?=(' + zipcode + '))))'
             findall = re.findall(pattern, self.text)
             add_found += [item[1] for item in findall]
         
         self.metadata["address"] = add_found
-        
 
     def scrape_zip(self) -> None:
         """
@@ -71,8 +69,6 @@ class Extractor:
         
         self.metadata["postcode"] = zip_codes
         
-
-
     def scrape_btw(self) -> None:
         """
         Scrape the BTW number from the input file, and add found BTW Numbers (usually only 1) to self.btw in list form
@@ -80,7 +76,7 @@ class Extractor:
         self.btw = set()
 
         pattern = re.compile(r"""
-                                (btw|BTW|VAT|vat)(.+)(\bNL\s*[0-9-_.]{9,12}\s*[B 0-9\.]{0,4}|\bNL\b[0-9-_.B]+)
+                                (btw|BTW|VAT|vat)(.+)(\bNL\s*[0-9-_.]{9,12}\s*[B 0-9\.]{0,5}|\bNL\b[0-9-_.B]+)
                                 """, re.VERBOSE)
         result_list = set(re.findall(pattern, self.text))
         for item in result_list:
@@ -107,10 +103,6 @@ class Extractor:
 
         self.metadata["kvk"] = list(self.kvk)
         
-        
-  
-        
-
     def scrape_phone(self) -> None:
         """
         Scrape the phone number from the input file, and add found phone numbers to self.phone in set form
@@ -124,9 +116,10 @@ class Extractor:
                                 Telefoon:\s{0,4}|
                                 T:\s{0,4}|
                                 t:\s{0,4}|
-                                T\s{0,4})
+                                T\s{0,4}|
+                                T\.\s{0,4})
                                 (&nbsp;|/{0,2})?
-                                ((\+?|\"?)(\d|\s|\(|\)|-){10,22})
+                                ((\+?|\"?)(\d|\s|\(|\)|-){9,22}\d)
                                 """, re.VERBOSE)
                                 # Phone numbers can be indicated by a variety of different ways, this regex tries to incorporate all of those as a possibillity
         result_list = set(re.findall(pattern, self.text))
@@ -135,7 +128,6 @@ class Extractor:
             self.phone.add(temp)
         self.metadata["phone"] = list(self.phone)
         
-
     def scrape_fax(self) -> None:
         """
         Scrape the fax number from the input file, and add found fax numbers to self.fax in set form
@@ -147,7 +139,7 @@ class Extractor:
                                 fax:\s|
                                 F:\s|
                                 f:\s)
-                                ((\+?|\"?)(\d|\s|\(|\)|-){10,22})
+                                ((\+?|\"?)(\d|\s|\(|\)|-){9,22}\d)
                                 """, re.VERBOSE)
         result_list = set(re.findall(pattern, self.text))
         for item in result_list:
@@ -170,6 +162,14 @@ class Extractor:
         emails = [email[:-1] if email[-1] == '.' else email for email in self.email]
         self.metadata["email"] = emails
         
+
+    def mistake_warning(self) -> "Boolean":
+        if not self.__dict__['email'] and not self.__dict__['kvk'] and not self.__dict__['phone'] and not self.__dict__['btw'] and not self.__dict__['fax'] and not self.__dict__['zip_code']:
+            return False
+        else:
+            return True
+
+
     def extract_metadata(self, file_path) -> None:
         """        
         This function is used to extract the metadata from the file, and return it as a dictionary.

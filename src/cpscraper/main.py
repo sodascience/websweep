@@ -13,6 +13,7 @@ import sys
 
 from .scraper.scraper import Scraper
 from .extractor.extractor import Extractor
+from .utils.utils import classify_url
 from cpscraper import ERRORS, __app_name__, __version__, config
 
 app = typer.Typer()
@@ -27,7 +28,7 @@ def _create_results(path):
     #website_name = os.path.basename(Path(folder).parents[0])
     # TODO: integrate get scraper into _get_worker method since now no checks are performed if target folders exist
     cached_corporate = Extractor([id, domain, level, url, date, path])
-    metadata = cached_corporate.run_loops()
+    metadata = cached_corporate.extracting()
     end_time_file = time.perf_counter()
     
     return ({path: end_time_file - start_time_file }, metadata)
@@ -66,7 +67,7 @@ def _get_worker() -> Scraper:
         )
         raise typer.Exit(1)
     if source_file_path.exists():
-        return Scraper(target_folder_path = config.get_target_folder_path(config.CONFIG_FILE_PATH))
+        return Scraper(target_folder_path = config.get_target_folder_path(config.CONFIG_FILE_PATH), classifier=classify_url)
     else:
         typer.secho(
             'Source file not found. Please, run "scraper init" or use scrape --help',

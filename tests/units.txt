@@ -1,0 +1,41 @@
+This is file is read by the tests with all the containing units to be tested
+
+
+
+
+tel:+0511472025
+tel:+31511472025
+Telefoon: 038 8211 455 01 01
+T. 0318 - 57 50 70
+Tel: 0318 - 57 50 70
+
+
+info@bosgra.nl
+info@advocaatruis.nl
+info@ijsselkern.nl
+info@staalbouw-barneveld.nl
+info@applebee.nl
+
+
+Rijksstraatweg 137/139
+9254 DD Hurdegaryp
+Ceintuurbaan 106
+7941LX, Meppel
+Hortensiastraat 72, 8013 AG, Zwolle
+Hofstraat 5, 8021 CD, Zwolle
+Groot Overeem 4
+3927 GH Renswoude
+3403 AE 
+3437ZE
+3437ZE
+
+KvK nummer: 01051548
+KVK NR 11030697
+
+Fax: 0648515987
+
+BTW-nummer: NL.0069.34.857.B.01
+
+
+This is data which the extractor accidentally picks up on occasionally, it's here to ensure that it doesn't pick it up next time
+2908627539371033455

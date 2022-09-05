@@ -316,6 +316,7 @@ class Scraper:
         """
 
         start = time()
+
         logger.info(f'Scraper received {len(urls)} urls')
         print(f'Scraper received {len(urls)} urls')
 
