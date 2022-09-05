@@ -10,7 +10,6 @@ from datetime import date as datelib
 from multiprocess import Pool
 import sys
 
-
 from .scraper.scraper import Scraper
 from .extractor.extractor import Extractor
 from .utils.utils import classify_url

@@ -22,20 +22,8 @@ from pathlib import Path
 from time import time
 import datetime
 import tldextract
-import logging
 import os
 
-try:
-    from cpscraper import config
-    logging.basicConfig(filename="{}/logs/scraper.log".format(config.PACKAGE_DIRECTORY), level=logging.INFO)
-    logger = logging.getLogger()
-except:
-    print("Could not find config")
-
-# if os.environ.get('scraper_logging_level', 'error') == "info":
-#     logger.setLevel(logging.INFO)
-# else:
-#     logger.setLevel(logging.ERROR)
 
 def get_urls(r, url):
     """
@@ -190,17 +178,10 @@ class Scraper:
                     # remove query string
                     urls = [urlparse(url_found)._replace(query="").geturl() for url_found in urls]
 
-                    if len(urls) == 0:
-                        logging.debug(f'scraper finished for {url}')
-                    else:
-                        logging.debug(f'scraper {len(urls)} urls found for {url}')
-
                 else:
-                    logging.error(f'scraper failed to scrape "{url}"\nResponse status: {status}')
                     path = ""
 
         except Exception as e:
-            logging.error(f'scraper failed to scrape "{url}"\nException: {str(e)}')
             status = str(e)
             path = ""
 
@@ -241,7 +222,6 @@ class Scraper:
                 crawl_dates = [datetime.datetime.strptime(str(path).rsplit('/', 1)[1], '%Y-%m-%d').date() for path in Path(sourcepath).iterdir() if path.is_dir()]
                 # check if most recent crawldate is within threshold and if so, log finding and stop crawling for this company
                 if ((datetime.date.today() - max(crawl_dates)).days < 30):
-                    logging.info(f'scraper for {all_records[0]} finished in {time()-start:2.0f} seconds due to recent crawling threshold.')
                     return
 
             # Breath first search algorithm from urls
@@ -263,7 +243,6 @@ class Scraper:
 
                 # make sure the scraper doesn't run forever
                 if len(temp_all_records) > 100:
-                    logging.warn(f'scraper downloaded over 100 subpages of "{url}"')
                     break
 
                 # remove urls already downloaded
@@ -275,10 +254,6 @@ class Scraper:
 
                 # reset waits for next level
                 self.waits[kvk] = 0
-
-                logger.info(f'scraper for {all_records[0]} finished in {time()-start:2.0f} seconds with {len(temp_all_records)} processed and {len(all_records)} links found.')
-                # return all_records
-                #print(f"{url} ended at {time()-self.start:2.1f} seconds")
 
     
     async def __fetch_all(self, records):
@@ -317,7 +292,6 @@ class Scraper:
 
         start = time()
 
-        logger.info(f'Scraper received {len(urls)} urls')
         print(f'Scraper received {len(urls)} urls')
 
         with ThreadPoolExecutor(max_workers=self.threads_bs4) as self.cpu_executor:#, ThreadPoolExecutor(max_workers=5) as self.io_executor:
