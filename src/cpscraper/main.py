@@ -134,7 +134,14 @@ def init() -> None:
     )
     time.sleep(0.5)
 
-    app_init_error = config.init_app(source_filename, "{}/{}".format(folder, data_filename))
+    ask_delete_files = typer.confirm("Remove raw files after extractor processing?\n")
+
+    typer.secho(
+        f"Raw files will be removed: {ask_delete_files}\n".format(folder, data_filename), fg=typer.colors.YELLOW
+    )
+    time.sleep(0.5)
+
+    app_init_error = config.init_app(source_filename, "{}/{}".format(folder, data_filename), ask_delete_files)
     if app_init_error:
         typer.secho(
             f'Creating config file failed with "{ERRORS[app_init_error]}"',
@@ -156,6 +163,11 @@ def scrape(config_file) -> None:
     """
     Start caching websites
     """
+    print(config.CONFIG_FILE_PATH)
+    typer.secho(f"Scraper is started with instructions:", fg=typer.colors.YELLOW)
+    typer.secho(f"- source file: {config.get_source_file_path(config.CONFIG_FILE_PATH)}", fg=typer.colors.YELLOW)
+    typer.secho(f"- target folder: {config.get_target_folder_path(config.CONFIG_FILE_PATH)}", fg=typer.colors.YELLOW)
+    typer.secho(f"- delete extracted files: {config.get_extractor_delete(config.CONFIG_FILE_PATH)}\n", fg=typer.colors.YELLOW)
 
     worker = _get_worker()
     
