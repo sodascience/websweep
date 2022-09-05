@@ -11,6 +11,21 @@ CONFIG_DIR_PATH = Path(typer.get_app_dir(__app_name__))
 CONFIG_FILE_PATH = CONFIG_DIR_PATH / "config.ini" 
 if not Path("logs").is_dir(): os.makedirs("{}/logs".format(PACKAGE_DIRECTORY), exist_ok=True)
 
+def _truncate_section(section: str) -> None:
+    config_parser = configparser.ConfigParser()
+    
+    with open(CONFIG_FILE_PATH, "r") as f:
+        config_parser.readfp(f)
+
+    config_parser.remove_section(section)
+
+    try:
+        with CONFIG_FILE_PATH.open("w") as file:
+            config_parser.write(file)
+    except:
+        pass
+
+
 def init_app(source_file_path: str, target_folder_path: str, extractor_delete_files: bool) -> int:
     """Initialize the application."""
 
@@ -46,11 +61,12 @@ def _init_config_file() -> int:
 
 
 def _save_source_file(source_file_path: str) -> int:
+    _truncate_section("Source")
     config_parser = configparser.ConfigParser()
     config_parser.add_section('Source')
     config_parser.set('Source', 'source_file', source_file_path)
     try:
-        with CONFIG_FILE_PATH.open("w") as file:
+        with CONFIG_FILE_PATH.open("a") as file:
             config_parser.write(file)
     except OSError:
         return FILE_ERROR
@@ -64,6 +80,7 @@ def get_source_file_path(config_file: Path) -> Path:
 
 
 def _save_target_folder(target_folder_path: str) -> int:
+    _truncate_section("Target")
     try:
         Path(target_folder_path).mkdir(exist_ok=True)
         Path(target_folder_path+"/data").mkdir(exist_ok=True)
@@ -86,7 +103,9 @@ def get_target_folder_path(config_file: Path) -> Path:
     config_parser.read(config_file)
     return Path(config_parser["Target"]["target_folder"])
 
+
 def _save_extractor_delete(extractor_delete_files: bool) -> int:
+    _truncate_section("Extractor")
     config_parser = configparser.ConfigParser()
     config_parser.add_section('Extractor')
     config_parser.set('Extractor', 'extractor_delete_files', str(extractor_delete_files))
