@@ -78,7 +78,7 @@ def _get_worker() -> Scraper:
 
 
 @app.command(name = "init")
-def init(formal: bool = typer.Option(False, help="Run without GUI elements")) -> None:
+def init(headless: bool = typer.Option(False, help="Run without GUI elements")) -> None:
     """
     Initialise the scraper
     """
