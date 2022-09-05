@@ -76,7 +76,6 @@ def _get_worker() -> Scraper:
         raise typer.Exit(1)
 
 
-
 @app.command(name = "init")
 def init(headless: bool = typer.Option(False, help="Run without GUI elements")) -> None:
     """
@@ -217,18 +216,22 @@ def scrape(config_file) -> None:
     worker.scrape_companies(urls)
 
 
-@app.callback()
-def main(
-    version: Optional[bool] = typer.Option(
-        None,
-        "--version",
-        "-v",
-        help="Show the application's version and exit.",
-        callback=_version_callback,
-        is_eager=True,
-    )
-) -> None:
-    return
+@app.command(name="config")
+def config(
+    delete_processed_files: bool = typer.Option(False, help="Delete / Not-Delete extractor processed raw files"),
+    target_folder_path: str = typer.Option(None, "--target-folder-path", help="Set new path for scraped data output"), 
+    source_file_path: str = typer.Option(None, "--source-file-path", help="Set new path for csv source file")) -> None:
+    if delete_processed_files:
+        print("delete")
+    else:
+        print("save")
+    print(target_folder_path)
+    print(source_file_path)
+
+    if target_folder_path is not None:
+        config._save_target_folder(target_folder_path)
+    if source_file_path is not None:
+        config._save_source_file(source_file_path)
 
 
 @app.command()
@@ -292,6 +295,19 @@ def extract() -> None:
     time_dict["total runtime: "] = total_runtime
 
 
+
+@app.callback()
+def main(
+    version: Optional[bool] = typer.Option(
+        None,
+        "--version",
+        "-v",
+        help="Show the application's version and exit.",
+        callback=_version_callback,
+        is_eager=True,
+    )
+) -> None:
+    return
 
 
 
