@@ -3,7 +3,13 @@
 from pathlib import Path
 from typing import Any, Dict, List, NamedTuple
 
+#TODO: Temporary, remove!
+import warnings
+warnings.filterwarnings("ignore")
+
 import asyncio
+import tqdm
+import tqdm.asyncio
 from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor
 from urllib.parse import urljoin, urlparse
 import functools
@@ -45,7 +51,6 @@ def get_urls(r, url):
     # extract urls from html code in beautiful soup
     # <a href="http://www.google.com/">Google</a>
     urls = [a.attrs.get('href') for a in soup.select('a[href]')]
-    #print(urls)
     
     # filter out urls from other domains
     # create base url
@@ -66,15 +71,15 @@ def get_urls(r, url):
 
 
 class Scraper:
-    def __init__(self, target_folder_path, save_html=True, max_level=3, base_path="data/scraped_data", classifier=lambda url, level: True, verify_ssl=False, concurrency_companies=20, threads_bs4 = 10, threads_download = 100):
+    def __init__(self, target_folder_path, save_html=True, max_level=3, classifier=lambda url, level: True, verify_ssl=False, concurrency_companies=20, threads_bs4 = 10, threads_download = 100):
         self.target_folder_path = target_folder_path
         self.base_path = self.target_folder_path / "data" 
         self.overview_path = f"{self.target_folder_path}/overview_urls.tsv"
+
         # Check if overview file exists, if not create it
         if not Path(self.overview_path).is_file():
             with open(self.overview_path, "w") as f:
                 f.write("id\tdomain\tlevel\turl\tstatus\tdate\tpath\n")
-
 
         self.save_html = save_html
         self.max_level = max_level
@@ -97,6 +102,9 @@ class Scraper:
             "Upgrade-Insecure-Requests": "1"}
 
         self.start = time()
+
+    def test_package():
+        return "Hello, this is a return from the main.py file in the cpscraper package"
         
     def __save_to_disk(self, path, contents):
         """
@@ -132,7 +140,7 @@ class Scraper:
 
         # be nice and wait a second per url (non blocking)
         self.waits[kvk] += 1
-        await asyncio.sleep(self.waits[kvk])
+        #await asyncio.sleep(self.waits[kvk])
 
         urls = []
         # hash url to give an ID (collisions are possible)
@@ -212,7 +220,7 @@ class Scraper:
         """
 
         async with self.sem_num_comps:
-            print(f"{url} started at {time()-self.start:2.1f} seconds")
+            #print(f"{url} started at {time()-self.start:2.1f} seconds")
             start = time()
 
             # name and url
@@ -270,6 +278,7 @@ class Scraper:
 
                 logger.info(f'scraper for {all_records[0]} finished in {time()-start:2.0f} seconds with {len(temp_all_records)} processed and {len(all_records)} links found.')
                 # return all_records
+                #print(f"{url} ended at {time()-self.start:2.1f} seconds")
 
     
     async def __fetch_all(self, records):
@@ -281,6 +290,7 @@ class Scraper:
 
         tasks = []
 
+
         # create HTTP client
         async with ClientSession(headers=self.headers, trust_env=True, connector=TCPConnector(limit=self.threads_download, ssl=self.verify_ssl)) as self.session:
             # for each url, create asynchronous task to fetch company and append to tasks list
@@ -288,9 +298,14 @@ class Scraper:
                 task = asyncio.ensure_future(self.__fetch_one_company(url))
                 tasks.append(task) 
             # create future and group tasks
-            await asyncio.gather(*tasks) 
-        #return _
+            
 
+            progress = [
+                await f
+                for f in tqdm.tqdm(asyncio.as_completed(tasks), total=len(tasks), leave = True, miniters=1)
+            ]
+
+            return progress
     
 
     def scrape_companies(self, urls):
@@ -300,7 +315,9 @@ class Scraper:
         :param urls: List of all level 0 urls to visit
         """
 
-        logger.info(f'scraper received {len(urls)} urls')
+        start = time()
+        logger.info(f'Scraper received {len(urls)} urls')
+        print(f'Scraper received {len(urls)} urls')
 
         with ThreadPoolExecutor(max_workers=self.threads_bs4) as self.cpu_executor:#, ThreadPoolExecutor(max_workers=5) as self.io_executor:
             self.loop = asyncio.get_event_loop() 
