@@ -158,26 +158,15 @@ def scrape(config_file) -> None:
     """
 
     worker = _get_worker()
-
-    start = time.time()
     
     with open(config_file, "r") as f:
         f.readline() #header
         urls = [line.split(",") for line in f.readlines()]        
         urls = sorted([(kvk.strip(), f"https://www.{url}/") for url, kvk in urls])
-    print(len(urls))
 
     # Run scraper
     # Start scraper, downloading 20 companies in parallel
     worker.scrape_companies(urls)
-
-    #Read what we did
-    with open("data/overview_urls.tsv") as f:
-        count = 0
-        for line in f:
-            if line.split("\t")[4] == "200":
-                count += 1
-    print(f"Downloaded {count} pages from {len(urls)} urls to level {3} in {time() - start:2.1f} seconds.")
 
 
 @app.callback()
