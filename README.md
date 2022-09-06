@@ -7,9 +7,8 @@ Developed for the [Firm Backbone Project](https://firmbackbone.nl)
 
 Use the package manager [pip]() to install cpscraper.
 
-You need to have poetry installed (```pip install poetry```), do remember to either restart your pc or add poetry to your PATH variables.
-If you get a warning that dependencies are not up to date, run ```poetry update``` first.
-
+You need to have poetry installed (``pip install poetry``), do remember to either restart your pc or add poetry to your PATH variables.
+If you get a warning that dependencies are not up to date, run ``poetry update`` first.
 
 ```bash
 cd to the cpscraper folder
@@ -49,6 +48,18 @@ $ cpscraper init [--headless]
 $ cpscraper scrape
 $ cpscraper extract
 
+```
+
+## Testing
+
+The system includes a variety of buildin test cases to test the extracter.
+
+```
+# cd to the tests folder
+$ cd ~home/[wherever the folder is located]/corporatescraper/tests
+
+# run the tests
+$ python3 -m main.py
 ```
 
 ## Contributing
