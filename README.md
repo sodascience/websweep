@@ -58,9 +58,19 @@ The system includes a variety of buildin test cases to test the extracter.
 # cd to the tests folder
 $ cd ~home/[wherever the folder is located]/corporatescraper/tests
 
-# run the tests
-$ python3 -m main.py
+# run the unittesting
+$ python3 -m unittest test.py
 ```
+The output should look something like this:
+```
+.......
+----------------------------------------------------------------------
+Ran 7 tests in 0.006s
+
+OK
+
+```
+Anything else means the tests failed. If this happens, a reinstall is required
 
 ## Contributing
 

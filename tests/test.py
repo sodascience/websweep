@@ -5,7 +5,7 @@ import test_extractor as TE
 class TestRegMethods(unittest.TestCase):
 
     def setUp(self):
-        self.testfile = open("tests/units.txt", "r")
+        self.testfile = open("units.txt", "r")
         self.text = self.testfile.read()
 
     def test_phones(self) -> None:
