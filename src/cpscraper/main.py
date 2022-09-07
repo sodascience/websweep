@@ -270,10 +270,14 @@ def extract() -> None:
     except:
         use_tika = False
 
-    # Parallelize loop (it may not work on Windows unless you keep "create_results" in a different file)
+
+
+
+    # Parallelize loop 
     with Pool() as pool, open(file_perm, "w+") as f_perm, open(file_res, "w+", encoding='UTF-8') as f_res:
         i = 0
-        
+        writer_res = ndjson.writer(file_res, ensure_ascii=False)
+        writer_perm = ndjson.writer(file_perm, ensure_ascii=False)
         for result in pool.imap_unordered(_create_results, results):
             i += 1
             if i % 100 == 0:
@@ -284,9 +288,10 @@ def extract() -> None:
             #json_list.append(json_dict)
 
             # Write data to file  (TODO: it should be line by line to avoid using update/append. 
-            prettify = ndjson.dump(f_perm, [time_dict])+"\n"#, indent=4)
-            prettify = ndjson.dump(prettify, [json_dict])+"\n"#json.dumps(json_list, indent=4)
-
+            #prettify = ndjson.dump(f_perm, [time_dict])+"\n"#, indent=4)
+            #prettify = ndjson.dump(prettify, [json_dict])+"\n"#json.dumps(json_list, indent=4)
+            writer_res.writerow(json_dict)
+            writer_perm.writerow(time_dict)
 
     end_time = time.perf_counter()
     total_runtime = end_time - start_time
