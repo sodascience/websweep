@@ -9,7 +9,6 @@ from cpscraper import DIR_ERROR, FILE_ERROR, SUCCESS, __app_name__
 PACKAGE_DIRECTORY = os.path.dirname(os.path.abspath(__file__))
 CONFIG_DIR_PATH = Path(typer.get_app_dir(__app_name__))
 CONFIG_FILE_PATH = CONFIG_DIR_PATH / "config.ini" 
-if not Path("logs").is_dir(): os.makedirs("{}/logs".format(PACKAGE_DIRECTORY), exist_ok=True)
 
 def _truncate_section(section: str) -> None:
     config_parser = configparser.ConfigParser()
