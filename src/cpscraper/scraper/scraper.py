@@ -12,6 +12,7 @@ import tqdm
 import tqdm.asyncio
 from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor
 from urllib.parse import urljoin, urlparse
+from protego import Protego
 import functools
 
 from aiohttp import ClientSession, TCPConnector
@@ -224,14 +225,23 @@ class Scraper:
                 if ((datetime.date.today() - max(crawl_dates)).days < 30):
                     return
 
+            # Read the robots
+            async with self.session.get(f"{url}/robots.txt") as response:
+                r = await response.read()
+                rp = Protego.parse(r.decode("utf-8", "ignore"))
+
+
             # Breath first search algorithm from urls
             while (len(records) > 0) and (level < self.max_level):
                 tasks = []
 
                 # fetch urls asynchroneously
                 for url in records:
-                    task = asyncio.ensure_future(self.__fetch_one_url(url, kvk=kvk, level=level))
-                    tasks.append(task)
+                    # check if we can actually download it in the robots
+                    if rp.can_fetch(url, "*"):
+                        task = asyncio.ensure_future(self.__fetch_one_url(url, kvk=kvk, level=level))
+                        tasks.append(task)
+
 
                 records = await asyncio.gather(*tasks)
 

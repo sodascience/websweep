@@ -9,3 +9,5 @@ dist/*
 **/.DS_Store
 sidn_test_kopie.csv
 init files/*
+examples/data/*
+*.ndjson
