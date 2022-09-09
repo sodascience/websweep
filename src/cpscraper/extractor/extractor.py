@@ -2,7 +2,7 @@ import os
 import re
 import typer
 from xmlrpc.client import Boolean
-from tika import parser
+from bs4 import BeautifulSoup
 
 class Extractor:
     def __init__(self, info):
@@ -26,7 +26,7 @@ class Extractor:
         
         self._clean_html(self.text)
 
-        # Phone/emails/fax can be found in the HTML?
+        # Phone/emails/fax can be found in the HTML
         with open(self.metadata["path"], "r", encoding="UTF-8") as file:
             self.text = file.read()
 
@@ -198,13 +198,15 @@ TF-8',
         # TODO: check if tika is active, if it's not default to BS4
         # from bs4 import BeautifulSoup
         # self.text = BeautifulSoup(text, 'html.parser').text
-        parsed = parser.from_file(file_path, requestOptions={'timeout': 120})
-        if parsed["status"] != 200:
-            # TODO: Add to log file
-            return {}
-        
-        self.metadata.update(parsed["metadata"])
-        self.text = parsed["content"]
+        soup = BeautifulSoup(file_path, features="html.parser")
+        tags = soup('meta')
+        lst = [value for item in tags for key, value in item.attrs.items()]
+        it = iter(lst)
+        metadata = dict(zip(it,it))
+        self.metadata.update(metadata)
+
+        text = soup.find_all(text=True)
+        self.text = text
 
     def mistake_warning(self) -> "Boolean":
         """
