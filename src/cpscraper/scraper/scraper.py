@@ -202,69 +202,72 @@ class Scraper:
         """
 
         async with self.sem_num_comps:
-            #print(f"{url} started at {time()-self.start:2.1f} seconds")
-            start = time()
+            try:
+                #print(f"{url} started at {time()-self.start:2.1f} seconds")
+                start = time()
 
-            # name and url
-            kvk, url = url
+                # name and url
+                kvk, url = url
 
-            self.waits[kvk] = 0
-
-            level = 0
-            all_records = [url]
-            records = [url]
-
-            # get list of dates when url was crawled
-            # TODO: threshold variable
-            # TODO: enhance removing www and http leaders
-            # TODO: make this a called method
-            sourcepath = "data/scraped_data/{}/{}".format(kvk, url.replace("www.", "").replace("http://", "").replace("https://", ""))
-            if Path(sourcepath).exists():
-                crawl_dates = [datetime.datetime.strptime(str(path).rsplit('/', 1)[1], '%Y-%m-%d').date() for path in Path(sourcepath).iterdir() if path.is_dir()]
-                # check if most recent crawldate is within threshold and if so, log finding and stop crawling for this company
-                if ((datetime.date.today() - max(crawl_dates)).days < 30):
-                    return
-
-            # Read the robots
-            async with self.session.get(f"{url}/robots.txt") as response:
-                r = await response.read()
-                rp = Protego.parse(r.decode("utf-8", "ignore"))
-
-
-            # Breath first search algorithm from urls
-            while (len(records) > 0) and (level < self.max_level):
-                tasks = []
-
-                # fetch urls asynchroneously
-                for url in records:
-                    # check if we can actually download it in the robots
-                    if rp.can_fetch(url, "*"):
-                        task = asyncio.ensure_future(self.__fetch_one_url(url, kvk=kvk, level=level))
-                        tasks.append(task)
-
-
-                records = await asyncio.gather(*tasks)
-
-                # flatten list python and remove duplicates
-                records = [item for sublist in records if sublist is not None for item in sublist]
-
-                # speed up search using a set (and remove www to avoid downloading twice the same url)
-                temp_all_records = set([url.replace("www.", "") for url in all_records])
-
-                # make sure the scraper doesn't run forever
-                if len(temp_all_records) > 100:
-                    break
-
-                # remove urls already downloaded
-                records = list(set([url for url in records if url.replace("www.", "") not in temp_all_records]))
-
-                # add new urls to list
-                all_records += records
-                level += 1
-
-                # reset waits for next level
                 self.waits[kvk] = 0
 
+                level = 0
+                all_records = [url]
+                records = [url]
+
+                # get list of dates when url was crawled
+                # TODO: threshold variable
+                # TODO: enhance removing www and http leaders
+                # TODO: make this a called method
+                sourcepath = "data/scraped_data/{}/{}".format(kvk, url.replace("www.", "").replace("http://", "").replace("https://", ""))
+                if Path(sourcepath).exists():
+                    crawl_dates = [datetime.datetime.strptime(str(path).rsplit('/', 1)[1], '%Y-%m-%d').date() for path in Path(sourcepath).iterdir() if path.is_dir()]
+                    # check if most recent crawldate is within threshold and if so, log finding and stop crawling for this company
+                    if ((datetime.date.today() - max(crawl_dates)).days < 30):
+                        return
+
+                # Read the robots
+                async with self.session.get(f"{url}/robots.txt") as response:
+                    r = await response.read()
+                    rp = Protego.parse(r.decode("utf-8", "ignore"))
+
+
+                # Breath first search algorithm from urls
+                while (len(records) > 0) and (level < self.max_level):
+                    tasks = []
+
+                    # fetch urls asynchroneously
+                    for url in records:
+                        # check if we can actually download it in the robots
+                        if rp.can_fetch(url, "*"):
+                            task = asyncio.ensure_future(self.__fetch_one_url(url, kvk=kvk, level=level))
+                            tasks.append(task)
+
+
+                    records = await asyncio.gather(*tasks)
+
+                    # flatten list python and remove duplicates
+                    records = [item for sublist in records if sublist is not None for item in sublist]
+
+                    # speed up search using a set (and remove www to avoid downloading twice the same url)
+                    temp_all_records = set([url.replace("www.", "") for url in all_records])
+
+                    # make sure the scraper doesn't run forever
+                    if len(temp_all_records) > 100:
+                        break
+
+                    # remove urls already downloaded
+                    records = list(set([url for url in records if url.replace("www.", "") not in temp_all_records]))
+
+                    # add new urls to list
+                    all_records += records
+                    level += 1
+
+                    # reset waits for next level
+                    self.waits[kvk] = 0
+            except Exception as e:
+                status = str(e)
+                path = ""
     
     async def __fetch_all(self, records):
         """
