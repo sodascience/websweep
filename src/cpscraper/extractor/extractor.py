@@ -10,36 +10,33 @@ class Extractor:
         self.metadata["id"], self.metadata["domain"], self.metadata["level"], self.metadata["website"], self.metadata["date"], self.metadata["path"] = info    
 
     def extracting(self):
-        # Get metadata
-        self.extract_metadata(self.metadata["path"])
-
-        # TODO: Log this behavior
-        if self.text is None:
-            return self.metadata
-
-        self.scrape_zip()
-        self.scrape_adres()
-        self._zipcode_warning()
-
-        self.scrape_kvk()
-        self.scrape_btw()
-        
-        self._clean_html(self.text)
 
         # Phone/emails/fax can be found in the HTML
         with open(self.metadata["path"], "r", encoding="UTF-8") as file:
             self.text = file.read()
 
+        self.scrape_kvk()
+        self.scrape_btw()
         self.scrape_phone()
         self.scrape_email()
         self.scrape_fax()
+
+        #Zip and address can better be found in raw text
+        self._clean_html(self.text)
+
+        self.scrape_zip()
+        self.scrape_adres()
+        self._zipcode_warning()
+
+        # Get metadata
+        self.extract_metadata(self.metadata["path"])
  
-        
+        site = self.metadata["website"]
         if self.mistake_warning():
-            print(f"finished {self.website}")
+            print(f"finished {site}")
         else:
             typer.secho(
-                    f'No values could be found for {self.website}',
+                    f'No values could be found for {website}',
                     fg=typer.colors.RED,
                 )
         
@@ -198,15 +195,12 @@ TF-8',
         # TODO: check if tika is active, if it's not default to BS4
         # from bs4 import BeautifulSoup
         # self.text = BeautifulSoup(text, 'html.parser').text
-        soup = BeautifulSoup(file_path, features="html.parser")
+        soup = BeautifulSoup(features="html.parser")
         tags = soup('meta')
         lst = [value for item in tags for key, value in item.attrs.items()]
         it = iter(lst)
         metadata = dict(zip(it,it))
         self.metadata.update(metadata)
-
-        text = soup.find_all(text=True)
-        self.text = text
 
     def mistake_warning(self) -> "Boolean":
         """
@@ -228,10 +222,8 @@ TF-8',
                 )
 
     def _clean_html(self, text) -> None:
-        """
-        Clean text extracted by tika
-        """
-        # keep only > 100 characters
-        text = "\n".join([_ for _ in text.split("\n") if len(_) > 100])
-        self.metadata["text"] = text
+        soup=BeautifulSoup(text,"html.parser")
+        text=soup.get_text()
+        self.text = text
+
         
