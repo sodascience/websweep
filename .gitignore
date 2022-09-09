@@ -11,3 +11,5 @@ sidn_test_kopie.csv
 init files/*
 examples/data/*
 *.ndjson
+scraper_data_actually/*
+src/cpscraper/extractor/ehh.py
