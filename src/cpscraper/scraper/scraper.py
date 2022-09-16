@@ -62,7 +62,7 @@ def get_urls(r, url):
 class Scraper:
     def __init__(self, target_folder_path, save_html=True, max_level=3, classifier=lambda url, level: True, verify_ssl=False, concurrency_companies=20, threads_bs4 = 10, threads_download = 100):
         self.target_folder_path = target_folder_path
-        self.base_path = self.target_folder_path / "data" 
+        self.base_path = self.target_folder_path / "data" / datetime.datetime.now().strftime("%d-%m-%Y")
         self.overview_path = f"{self.target_folder_path}/overview_urls.tsv"
 
         # Check if overview file exists, if not create it

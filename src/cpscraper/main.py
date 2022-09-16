@@ -204,15 +204,24 @@ def scrape(config_file) -> None:
     typer.secho(f"- delete extracted files: {config.get_extractor_delete(config.CONFIG_FILE_PATH)}\n", fg=typer.colors.YELLOW)
 
     worker = _get_worker()
-    
-    with open(config_file, "r") as f:
-        f.readline() #header
-        urls = [line.split(",") for line in f.readlines()]        
-        urls = sorted([(kvk.strip(), f"https://www.{url}/") for url, kvk in urls])
 
-    # Run scraper
-    # Start scraper, downloading 20 companies in parallel
-    worker.scrape_companies(urls)
+    try:
+        ask_continue_folder_location = True
+        os.mkdir(os.path.join(config.get_target_folder_path(config.CONFIG_FILE_PATH), "data/"+time.strftime("%d-%m-%Y")))
+    except:
+        ask_continue_folder_location = typer.confirm("WARNING: The scraper has already compiled a batch with today's date. If you continue, the existing batch will be complimented and no data is overwritten. \nContinue?\n")
+
+    if ask_continue_folder_location:
+        with open(config_file, "r") as f:
+            f.readline() #header
+            urls = [line.split(",") for line in f.readlines()]        
+            urls = sorted([(kvk.strip(), f"https://www.{url}/") for url, kvk in urls])
+
+        # Run scraper
+        # Start scraper, downloading 20 companies in parallel
+        worker.scrape_companies(urls)
+    else:
+        typer.secho(f"Scraper is suspended", fg=typer.colors.RED)
 
 
 @app.command(name="config")
