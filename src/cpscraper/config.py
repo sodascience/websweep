@@ -71,7 +71,7 @@ def _save_source_file(source_file_path: str) -> int:
         return FILE_ERROR
     return SUCCESS
 
-def get_source_file_path(config_file: Path) -> Path:
+def get_source_file_path(config_file: Path = CONFIG_FILE_PATH) -> Path:
     """Return the current path to the to-do database."""
     config_parser = configparser.ConfigParser()
     config_parser.read(config_file)
@@ -96,7 +96,7 @@ def _save_target_folder(target_folder_path: str) -> int:
         return FILE_ERROR
     return SUCCESS
 
-def get_target_folder_path(config_file: Path) -> Path:
+def get_target_folder_path(config_file: Path = CONFIG_FILE_PATH) -> Path:
     """Return the current path to the to-do database."""
     config_parser = configparser.ConfigParser()
     config_parser.read(config_file)
@@ -115,7 +115,7 @@ def _save_extractor_delete(extractor_delete_files: bool) -> int:
         return FILE_ERROR
     return SUCCESS
 
-def get_extractor_delete(config_file: Path) -> bool:
+def get_extractor_delete(config_file: Path = CONFIG_FILE_PATH) -> bool:
     """Return the current path to the to-do database."""
     config_parser = configparser.ConfigParser()
     config_parser.read(config_file)
