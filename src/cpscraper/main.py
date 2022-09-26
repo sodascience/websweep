@@ -251,7 +251,7 @@ def extract() -> None:
     Path(file_res).parent.mkdir(parents=True, exist_ok=True)
 
     # Read file
-    with open("/home/olivier/Documents/GitHub/corporate_scraper/scraper_data_actually/overview_urls.tsv") as f:
+    with open(os.path.join(config.get_target_folder_path(config.CONFIG_FILE_PATH), "overview_urls.tsv")) as f:
         f.readline() #header
         results = []
         for line in f:
