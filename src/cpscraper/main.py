@@ -276,8 +276,8 @@ def extract() -> None:
     # Parallelize loop 
     with Pool() as pool, open(file_perm, "w+") as f_perm, open(file_res, "w+", encoding='UTF-8') as f_res:
         i = 0
-        writer_res = ndjson.writer(file_res, ensure_ascii=False)
-        writer_perm = ndjson.writer(file_perm, ensure_ascii=False)
+        writer_res = ndjson.writer(f_res, ensure_ascii=False)
+        writer_perm = ndjson.writer(f_perm, ensure_ascii=False)
         for result in pool.imap_unordered(_create_results, results):
             i += 1
             if i % 100 == 0:
