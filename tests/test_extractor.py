@@ -67,7 +67,7 @@ def zip_pass(text) -> boolean:
     tester.text = text
     expected_result = ['3927 GH', '8013 AG', '3437ZE', '8021 CD', '3403 AE', '9254 DD', '7941LX']
     tester.scrape_zip()
-    res = tester.metadata["postcode"]
+    res = tester.metadata["zipcode"]
 
     if len(res) != len(expected_result):
         return False
