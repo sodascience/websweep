@@ -23,8 +23,8 @@ Package can also be used as a script without installation.
 When using windows, remember to use cd \ followed by the drive letter to change drives
 
 ```bash
-cd ~/home/[wherever the folder is located]/corporate_scraper
-$ python(3) -m src.cpscraper init
+cd ~/home/[wherever the folder is located]/corporate_scraper/src
+$ python(3) -m cpscraper init
 ```
 
 ## Installation (PIP)
