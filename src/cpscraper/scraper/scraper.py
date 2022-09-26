@@ -129,7 +129,7 @@ class Scraper:
 
         # be nice and wait a second per url (non blocking)
         self.waits[kvk] += 1
-        #await asyncio.sleep(self.waits[kvk])
+        await asyncio.sleep(self.waits[kvk])
 
         urls = []
         # hash url to give an ID (collisions are possible)
