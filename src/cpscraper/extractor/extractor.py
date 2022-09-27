@@ -3,6 +3,8 @@ import re
 import typer
 from xmlrpc.client import Boolean
 from bs4 import BeautifulSoup
+from cpscraper import config
+
 
 class Extractor:
     def __init__(self, info):
@@ -33,21 +35,26 @@ class Extractor:
  
         site = self.metadata["website"]
         if self.mistake_warning():
-            print(f"finished {site}")
-        else:
             typer.secho(
-                    f'No values could be found for {website}',
+                    f'No values could be found for {site}',
                     fg=typer.colors.RED,
                 )
         
+        #TODO Check if delete files is True, if so, delete the file
+    
+        # if config.get_extractor_delete() != True: 
+        #     os.remove(self.metadata["path"])
+
         return self.metadata
+
+
 
     def scrape_adres(self) -> None:
         """
         Scrape the adres from the input file, and add found adres to self.adres in set form
         """
         add_found = []
-        for zipcode in self.metadata["postcode"]:
+        for zipcode in self.metadata["zipcode"]:
             pattern = r'(((\b[a-zA-ZÀ-ÿ]+)\s+[0-9][0-9-_a-z,/]*)(\s+(?=(' + zipcode + r'))|(?=(' + zipcode + '))))'
             findall = re.findall(pattern, self.text)
             add_found += [item[1] for item in findall]
@@ -56,15 +63,15 @@ class Extractor:
 
     def scrape_zip(self) -> None:
         """
-        Scrape the zipcode from the input file, and add found zipcodes to self.zip_code in set form
+        Scrape the zipcode from the input file, and add found zipcodes to self.zipcode in set form
         """
     
         pattern = re.compile(r"""
                                 (\b\d{4}\s?(?!SS)(?!SD)(?!SA)(?!px)(?!em)(?!rm)[A-Z]{2}\b)
                                 """, re.VERBOSE)
-        zip_codes = list(set(re.findall(pattern, self.text)))
+        zipcodes = list(set(re.findall(pattern, self.text)))
         
-        self.metadata["postcode"] = zip_codes
+        self.metadata["zipcode"] = zipcodes
         
     def scrape_btw(self) -> None:
         """
@@ -161,7 +168,7 @@ class Extractor:
         
 
     def mistake_warning(self) -> "Boolean":
-        if not self.__dict__['email'] and not self.__dict__['kvk'] and not self.__dict__['phone'] and not self.__dict__['btw'] and not self.__dict__['fax'] and not self.__dict__['zip_code']:
+        if not self.__dict__['email'] and not self.__dict__['kvk'] and not self.__dict__['phone'] and not self.__dict__['btw'] and not self.__dict__['fax'] and not self.__dict__['zipcode']:
             return False
         else:
             return True
@@ -206,18 +213,16 @@ TF-8',
         """
         Checks if the extractor has ANY values at all, if it found none, it will return False
         """
-        if not self.metadata['email'] and not self.metadata['id'] and not self.metadata['phone'] and not self.metadata['btw'] and not self.metadata['fax'] and not self.metadata['postcode']:
+        if not self.metadata['email'] and not self.metadata['id'] and not self.metadata['phone'] and not self.metadata['btw'] and not self.metadata['fax'] and not self.metadata['zipcode']:
             return False
-        else:
-            return True
 
     def _zipcode_warning(self) -> None:
         """
         If the extractor did find a zipcode, but not an address, there is probably a bug. This notifies the user.=
         """
-        if (len(self.metadata["postcode"]) > 0) and (len(self.metadata["address"]) == 0):
+        if (len(self.metadata["zipcode"]) > 0) and (len(self.metadata["address"]) == 0):
             typer.secho(
-                    f'Found zipcodes, but found no address for {self.website}, this is probably a bug',
+                    f'Found zipcodes, but found no address for {self.metadata["website"]}, this is probably a bug',
                     fg=typer.colors.YELLOW,
                 )
 
