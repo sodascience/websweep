@@ -262,19 +262,6 @@ def extract() -> None:
             if status == "200":
                 results.append([id, domain, level, url, date, path.strip()])
 
-    try:
-        import tika
-        # initialize Tika
-        tika.initVM()
-        # TODO: set up tika log and get data from tika
-        # TODO: detect this while setting up the app
-        use_tika = True
-    except:
-        use_tika = False
-
-
-
-
     # Parallelize loop 
     with Pool() as pool, open(file_perm, "w+") as f_perm, open(file_res, "w+", encoding='UTF-8') as f_res:
         i = 0
