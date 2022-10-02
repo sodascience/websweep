@@ -119,4 +119,4 @@ def get_extractor_delete(config_file: Path = CONFIG_FILE_PATH) -> bool:
     """Return the current path to the to-do database."""
     config_parser = configparser.ConfigParser()
     config_parser.read(config_file)
-    return str(config_parser["Extractor"]["extractor_delete_files"])
+    return bool(config_parser["Extractor"]["extractor_delete_files"])
