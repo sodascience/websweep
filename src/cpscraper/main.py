@@ -205,8 +205,7 @@ def scrape(config_file) -> None:
     # print(config.CONFIG_FILE_PATH)
     typer.secho(f"Scraper is started with instructions:", fg=typer.colors.YELLOW)
     typer.secho(f"- source file: {config.get_source_file_path(config.CONFIG_FILE_PATH)}", fg=typer.colors.YELLOW)
-    typer.secho(f"- target folder: {config.get_target_folder_path(config.CONFIG_FILE_PATH)}", fg=typer.colors.YELLOW)
-    typer.secho(f"- delete extracted files: {config.get_extractor_delete(config.CONFIG_FILE_PATH)}\n", fg=typer.colors.YELLOW)
+    typer.secho(f"- target folder: {config.get_target_folder_path(config.CONFIG_FILE_PATH)}\n", fg=typer.colors.YELLOW)
 
     worker = _get_worker()
     
@@ -250,6 +249,10 @@ def extract() -> None:
     """
     Start scraping the data from cached website files
     """
+
+    typer.secho(f"Extractor is started with instructions:", fg=typer.colors.YELLOW)
+    typer.secho(f"- source folder: {config.get_target_folder_path(config.CONFIG_FILE_PATH)}", fg=typer.colors.YELLOW)
+    typer.secho(f"- delete extracted files: {config.get_extractor_delete(config.CONFIG_FILE_PATH)}\n", fg=typer.colors.YELLOW)
 
     start = time.time()
     test_data_dir = config.get_target_folder_path(config.CONFIG_FILE_PATH) / 'data'  # Get the folder 3 folders up, then add /data/test_data to that filepath
