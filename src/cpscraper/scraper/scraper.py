@@ -318,7 +318,7 @@ class Scraper:
             for line in f:
                 if line.split("\t")[4] == "200":
                     count += 1
-        print(f"Downloaded {count} pages from {len(urls)} urls to level {3} in {time() - start:2.1f} seconds.")
+        print(f"Scraped {count} pages from {len(urls)} urls to level {3} in {time() - start:2.1f} seconds.")
 
 
 
