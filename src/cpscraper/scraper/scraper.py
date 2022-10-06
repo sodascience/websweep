@@ -1,6 +1,7 @@
 """This module provides the Scraper model-controller."""
 
 from pathlib import Path
+from re import S
 from typing import Any, Dict, List, NamedTuple
 
 #TODO: Temporary, remove!
@@ -24,6 +25,8 @@ from time import time
 import datetime
 import tldextract
 import os
+import sqlite3 as sql
+
 
 
 def get_urls(r, url):
@@ -60,15 +63,23 @@ def get_urls(r, url):
 
 
 class Scraper:
-    def __init__(self, target_folder_path, save_html=True, max_level=3, classifier=lambda url, level: True, verify_ssl=False, concurrency_companies=20, threads_bs4 = 10, threads_download = 100):
+    def __init__(self, target_folder_path, save_html=True, max_level=3, classifier=lambda url, level: True, verify_ssl=False, concurrency_companies=20, threads_bs4 = 10, threads_download = 100, use_sqlite = False):
         self.target_folder_path = target_folder_path
         self.base_path = self.target_folder_path / "data" 
-        self.overview_path = f"{self.target_folder_path}/overview_urls.tsv"
+        self.use_sqlite = use_sqlite
+        Path(self.base_path).parent.mkdir(parents=True, exist_ok=True)
 
-        # Check if overview file exists, if not create it
-        if not Path(self.overview_path).is_file():
-            with open(self.overview_path, "w") as f:
-                f.write("id\tdomain\tlevel\turl\tstatus\tdate\tpath\n")
+        if use_sqlite:
+            self.overview_path = f"{self.target_folder_path}/overview_urls.db"
+        else:
+            self.overview_path = f"{self.target_folder_path}/overview_urls.tsv"
+
+        self.__create_overview_file()
+
+        # # Check if overview file exists, if not create it
+        # if not Path(self.overview_path).is_file():
+        #     with open(self.overview_path, "w") as f:
+        #         f.write("id\tdomain\tlevel\turl\tstatus\tdate\tpath\n")
 
         self.save_html = save_html
         self.max_level = max_level
@@ -90,21 +101,70 @@ class Scraper:
             "Cookie": "cookielawinfo-checkbox-necessary=yes; cookielawinfo-checkbox-functional=no; cookielawinfo-checkbox-performance=no; cookielawinfo-checkbox-analytics=no; cookielawinfo-checkbox-advertisement=no; cookielawinfo-checkbox-others=no; CookieLawInfoConsent=eyJuZWNlc3NhcnkiOnRydWUsImZ1bmN0aW9uYWwiOmZhbHNlLCJwZXJmb3JtYW5jZSI6ZmFsc2UsImFuYWx5dGljcyI6ZmFsc2UsImFkdmVydGlzZW1lbnQiOmZhbHNlLCJvdGhlcnMiOmZhbHNlfQ==; viewed_cookie_policy=yes; optiMonkClientId=f299334f-0413-e0e3-489b-d0ae48a7beb5",
             "Upgrade-Insecure-Requests": "1"}
 
-        self.start = time()
+        #self.start = time()
+        self.count_downloads = 0
+        
+
+        #print("Execution type:", exc_type)
+        #print("Execution value:", exc_value)
+        #print("Traceback:", traceback)
+ 
 
     def test_package():
         return "Hello, this is a return from the main.py file in the cpscraper package"
+
+    def __create_overview_file(self):
+        if self.use_sqlite:
+            connection = sql.connect(self.overview_path)
+            cursor = connection.cursor()
+            cursor.execute('''CREATE TABLE IF NOT EXISTS Overview
+                (id TEXT, domain TEXT, level INT, url TEXT, status TEXT, date TEXT, path TEXT);''')
+            cursor.execute("CREATE INDEX IF NOT EXISTS index_date ON Overview (date);")
+            cursor.execute("CREATE INDEX IF NOT EXISTS index_status ON Overview (status);")
+            connection.commit()
+            connection.close()
+
+        else:
+            # Check if overview file exists, if not create it
+            if not Path(self.overview_path).is_file():
+                with open(self.overview_path, "w") as f:
+                    f.write("id\tdomain\tlevel\turl\tstatus\tdate\tpath\n")
+
+    def __update_overview_file(self, id, level, url, status, path):
+
+        date = self.__get_current_date()
+        if ":" in url[:6]: #tel: or mailto:
+            domain = url
+        else:
+            domain = urlparse(url).netloc.replace('www.','')
         
+
+        if self.use_sqlite:
+            # opening the file is fast (0.00x per query), minimum gain to keep it open (and potential trouble with threading)
+            connection = sql.connect(self.overview_path)
+            cursor = connection.cursor()
+            cursor.execute(f"INSERT INTO Overview VALUES ('{id}', '{domain}', {level}, '{url}', '{status}', '{date}', '{path}')")
+            connection.commit()
+            connection.close()
+            
+        else:
+            with open(self.overview_path, "a+") as f:
+                f.write(f"{id}\t{domain}\t{level}\t{url}\t{status}\t{date}\t{path}\n")
+
+
     def __save_to_disk(self, path, contents):
         """
         Save all data to disk.
         """
+        self.count_downloads += 1
+
         # create folder if it doesn't exist
         Path(path).parent.mkdir(parents=True, exist_ok=True)
 
         # write raw contents to file
         with open(path, "w") as f:
             f.write(contents)
+
 
     def __get_current_date(self):
         # return current day in format "YYYY-MM-DD"
@@ -119,12 +179,12 @@ class Scraper:
         #     self.io_executor,
         #     functools.partial(self.classifier, url, level))
 
-        flag_download = self.classifier(url,level)
+        flag_download = self.classifier(url, level)
+        #print(url, flag_download)
         # classify url to see if it should be crawled
         if not flag_download:#self.classifier(url, level):
             # add to file, without path
-            with open(self.overview_path, "a+") as f:
-                f.write(f"{kvk}\t{urlparse(url).netloc.replace('www.','')}\t{level}\t{url}\t{-9}\t{self.__get_current_date()}\t\n")
+            self.__update_overview_file(kvk, level, url, -9, "")
             return []
 
         # be nice and wait a second per url (non blocking)
@@ -185,12 +245,12 @@ class Scraper:
         except Exception as e:
             status = str(e)
             path = ""
-
+        
         # print(f"{kvk}\t{urlparse(url).netloc}\t{level}\t{url}\t{status}\t{self.__get_current_date()}\t{path}")
         # save records to file
-        with open(self.overview_path, "a+") as f:
-            f.write(f"{kvk}\t{urlparse(url).netloc.replace('www.','')}\t{level}\t{url}\t{status}\t{self.__get_current_date()}\t{path}\n")
 
+        self.__update_overview_file(kvk, level, url, status, path)
+        
         return urls
 
 
@@ -204,7 +264,7 @@ class Scraper:
         async with self.sem_num_comps:
             try:
                 #print(f"{url} started at {time()-self.start:2.1f} seconds")
-                start = time()
+                #start = time()
 
                 # name and url
                 kvk, url = url
@@ -307,18 +367,12 @@ class Scraper:
 
         print(f'Scraper received {len(urls)} urls')
 
-        with ThreadPoolExecutor(max_workers=self.threads_bs4) as self.cpu_executor:#, ThreadPoolExecutor(max_workers=5) as self.io_executor:
+        with ThreadPoolExecutor(max_workers=self.threads_bs4) as self.cpu_executor, ThreadPoolExecutor(max_workers=1) as self.io_executor:
             self.loop = asyncio.get_event_loop() 
             future = asyncio.ensure_future(self.__fetch_all(urls)) 
             self.loop.run_until_complete(future) 
 
         #Read what we did
-        with open(self.overview_path) as f:
-            count = 0
-            for line in f:
-                if line.split("\t")[4] == "200":
-                    count += 1
-        print(f"Downloaded {count} pages from {len(urls)} urls to level {3} in {time() - start:2.1f} seconds.")
-
+        print(f"Downloaded {self.count_downloads} pages from {len(urls)} urls to level {3} in {time() - start:2.1f} seconds.")
 
 
