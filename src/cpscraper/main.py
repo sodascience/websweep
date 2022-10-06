@@ -12,6 +12,10 @@ from multiprocess import Pool
 import sys
 from shutil import rmtree
 import sqlite3 as sql
+import asyncio
+from tqdm import tqdm
+import tqdm.asyncio
+
 
 from .scraper.scraper import Scraper
 from .extractor.extractor import Extractor
@@ -200,11 +204,10 @@ def scrape(config_file) -> None:
     """
     Start caching websites
     """
-    print(config.CONFIG_FILE_PATH)
+    # print(config.CONFIG_FILE_PATH)
     typer.secho(f"Scraper is started with instructions:", fg=typer.colors.YELLOW)
     typer.secho(f"- source file: {config.get_source_file_path(config.CONFIG_FILE_PATH)}", fg=typer.colors.YELLOW)
-    typer.secho(f"- target folder: {config.get_target_folder_path(config.CONFIG_FILE_PATH)}", fg=typer.colors.YELLOW)
-    typer.secho(f"- delete extracted files: {config.get_extractor_delete(config.CONFIG_FILE_PATH)}\n", fg=typer.colors.YELLOW)
+    typer.secho(f"- target folder: {config.get_target_folder_path(config.CONFIG_FILE_PATH)}\n", fg=typer.colors.YELLOW)
 
     worker = _get_worker()
     
@@ -224,6 +227,10 @@ def cli_config(
     target_folder_path: str = typer.Option(None, "--target-folder-path", help="Set new path for scraped data output"), 
     source_file_path: str = typer.Option(None, "--source-file-path", help="Set new path for csv source file")) -> None:
     
+    """
+    Alter scraper configuration settings
+    """
+
     if delete_processed_files is not None:
         if delete_processed_files:
             config._save_extractor_delete(True)
@@ -233,6 +240,10 @@ def cli_config(
         config._save_target_folder(target_folder_path)
     if source_file_path is not None:
         config._save_source_file(source_file_path)
+    
+    typer.secho(
+        f"Config settings saved", fg=typer.colors.GREEN
+    )
 
 
 @app.command()
@@ -241,14 +252,15 @@ def extract() -> None:
     Start scraping the data from cached website files
     """
 
-    start_time = time.perf_counter()
+    typer.secho(f"Extractor is started with instructions:", fg=typer.colors.YELLOW)
+    typer.secho(f"- source folder: {config.get_target_folder_path(config.CONFIG_FILE_PATH)}", fg=typer.colors.YELLOW)
+    typer.secho(f"- delete extracted files: {config.get_extractor_delete(config.CONFIG_FILE_PATH)}\n", fg=typer.colors.YELLOW)
+
+    start = time.time()
     test_data_dir = config.get_target_folder_path(config.CONFIG_FILE_PATH) / 'data'  # Get the folder 3 folders up, then add /data/test_data to that filepath
     time_dict = {}
     json_list = []
     i = 0
-
-    file_perm = config.get_target_folder_path(config.CONFIG_FILE_PATH)  /  ('performance_' + str(datelib.today()) + '.json')
-    Path(file_perm).parent.mkdir(parents=True, exist_ok=True)
 
     file_res = config.get_target_folder_path(config.CONFIG_FILE_PATH)  /  ('scraped_data_' + str(datelib.today()) + '.ndjson')
     Path(file_res).parent.mkdir(parents=True, exist_ok=True)
@@ -275,35 +287,34 @@ def extract() -> None:
                     results.append([id, domain, level, url, date, path.strip()])
 
     # Parallelize loop 
-    with Pool() as pool, open(file_perm, "w+") as f_perm, open(file_res, "w+", encoding='UTF-8') as f_res:
+    with Pool() as pool, open(file_res, "w+", encoding='UTF-8') as f_res:
         i = 0
         writer_res = ndjson.writer(f_res, ensure_ascii=False)
-        writer_perm = ndjson.writer(f_perm, ensure_ascii=False)
-        for result in pool.imap_unordered(_create_results, results):
-            i += 1
-            if i % 100 == 0:
-                print(f"Finished {i} files out of {len(results)}")
-            time_dict, json_dict = result
 
-            #time_dict.update(time_dict_temp)
-            #json_list.append(json_dict)
+        with tqdm.tqdm(total=len(results), leave = True, miniters=1) as pbar:
+            for result in pool.imap_unordered(_create_results, results):
+                # i += 1
+                # if i % 100 == 0:
+                #     print(f"Finished {i} files out of {len(results)}")
+                time_dict, json_dict = result
 
-            # Write data to file  (TODO: it should be line by line to avoid using update/append. 
-            #prettify = ndjson.dump(f_perm, [time_dict])+"\n"#, indent=4)
-            #prettify = ndjson.dump(prettify, [json_dict])+"\n"#json.dumps(json_list, indent=4)
-            writer_res.writerow(json_dict)
-            writer_perm.writerow(time_dict)
+                #time_dict.update(time_dict_temp)
+                #json_list.append(json_dict)
+
+                # Write data to file  (TODO: it should be line by line to avoid using update/append. 
+                #prettify = ndjson.dump(f_perm, [time_dict])+"\n"#, indent=4)
+                #prettify = ndjson.dump(prettify, [json_dict])+"\n"#json.dumps(json_list, indent=4)
+                writer_res.writerow(json_dict)
+                pbar.update()
+        
+    
+    print(f"Extracted data from {len(results)} pages in {time.time() - start:2.1f} seconds.")
 
     if config.get_extractor_delete():
         #TODO Change the hardcoded "data" folder name into something that dynamically grabs folder generated by the scrape function
         data_folder = os.path.join(config.get_target_folder_path(), "data")
         for folder in os.listdir(data_folder):
             rmtree(os.path.join(data_folder, folder))
-        
-    end_time = time.perf_counter()
-    total_runtime = end_time - start_time
-    time_dict["total runtime: "] = total_runtime
-
 
 
 @app.callback()

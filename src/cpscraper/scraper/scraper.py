@@ -365,7 +365,7 @@ class Scraper:
 
         start = time()
 
-        print(f'Scraper received {len(urls)} urls')
+        # print(f'Scraper received {len(urls)} urls')
 
         with ThreadPoolExecutor(max_workers=self.threads_bs4) as self.cpu_executor, ThreadPoolExecutor(max_workers=1) as self.io_executor:
             self.loop = asyncio.get_event_loop() 
@@ -373,6 +373,7 @@ class Scraper:
             self.loop.run_until_complete(future) 
 
         #Read what we did
+
         print(f"Downloaded {self.count_downloads} pages from {len(urls)} urls to level {3} in {time() - start:2.1f} seconds.")
 
 
