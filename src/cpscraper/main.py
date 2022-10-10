@@ -11,9 +11,11 @@ from datetime import date as datelib
 from multiprocess import Pool
 import sys
 from shutil import rmtree
+import sqlite3 as sql
 import asyncio
 from tqdm import tqdm
 import tqdm.asyncio
+
 
 from .scraper.scraper import Scraper
 from .extractor.extractor import Extractor
@@ -264,14 +266,25 @@ def extract() -> None:
     Path(file_res).parent.mkdir(parents=True, exist_ok=True)
 
     # Read file
-    with open(os.path.join(config.get_target_folder_path(config.CONFIG_FILE_PATH), "overview_urls.tsv")) as f:
-        f.readline() #header
-        results = []
-        for line in f:
-            id, domain, level, url, status, date, path = line.split("\t")
-            # TODO: filter by date, do this in sqlite
-            if status == "200":
-                results.append([id, domain, level, url, date, path.strip()])
+    use_sqlite = True # this needs to be a parameter
+    date_start = "2000-01-01"
+    date_end = "3000-01-01"
+    if use_sqlite:
+        connection = sql.connect( "overview_urls.db")
+        cursor = connection.cursor()
+        results = cursor.execute(f'''SELECT id, domain, level, url, date, path FROM Overview 
+                         WHERE (date >= '{date_start}') 
+                         AND (date <= '{date_end}') 
+                         AND (status == "200")''').fetchall()
+        connection.close()
+    else:
+        with open(os.path.join(config.get_target_folder_path(config.CONFIG_FILE_PATH), "overview_urls.tsv")) as f:
+            f.readline() #header
+            results = []
+            for line in f:
+                id, domain, level, url, status, date, path = line.split("\t")
+                if (date >= date_start) and (date <= date_end) and (status == "200"):
+                    results.append([id, domain, level, url, date, path.strip()])
 
     # Parallelize loop 
     with Pool() as pool, open(file_res, "w+", encoding='UTF-8') as f_res:
