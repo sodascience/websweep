@@ -155,20 +155,12 @@ class Extractor:
         """
         Look for and try to scrape the annual report of a website, if found add to #TODO where to add?
         """
-        # soup = BeautifulSoup(self.text,"html.parser")
-        # for link in soup.select("a[href$='.pdf']"):
-        #     if link['href'].startswith('/'):
-        #         url = urljoin(self.metadata['website'], link['href'])
-        #     else:
-        #         url = link['href']
         pdf_links = set()
         pattern = re.compile(r"""
                             (financieel|rapportage|financial|annual.*report|jaarrekening|jaar.*verslag|jaarrapport|jaarrekening|boekhouding.rapportage|boekhouding.rapport)
                             (?!.medewerker|.studeren|.slim)
                             """, re.VERBOSE | re.IGNORECASE)
-        # pattern = re.compile(r"""
-        #                     algemene|voorwaarden
-        #                     """, re.VERBOSE|re.IGNORECASE)
+
         soup = BeautifulSoup(self.text,"html.parser")
         for link in soup.select("a[href$='.pdf']"):
             if re.search(pattern, str(link)):
