@@ -1,9 +1,8 @@
-import os
 import re
 import typer
 from xmlrpc.client import Boolean
 from bs4 import BeautifulSoup
-from cpscraper import config
+from urllib.parse import urljoin
 
 
 class Extractor:
@@ -22,32 +21,19 @@ class Extractor:
         self.scrape_phone()
         self.scrape_email()
         self.scrape_fax()
+        self.scrape_annual()
 
         #Zip and address can better be found in raw text
         self._clean_html(self.text)
 
         self.scrape_zip()
         self.scrape_adres()
-        self._zipcode_warning()
+        # self._zipcode_warning()
 
         # Get metadata
         self.extract_metadata(self.metadata["path"])
  
-        site = self.metadata["website"]
-        if self.mistake_warning():
-            typer.secho(
-                    f'No values could be found for {site}',
-                    fg=typer.colors.RED,
-                )
-        
-        #TODO Check if delete files is True, if so, delete the file
-    
-        # if config.get_extractor_delete() != True: 
-        #     os.remove(self.metadata["path"])
-
         return self.metadata
-
-
 
     def scrape_adres(self) -> None:
         """
@@ -85,8 +71,7 @@ class Extractor:
         result_list = set(re.findall(pattern, self.text))
         for item in result_list:
             self.btw.add(item[2])
-        
-        return list(self.btw)
+        self.metadata['btw'] = list(self.btw)
 
     def scrape_kvk(self) -> None:
         """
@@ -166,55 +151,43 @@ class Extractor:
         emails = [email[:-1] if email[-1] == '.' else email for email in self.email]
         self.metadata["email"] = emails
         
+    def scrape_annual(self) -> None:
+        """
+        Look for and try to scrape the annual report of a website, if found add to #TODO where to add?
+        """
+        pdf_links = set()
+        pattern = re.compile(r"""
+                            (financieel|rapportage|financial|annual.?report|jaarrekening|jaar.?verslag|jaarrapport|jaarrekening|boekhouding.?rapportage|boekhouding.?rapport)
+                            (?!.medewerker|.studeren|.slim)
+                            """, re.VERBOSE | re.IGNORECASE)
 
-    def mistake_warning(self) -> "Boolean":
-        if not self.__dict__['email'] and not self.__dict__['kvk'] and not self.__dict__['phone'] and not self.__dict__['btw'] and not self.__dict__['fax'] and not self.__dict__['zipcode']:
-            return False
-        else:
-            return True
+        soup = BeautifulSoup(self.text,"html.parser")
+        for link in soup.select("a[href$='.pdf']"):
+            if re.search(pattern, str(link)):
+                if link['href'].startswith('/'):
+                    url = urljoin(self.metadata['website'], link['href'])
+                else:
+                    url = link['href']
+                pdf_links.add(str(url))
 
+        self.metadata["pdf_links"] = list(pdf_links)
+
+            
+
+            
+            
 
     def extract_metadata(self, file_path) -> None:
         """        
         This function is used to extract the metadata from the file, and return it as a dictionary.
         # Example of metadata
-        {'Content-Encoding': 'U
-TF-8',
-        'Content-Language': 'nl',
-        'Content-Type': 'text/html; charset=UTF-8',
-        'Content-Type-Hint': 'text/html; charset=UTF-8',
-        'X-Parsed-By': ['org.apache.tika.parser.DefaultParser',
-        'org.apache.tika.parser.html.HtmlParser'],
-        'X-TIKA:content_handler': 'ToTextContentHandler',
-        'X-TIKA:embedded_depth': '0',
-        'X-TIKA:parse_time_millis': '18',
-        'dc:title': 'Over Webo | WEBO Heftrucks B.V.',
-        'description': "We schrijven begin jaren '50. Nederland is letterlijk een land in opbouw en mensen doen hun uiterste best om de enorme schade van de tweede wereldoorlog te hers...",
-        'og:description': "We schrijven begin jaren '50. Nederland is letterlijk een land in opbouw en mensen doen hun uiterste best om de enorme schade van de tweede wereldoorlog te hers...",
-        'og:locale': '_',
-        'og:site_name': 'WEBO Heftrucks B.V.',
-        'og:title': 'Over Webo | WEBO Heftrucks B.V.',
-        'og:url': 'https://www.weboheftrucks.nl/over-webo/',
-        'resourceName': "b'1a0b97173df88eceedc23673381c49afa3f2f927_over-webo'",
-        'title': 'Over Webo | WEBO Heftrucks B.V.',
-        'viewport': 'width=device-width, initial-scale=1.0'}
         """
-        # TODO: check if tika is active, if it's not default to BS4
-        # from bs4 import BeautifulSoup
-        # self.text = BeautifulSoup(text, 'html.parser').text
         soup = BeautifulSoup(features="html.parser")
         tags = soup('meta')
         lst = [value for item in tags for key, value in item.attrs.items()]
         it = iter(lst)
         metadata = dict(zip(it,it))
         self.metadata.update(metadata)
-
-    def mistake_warning(self) -> "Boolean":
-        """
-        Checks if the extractor has ANY values at all, if it found none, it will return False
-        """
-        if not self.metadata['email'] and not self.metadata['id'] and not self.metadata['phone'] and not self.metadata['btw'] and not self.metadata['fax'] and not self.metadata['zipcode']:
-            return False
 
     def _zipcode_warning(self) -> None:
         """
@@ -230,5 +203,3 @@ TF-8',
         soup=BeautifulSoup(text,"html.parser")
         text=soup.get_text()
         self.text = text
-
-        
