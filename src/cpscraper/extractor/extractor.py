@@ -157,7 +157,7 @@ class Extractor:
         """
         pdf_links = set()
         pattern = re.compile(r"""
-                            (financieel|rapportage|financial|annual.*report|jaarrekening|jaar.*verslag|jaarrapport|jaarrekening|boekhouding.rapportage|boekhouding.rapport)
+                            (financieel|rapportage|financial|annual.?report|jaarrekening|jaar.?verslag|jaarrapport|jaarrekening|boekhouding.?rapportage|boekhouding.?rapport)
                             (?!.medewerker|.studeren|.slim)
                             """, re.VERBOSE | re.IGNORECASE)
 
