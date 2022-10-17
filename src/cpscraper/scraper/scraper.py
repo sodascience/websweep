@@ -38,7 +38,7 @@ def get_urls(r, url):
     contents = r.decode("utf-8", "ignore")
 
     # parse
-    soup = BeautifulSoup(contents, 'html.parser')
+    soup = BeautifulSoup(contents, 'lxml')
 
     # extract urls from html code in beautiful soup
     # <a href="http://www.google.com/">Google</a>
@@ -218,7 +218,7 @@ class Scraper:
                         self.__save_to_disk(path, contents)
 
                     # parse
-                    soup = BeautifulSoup(contents, 'html.parser')
+                    soup = BeautifulSoup(contents, 'lxml')
 
                     # extract urls from html code in beautiful soup
                     urls = [a.attrs.get('href') for a in soup.select('a[href]')]
