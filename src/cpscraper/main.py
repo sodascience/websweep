@@ -258,13 +258,14 @@ def extract() -> None:
 
     start = time.time()
     pdf_list = []
+    i = 0
 
     file_res = config.get_target_folder_path(config.CONFIG_FILE_PATH)  /  ('scraped_data_' + str(datelib.today()) + '.ndjson')
     pdf_file = config.get_target_folder_path(config.CONFIG_FILE_PATH)  /  ('pdf_links_' + str(datelib.today()) + '.ndjson')
     Path(file_res).parent.mkdir(parents=True, exist_ok=True)
 
     # Read file
-    use_sqlite = True # this needs to be a parameter
+    use_sqlite = False # this needs to be a parameter
     date_start = "2000-01-01"
     date_end = "3000-01-01"
     if use_sqlite:
@@ -297,9 +298,9 @@ def extract() -> None:
                     print(json_dict['pdf_links'])
                     pdf_list.append(json_dict["pdf_links"])
 
-                #IF you want to only run extract through a part of the dataset, uncomment this and change the if statement
+                # IF you want to only run extract through a part of the dataset, uncomment this and change the if statement
                 # i += 1
-                # if i == 1500:
+                # if i == 3500:
                 #     break
 
     with open(pdf_file, "w+", encoding='UTF-8') as pdf_res:
@@ -327,8 +328,3 @@ def main(
     )
 ) -> None:
     return
-
-
-
-
-

@@ -157,32 +157,30 @@ class Extractor:
         """
         pdf_links = set()
         pattern = re.compile(r"""
-                            (financieel|rapportage|financial|annual.?report|jaarrekening|jaar.?verslag|jaarrapport|jaarrekening|boekhouding.?rapportage|boekhouding.?rapport)
-                            (?!.medewerker|.studeren|.slim)
+                            financiele.?rapportage|annual.?report|jaarrekening|jaar.?verslag|jaarrapport|jaarrekening|boekhouding.?rapportage|boekhouding.?rapport|financial.?performance|investor|investeerder|financial.?results
+                            """, re.VERBOSE | re.IGNORECASE)
+        neg_pattern = re.compile(r"""
+                            medewerker|studeren|slim|algemene.?voorwaarden|privacy|test|asbestos|website|mailto|CO2|webshopp|app|experience|opstellen|zoek|coronavirus|diensten|nieuwsbrief|ZZP|freelancers|wat.?is|vertalen
                             """, re.VERBOSE | re.IGNORECASE)
 
-        soup = BeautifulSoup(self.text,"html.parser")
-        for link in soup.select("a[href$='.pdf']"):
-            if re.search(pattern, str(link)):
-                if link['href'].startswith('/'):
-                    url = urljoin(self.metadata['website'], link['href'])
+        soup = BeautifulSoup(self.text,"lxml")
+        for link in soup.find_all("a"):
+            if re.search(pattern, str(link.get('href'))) and not re.search(neg_pattern, str(link.get('href'))):
+                print(re.search(pattern, str(link.get('href'))))
+                if link.get('href').startswith('/'):
+                    url = urljoin(self.metadata['website'], link.get('href'))
                 else:
-                    url = link['href']
+                    url = link.get('href')
                 pdf_links.add(str(url))
 
         self.metadata["pdf_links"] = list(pdf_links)
-
-            
-
-            
-            
 
     def extract_metadata(self, file_path) -> None:
         """        
         This function is used to extract the metadata from the file, and return it as a dictionary.
         # Example of metadata
         """
-        soup = BeautifulSoup(features="html.parser")
+        soup = BeautifulSoup(features="lxml")
         tags = soup('meta')
         lst = [value for item in tags for key, value in item.attrs.items()]
         it = iter(lst)
@@ -200,6 +198,6 @@ class Extractor:
                 )
 
     def _clean_html(self, text) -> None:
-        soup=BeautifulSoup(text,"html.parser")
+        soup=BeautifulSoup(text,"lxml")
         text=soup.get_text()
         self.text = text
