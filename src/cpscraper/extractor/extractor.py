@@ -136,6 +136,7 @@ class Extractor:
         
         self.metadata["fax"] = list(self.fax)
 
+
     def scrape_email(self) -> None:
         """
         Scrape the Email adress from the input file, and adds the found email adress to self.email in set form
@@ -151,6 +152,7 @@ class Extractor:
         emails = [email[:-1] if email[-1] == '.' else email for email in self.email]
         self.metadata["email"] = emails
         
+
     def scrape_annual(self) -> None:
         """
         Look for and try to scrape the annual report of a website, if found add to #TODO where to add?
@@ -174,6 +176,7 @@ class Extractor:
                 pdf_links.add(str(url))
 
         self.metadata["pdf_links"] = list(pdf_links)
+            
 
     def extract_metadata(self, file_path) -> None:
         """        

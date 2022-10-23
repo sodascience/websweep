@@ -160,29 +160,14 @@ def init(headless: bool = typer.Option(False, help="Run without GUI elements")) 
     )
     time.sleep(0.5)
 
-    data_filename = typer.prompt("Target folder name, ENTER for default", "scraper_data")
-
-    while Path("{}/{}".format(folder, data_filename)).exists():
-        typer.secho(
-            "Target folder {}/{} does already exist, choose other folder name\n".format(folder, data_filename), fg=typer.colors.RED
-        )
-        time.sleep(0.5)
-
-        data_filename = typer.prompt("ENTER target folder name", "scraper_data")
-
-    typer.secho(
-        "Target folder {}/{} saved\n".format(folder, data_filename), fg=typer.colors.YELLOW
-    )
-    time.sleep(0.5)
-
     ask_delete_files = typer.confirm("Remove raw files after extractor processing?\n")
 
     typer.secho(
-        f"Raw files will be removed: {ask_delete_files}\n".format(folder, data_filename), fg=typer.colors.YELLOW
+        f"Raw files will be removed: {ask_delete_files}\n", fg=typer.colors.YELLOW
     )
     time.sleep(0.5)
 
-    app_init_error = config.init_app(source_filename, "{}/{}".format(folder, data_filename), ask_delete_files)
+    app_init_error = config.init_app(source_filename, "{}/{}", ask_delete_files)
     if app_init_error:
         typer.secho(
             f'Creating config file failed with "{ERRORS[app_init_error]}"',
@@ -230,6 +215,10 @@ def cli_config(
     """
     Alter scraper configuration settings
     """
+    if delete_processed_files is None and target_folder_path is None and source_file_path is None:
+        typer.secho(f"Scraper is started with instructions:", fg=typer.colors.YELLOW)
+        typer.secho(f"- source file: {config.get_source_file_path(config.CONFIG_FILE_PATH)}", fg=typer.colors.YELLOW)
+        typer.secho(f"- target folder: {config.get_target_folder_path(config.CONFIG_FILE_PATH)}\n", fg=typer.colors.YELLOW)
 
     if delete_processed_files is not None:
         if delete_processed_files:
@@ -265,7 +254,7 @@ def extract() -> None:
     Path(file_res).parent.mkdir(parents=True, exist_ok=True)
 
     # Read file
-    use_sqlite = False # this needs to be a parameter
+    use_sqlite = True #TODO: this needs to be a parameter
     date_start = "2000-01-01"
     date_end = "3000-01-01"
     if use_sqlite:
