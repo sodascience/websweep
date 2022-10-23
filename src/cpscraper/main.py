@@ -211,15 +211,11 @@ def cli_config(
     delete_processed_files: bool = typer.Option(None, help="Delete / Not-Delete extractor processed raw files"),
     target_folder_path: str = typer.Option(None, "--target-folder-path", help="Set new path for scraped data output"), 
     source_file_path: str = typer.Option(None, "--source-file-path", help="Set new path for csv source file")) -> None:
-    
     """
     Alter scraper configuration settings
     """
-    if delete_processed_files is None and target_folder_path is None and source_file_path is None:
-        typer.secho(f"Scraper is started with instructions:", fg=typer.colors.YELLOW)
-        typer.secho(f"- source file: {config.get_source_file_path(config.CONFIG_FILE_PATH)}", fg=typer.colors.YELLOW)
-        typer.secho(f"- target folder: {config.get_target_folder_path(config.CONFIG_FILE_PATH)}\n", fg=typer.colors.YELLOW)
-
+    
+    
     if delete_processed_files is not None:
         if delete_processed_files:
             config._save_extractor_delete(True)
