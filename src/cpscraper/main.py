@@ -153,20 +153,19 @@ def extract() -> None:
     typer.secho(f"- delete extracted files: {config.get_extractor_delete()}\n", fg=typer.colors.YELLOW)
 
     start = time.time()
-    test_data_dir = config.get_target_folder_path() / 'data'  # Get the folder 3 folders up, then add /data/test_data to that filepath
-    time_dict = {}
-    json_list = []
+
+    
     i = 0
 
     file_res = config.get_target_folder_path()  /  ('scraped_data_' + str(datelib.today()) + '.ndjson')
+    pdf_file = config.get_target_folder_path(config.CONFIG_FILE_PATH)  /  ('pdf_links_' + str(datelib.today()) + '.ndjson')
+    pdf_list = []
+    
     Path(file_res).parent.mkdir(parents=True, exist_ok=True)
 
     # Read file
-    use_sqlite = False # this needs to be a parameter
-    date_start = "2000-01-01"
-    date_end = "3000-01-01"
     if use_sqlite:
-        connection = sql.connect( "overview_urls.db")
+        connection = sql.connect(os.path.join(config.get_target_folder_path(config.CONFIG_FILE_PATH),  "overview_urls.db"))
         cursor = connection.cursor()
         results = cursor.execute(f'''SELECT id, domain, level, url, date, path FROM Overview 
                          WHERE (date >= '{date_start}') 
@@ -184,24 +183,25 @@ def extract() -> None:
 
     # Parallelize loop 
     with Pool() as pool, open(file_res, "w+", encoding='UTF-8') as f_res:
-        i = 0
         writer_res = ndjson.writer(f_res, ensure_ascii=False)
 
         with tqdm.tqdm(total=len(results), leave = True, miniters=1) as pbar:
             for result in pool.imap_unordered(_create_results, results):
-                # i += 1
-                # if i % 100 == 0:
-                #     print(f"Finished {i} files out of {len(results)}")
                 time_dict, json_dict = result
-
-                #time_dict.update(time_dict_temp)
-                #json_list.append(json_dict)
-
-                # Write data to file  (TODO: it should be line by line to avoid using update/append. 
-                #prettify = ndjson.dump(f_perm, [time_dict])+"\n"#, indent=4)
-                #prettify = ndjson.dump(prettify, [json_dict])+"\n"#json.dumps(json_list, indent=4)
                 writer_res.writerow(json_dict)
                 pbar.update()
+                if json_dict["pdf_links"] != []:
+                    print(json_dict['pdf_links'])
+                    pdf_list.append(json_dict["pdf_links"])
+
+                # IF you want to only run extract through a part of the dataset, uncomment this and change the if statement
+                # i += 1
+                # if i == 3500:
+                #     break
+
+    with open(pdf_file, "w+", encoding='UTF-8') as pdf_res:
+        pdf_writer = ndjson.writer(pdf_res, ensure_ascii=False)
+        pdf_writer.writerow(pdf_list)
         
     
     print(f"Extracted data from {len(results)} pages in {time.time() - start:2.1f} seconds.")
@@ -225,6 +225,7 @@ def main(
     )
 ) -> None:
     return
+
 
 
 @app.command(name = "instance")
