@@ -180,9 +180,8 @@ class Extractor:
         This function is used to extract the metadata from the file, and return it as a dictionary.
         # Example of metadata
         """
-        soup = BeautifulSoup(features="lxml")
-        tags = soup('meta')
-        lst = [value for item in tags for key, value in item.attrs.items()]
+        tags = self.soup('meta')
+        lst = [value for item in tags for key, value in item.attrs.items() if not type(value) == list]
         it = iter(lst)
         metadata = dict(zip(it,it))
         self.metadata.update(metadata)
