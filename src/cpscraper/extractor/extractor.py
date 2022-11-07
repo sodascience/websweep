@@ -181,7 +181,9 @@ class Extractor:
         # Example of metadata
         """
         tags = self.soup('meta')
-        lst = [value for item in tags for key, value in item.attrs.items()]
+        
+        lst = [value for item in tags for key, value in item.attrs.items() if not type(value) == list]
+
         it = iter(lst)
         metadata = dict(zip(it,it))
         self.metadata.update(metadata)
