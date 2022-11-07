@@ -15,27 +15,28 @@ class Extractor:
         # Phone/emails/fax can be found in the HTML
         with open(self.metadata["path"], "r", encoding="UTF-8") as file:
             self.text = file.read()
-
-        self.scrape_kvk()
-        self.scrape_btw()
-        self.scrape_phone()
-        self.scrape_email()
-        self.scrape_fax()
-        self.scrape_annual()
-
-        #Zip and address can better be found in raw text
-        self._clean_html(self.text)
-
-        self.scrape_zip()
-        self.scrape_adres()
-        # self._zipcode_warning()
+            self.soup = BeautifulSoup(self.text,"lxml")
 
         # Get metadata
-        self.extract_metadata(self.metadata["path"])
- 
+        self.extract_metadata()
+
+        #Extract the data
+        self.extract_kvk()
+        self.extract_btw()
+        self.extract_phone()
+        self.extract_email()
+        self.extract_fax()
+        self.extract_annual_report()
+
+        #Zip and address can better be found in raw text
+        self._clean_html()
+
+        self.extract_zip()
+        self.extract_address()
+
         return self.metadata
 
-    def scrape_adres(self) -> None:
+    def extract_address(self) -> None:
         """
         Scrape the adres from the input file, and add found adres to self.adres in set form
         """
@@ -47,7 +48,7 @@ class Extractor:
         
         self.metadata["address"] = add_found
 
-    def scrape_zip(self) -> None:
+    def extract_zip(self) -> None:
         """
         Scrape the zipcode from the input file, and add found zipcodes to self.zipcode in set form
         """
@@ -59,7 +60,7 @@ class Extractor:
         
         self.metadata["zipcode"] = zipcodes
         
-    def scrape_btw(self) -> None:
+    def extract_btw(self) -> None:
         """
         Scrape the BTW number from the input file, and add found BTW Numbers (usually only 1) to self.btw in list form
         """
@@ -73,7 +74,7 @@ class Extractor:
             self.btw.add(item[2])
         self.metadata['btw'] = list(self.btw)
 
-    def scrape_kvk(self) -> None:
+    def extract_kvk(self) -> None:
         """
         Scrape the KVK number from the input file, and add found KVK number to self.kvk in set form
         """
@@ -92,7 +93,7 @@ class Extractor:
 
         self.metadata["kvk"] = list(self.kvk)
         
-    def scrape_phone(self) -> None:
+    def extract_phone(self) -> None:
         """
         Scrape the phone number from the input file, and add found phone numbers to self.phone in set form
         """
@@ -117,7 +118,7 @@ class Extractor:
             self.phone.add(temp)
         self.metadata["phone"] = list(self.phone)
         
-    def scrape_fax(self) -> None:
+    def extract_fax(self) -> None:
         """
         Scrape the fax number from the input file, and add found fax numbers to self.fax in set form
         """
@@ -136,7 +137,7 @@ class Extractor:
         
         self.metadata["fax"] = list(self.fax)
 
-    def scrape_email(self) -> None:
+    def extract_email(self) -> None:
         """
         Scrape the Email adress from the input file, and adds the found email adress to self.email in set form
         """
@@ -151,7 +152,7 @@ class Extractor:
         emails = [email[:-1] if email[-1] == '.' else email for email in self.email]
         self.metadata["email"] = emails
         
-    def scrape_annual(self) -> None:
+    def extract_annual_report(self) -> None:
         """
         Look for and try to scrape the annual report of a website, if found add to #TODO where to add?
         """
@@ -163,8 +164,7 @@ class Extractor:
                             medewerker|studeren|slim|algemene.?voorwaarden|privacy|test|asbestos|website|mailto|CO2|webshopp|app|experience|opstellen|zoek|coronavirus|diensten|nieuwsbrief|ZZP|freelancers|wat.?is|vertalen
                             """, re.VERBOSE | re.IGNORECASE)
 
-        soup = BeautifulSoup(self.text,"lxml")
-        for link in soup.find_all("a"):
+        for link in self.soup.find_all("a"):
             if re.search(pattern, str(link.get('href'))) and not re.search(neg_pattern, str(link.get('href'))):
                 print(re.search(pattern, str(link.get('href'))))
                 if link.get('href').startswith('/'):
@@ -180,8 +180,7 @@ class Extractor:
         This function is used to extract the metadata from the file, and return it as a dictionary.
         # Example of metadata
         """
-        soup = BeautifulSoup(features="lxml")
-        tags = soup('meta')
+        tags = self.soup('meta')
         lst = [value for item in tags for key, value in item.attrs.items()]
         it = iter(lst)
         metadata = dict(zip(it,it))
@@ -197,7 +196,6 @@ class Extractor:
                     fg=typer.colors.YELLOW,
                 )
 
-    def _clean_html(self, text) -> None:
-        soup=BeautifulSoup(text,"lxml")
-        text=soup.get_text()
+    def _clean_html(self) -> None:
+        text=self.soup.get_text()
         self.text = text
