@@ -175,7 +175,7 @@ class Extractor:
 
         self.metadata["pdf_links"] = list(pdf_links)
 
-    def extract_metadata(self, file_path) -> None:
+    def extract_metadata(self) -> None:
         """        
         This function is used to extract the metadata from the file, and return it as a dictionary.
         # Example of metadata
