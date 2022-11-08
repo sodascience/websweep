@@ -294,9 +294,9 @@ def extract() -> None:
                 time_dict, json_dict = result
                 writer_res.writerow(json_dict)
                 pbar.update()
-                if json_dict["pdf_links"] != []:
-                    print(json_dict['pdf_links'])
-                    pdf_list.append(json_dict["pdf_links"])
+                if json_dict["annual_reports"] != []:
+                    print(json_dict['annual_reports'])
+                    pdf_list.append(json_dict["annual_reports"])
 
                 # IF you want to only run extract through a part of the dataset, uncomment this and change the if statement
                 # i += 1
