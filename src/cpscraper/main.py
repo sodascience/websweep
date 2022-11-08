@@ -73,7 +73,7 @@ def _get_worker() -> Scraper:
         )
         raise typer.Exit(1)
     if source_file_path.exists():
-        return Scraper(target_folder_path = config.get_target_folder_path(), classifier=classify_url)
+        return Scraper(target_folder_path = config.get_target_folder_path(), classifier=classify_url, use_sqlite = config.get_use_database())
     else:
         typer.secho(
             'Source file not found. Please, run "scraper init" or use scrape --help',
@@ -93,6 +93,8 @@ def scrape(config_file) -> None:
     """
     Start caching websites
     """
+
+    config.set_last_scrape_date()
 
     typer.secho(f"Scraper is started with instructions:", fg=typer.colors.YELLOW)
     typer.secho(f"- source file: {config.get_source_file_path()}", fg=typer.colors.YELLOW)
@@ -163,9 +165,12 @@ def extract() -> None:
     
     Path(file_res).parent.mkdir(parents=True, exist_ok=True)
 
+    date_start = datelib.today()
+    date_end = datelib.today()
+
     # Read file
-    if use_sqlite:
-        connection = sql.connect(os.path.join(config.get_target_folder_path(config.CONFIG_FILE_PATH),  "overview_urls.db"))
+    if config.get_use_database():
+        connection = sql.connect(os.path.join(config.get_target_folder_path(), "overview_urls.db"))
         cursor = connection.cursor()
         results = cursor.execute(f'''SELECT id, domain, level, url, date, path FROM Overview 
                          WHERE (date >= '{date_start}') 
@@ -376,20 +381,28 @@ def init(headless: bool = typer.Option(False, help="Run without GUI elements")) 
     else:
         file = typer.prompt("ENTER source file location base PATH\n")
 
-   
     typer.secho(
         "Source file {file} selected\n", fg=typer.colors.YELLOW
     )
     time.sleep(0.5)
 
-    ask_delete_files = typer.confirm("SELECT to remove raw files after extractor processing?\n")
+
+    ask_use_sql = typer.confirm("SELECT to use SQLite database output?\n")
 
     typer.secho(
-        f"Raw files will be removed: {ask_delete_files}\n", fg=typer.colors.YELLOW
+        f"SQLite database used: {ask_use_sql}\n", fg=typer.colors.YELLOW
     )
     time.sleep(0.5)
 
-    app_init_error = config.init_app(str(folder), str(file), ask_delete_files)
+
+    ask_delete_files = typer.confirm("SELECT to remove raw files after extractor processing?\n")
+
+    typer.secho(
+        f"Raw files removed: {ask_delete_files}\n", fg=typer.colors.YELLOW
+    )
+    time.sleep(0.5)
+
+    app_init_error = config.init_app(str(folder), str(file), ask_delete_files, ask_use_sql)
     if app_init_error:
         typer.secho(
             f'Creating config file failed with "{ERRORS[app_init_error]}"',
