@@ -305,9 +305,6 @@ def init(headless: bool = typer.Option(False, help="Run without GUI elements")) 
         typer.secho(f"Scraper is initialised and ready to use \nUse the --help command for instructions\n ", fg=typer.colors.GREEN)
 
 
-
-
-
 @app.command(name = "init")
 def init(headless: bool = typer.Option(False, help="Run without GUI elements")) -> None:
     """
