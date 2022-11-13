@@ -201,6 +201,7 @@ def extract() -> None:
 
     with open(pdf_file, "w+", encoding='UTF-8') as pdf_res:
         pdf_writer = ndjson.writer(pdf_res, ensure_ascii=False)
+        pdf_list = list(tuple(pdf_list))
         pdf_writer.writerow(pdf_list)
         
     
