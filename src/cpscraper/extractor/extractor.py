@@ -81,15 +81,24 @@ class Extractor:
         
         self.kvk = set()
         
+        #Pattern 1
         pattern = re.compile(r"""
                                 k\.?v\.?k.{0,12}?(\b\d{8}) | (\b\d{8}).{0,5}?k\.?v\.?k
                                 """, re.VERBOSE | re.IGNORECASE)
-        result_list = re.findall(pattern, self.text)
         result_list = set(re.findall(pattern, self.text))
         for item in result_list:
             for subitem in item:
                 if len(subitem) > 0:
                     self.kvk.add(subitem)
+
+        #Pattern 2
+        pattern2 = re.compile(r"""
+                                (?<=kamer van koophandel).{0,50}(\d{8})
+                                """, re.VERBOSE | re.IGNORECASE)
+        result_list = set(re.findall(pattern2, self.text))
+        for item in result_list:
+            self.kvk.add(item)
+
 
         self.metadata["kvk"] = list(self.kvk)
         
