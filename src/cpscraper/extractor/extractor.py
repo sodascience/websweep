@@ -167,7 +167,7 @@ class Extractor:
         for link in self.soup.find_all("a"):
             if re.search(pattern, str(link.get('href'))) and not re.search(neg_pattern, str(link.get('href'))):
                 print(re.search(pattern, str(link.get('href'))))
-                if link.get('href').startswith('/'):
+                if not link.get('href').startswith('www'):
                     url = urljoin(self.metadata['website'], link.get('href'))
                 else:
                     url = link.get('href')
