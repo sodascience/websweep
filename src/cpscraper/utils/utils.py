@@ -7,6 +7,8 @@ def classify_url(url, level):
     """
     Classify url based on level
     """
+    if level == 0:
+        return True
 
     # Taking the path (next step) will remove this part, we need to catch it before
     regex = re.compile(r'^mailto:|^tel:',
@@ -20,24 +22,22 @@ def classify_url(url, level):
     # Keep the path only (avoid to reject websites such as "awesomeshop.nl/important_information")
     url = urlparse(url).path
 
+    # Don't download these
+    regex = re.compile(r'png$|jpg$|jpeg$|pdf$|collections|email\-protection|product|aanbod|assortiment|voorraad|koop|shop|artikelen|merken|wintersport|bouw|zoeken|search',
+                        re.IGNORECASE)
+    if re.search(regex, url):
+        return False
     # Maybe if there are many links in one level we can skip it
 
     # Download first level and important sites of the secodn level (level 0 = root website)
-    if level == 0:
-        return True
-    elif level == 1:
+    if level == 1:
         # Cloudfare protection --> reject
-        # regex = re.compile( "|".join(map(re.escape, keywords)))
-        regex = re.compile(r'^mailto:|^tel:|png$|jpg$|jpeg$|pdf$|collections|email\-protection|product|aanbod|assortiment|voorraad|koop|shop|artikelen|merken|wintersport|bouw|zoeken|search',
-                            re.IGNORECASE)
-        if re.search(regex, url):
-            return False
         # If only numbers and characters (e.g. https:/www.horstingkilder.nl/553-504") --> reject
-        elif re.search("^[^a-zA-Z]+$",url):
+        if re.search("^[^a-zA-Z]+$",url):
             return False
         else:
             return True
-    elif level == 2:
+    if level == 2:
         # Keep only if it seems important
         regex = re.compile(r'over\-ons|contact|duurzaamheid|index\.php|algemene\-voorwaarden|vacatures|disclaimer|klantenservice|privacy\-policy|cookie\-policy|cookies|cookie|cookie\-beleid|over|overons|blogs|privacyverklaring|about|about\-us',
                             re.IGNORECASE)

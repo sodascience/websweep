@@ -38,7 +38,7 @@ def get_urls(r, url):
     contents = r.decode("utf-8", "ignore")
 
     # parse
-    soup = BeautifulSoup(contents, 'html.parser')
+    soup = BeautifulSoup(contents, 'lxml')
 
     # extract urls from html code in beautiful soup
     # <a href="http://www.google.com/">Google</a>
@@ -63,7 +63,7 @@ def get_urls(r, url):
 
 
 class Scraper:
-    def __init__(self, target_folder_path, save_html=True, max_level=3, classifier=lambda url, level: True, verify_ssl=False, concurrency_companies=20, threads_bs4 = 10, threads_download = 100, use_sqlite = False):
+    def __init__(self, target_folder_path, save_html=True, max_level=3, classifier=lambda url, level: True, verify_ssl=False, concurrency_companies=1000, threads_bs4=10, threads_download=1000, use_sqlite=False):
         self.target_folder_path = target_folder_path
         self.base_path = self.target_folder_path / "data" 
         self.use_sqlite = use_sqlite
@@ -218,7 +218,7 @@ class Scraper:
                         self.__save_to_disk(path, contents)
 
                     # parse
-                    soup = BeautifulSoup(contents, 'html.parser')
+                    soup = BeautifulSoup(contents, 'lxml')
 
                     # extract urls from html code in beautiful soup
                     urls = [a.attrs.get('href') for a in soup.select('a[href]')]
@@ -236,8 +236,8 @@ class Scraper:
                     # keep only the urls found within the same domain
                     urls = [url_found for url_found in urls if tldextract.extract(url_found).registered_domain == tldextract.extract(url).registered_domain]
 
-                    # remove query string
-                    urls = [urlparse(url_found)._replace(query="").geturl() for url_found in urls]
+                    # remove query string and fragment (coming after #)
+                    urls = [urlparse(url_found)._replace(query="", fragment="").geturl() for url_found in urls]
 
                 else:
                     path = ""
