@@ -16,7 +16,7 @@ from urllib.parse import urljoin, urlparse
 from protego import Protego
 import functools
 
-from aiohttp import ClientSession, TCPConnector
+from aiohttp import ClientSession, TCPConnector, ClientTimeout
 from bs4 import BeautifulSoup
 from pathlib import Path
 
@@ -27,7 +27,11 @@ import tldextract
 import os
 import sqlite3 as sql
 
-
+# monkeypatch to avoid "Can not load response cookies" 
+import http.cookies
+http.cookies._is_legal_key = lambda _: True
+import re
+import concurrent.futures
 
 def get_urls(r, url):
     """
@@ -94,6 +98,7 @@ class Scraper:
         self.threads_download = threads_download
 
         self.waits = dict()
+        self.errors_website = dict()
         self.headers = {
             "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:98.0) Gecko/20100101 Firefox/98.0",
             "DNT": "1",
@@ -143,7 +148,8 @@ class Scraper:
             # opening the file is fast (0.00x per query), minimum gain to keep it open (and potential trouble with threading)
             connection = sql.connect(self.overview_path)
             cursor = connection.cursor()
-            cursor.execute(f"INSERT INTO Overview VALUES ('{id}', '{domain}', {level}, '{url}', '{status}', '{date}', '{path}')")
+
+            cursor.execute(f"INSERT INTO Overview VALUES (?, ?, ?, ?, ?, ?, ?)", (id, domain, level, url, status, date, path))
             connection.commit()
             connection.close()
             
@@ -169,9 +175,41 @@ class Scraper:
     def __get_current_date(self):
         # return current day in format "YYYY-MM-DD"
         return datetime.datetime.now().strftime("%Y-%m-%d")
-            
 
+    
+            
     async def __fetch_one_url(self, url, kvk, level):
+        # be nice and wait a bit per url (non blocking)
+        self.waits[kvk] += 0.1
+        await asyncio.sleep(self.waits[kvk])
+
+        try_number = 0
+        while (try_number < 3) and (self.errors_website[kvk] < 20):
+            if try_number == 0:
+                urls = await self.__fetch_one_url_wrapped(url, kvk, level, self.session)
+            else:
+                await asyncio.sleep(20)
+
+                #If failure, give an individual session
+                async with ClientSession(headers=self.headers, 
+                                         trust_env=True, 
+                                         connector=TCPConnector(limit=1, #number of websites/request in parallel
+                                            ssl=self.verify_ssl, 
+                                            ttl_dns_cache=0,
+                                            force_close=True), #a bit slower but more reliable
+                        timeout=ClientTimeout(total=None, sock_connect=300, sock_read=300)) as session:
+                    urls = await self.__fetch_one_url_wrapped(url, kvk, level, session)
+
+            try_number += 1
+            
+            if urls is not None:
+                return urls
+        
+        return []
+
+         
+
+    async def __fetch_one_url_wrapped(self, url, kvk, level, session):
         """
         Fetch one url, save the html, and return the list of urls found on the page.
         """
@@ -179,22 +217,16 @@ class Scraper:
         #     self.io_executor,
         #     functools.partial(self.classifier, url, level))
 
-        flag_download = self.classifier(url, level)
-        #print(url, flag_download)
+
         # classify url to see if it should be crawled
-        if not flag_download:#self.classifier(url, level):
+        if not self.classifier(url, level):
             # add to file, without path
-            self.__update_overview_file(kvk, level, url, -9, "")
+            #self.__update_overview_file(kvk, level, url, -9, "")
             return []
 
-        # be nice and wait a second per url (non blocking)
-        self.waits[kvk] += 1
-        await asyncio.sleep(self.waits[kvk])
+        
 
         urls = []
-        # hash url to give an ID (collisions are possible)
-        #hash_url = hashlib.sha1(url.encode()).hexdigest()
-
 
         # create path www.google.com/something/ --> something
         if url[-1] == "/":
@@ -202,56 +234,38 @@ class Scraper:
         else: #Create path www.google.com/something --> something
             path = f"{self.base_path}/{kvk}/{urlparse(url).netloc.replace('www.','')}/{self.__get_current_date()}/{url.split('/')[-1]}"
         path = path.replace(" ", "_")
+    
+  
 
         try:
-            async with self.session.get(url) as response:
+            async with session.get(url) as response:
+                await asyncio.sleep(0.001)
                 r = await response.read()
                 status = response.status
                 if status == 200:
                     # parse the contents and extract URLS
                     contents, urls = await self.loop.run_in_executor(
                         self.cpu_executor,
-                        functools.partial(get_urls,r, url))
+                        functools.partial(get_urls, r, url))
 
                     if self.save_html:
                         # save raw contents to file
                         self.__save_to_disk(path, contents)
 
-                    # parse
-                    soup = BeautifulSoup(contents, 'lxml')
-
-                    # extract urls from html code in beautiful soup
-                    urls = [a.attrs.get('href') for a in soup.select('a[href]')]
-                    # print(urls)
-
-                    # filter out urls from other domains
-                    # create base url
-                    url_parsed = urlparse(url)
-                    base_url = url_parsed.scheme + "://" + url_parsed.netloc
-
-                    # add netloc/schema when missing
-                    # TODO: do we want to keep mailto? mailto:info@frieslandbouwdetachering.nl?
-                    urls = [urljoin(base_url, url_found) for url_found in urls]
-
-                    # keep only the urls found within the same domain
-                    urls = [url_found for url_found in urls if tldextract.extract(url_found).registered_domain == tldextract.extract(url).registered_domain]
-
-                    # remove query string and fragment (coming after #)
-                    urls = [urlparse(url_found)._replace(query="", fragment="").geturl() for url_found in urls]
-
                 else:
                     path = ""
+                
+                self.__update_overview_file(kvk, level, url, status, path)
+                
+                return urls
 
         except Exception as e:
-            status = str(e)
+            status = str(type(e)) + str(e)
             path = ""
-        
-        # print(f"{kvk}\t{urlparse(url).netloc}\t{level}\t{url}\t{status}\t{self.__get_current_date()}\t{path}")
-        # save records to file
+            self.__update_overview_file(kvk, level, url, status, path)
+            self.errors_website[kvk] += 1
+            return None
 
-        self.__update_overview_file(kvk, level, url, status, path)
-        
-        return urls
 
 
     async def __fetch_one_company(self, url):
@@ -270,6 +284,8 @@ class Scraper:
                 kvk, url = url
 
                 self.waits[kvk] = 0
+                self.errors_website[kvk] = 0
+
 
                 level = 0
                 all_records = [url]
@@ -288,6 +304,7 @@ class Scraper:
 
                 # Read the robots
                 async with self.session.get(f"{url}/robots.txt") as response:
+                    await asyncio.sleep(0.001)
                     r = await response.read()
                     rp = Protego.parse(r.decode("utf-8", "ignore"))
 
@@ -312,7 +329,7 @@ class Scraper:
                     # speed up search using a set (and remove www to avoid downloading twice the same url)
                     temp_all_records = set([url.replace("www.", "") for url in all_records])
 
-                    # make sure the scraper doesn't run forever
+                    # make sure the scraper doesn't run forever (TODO: make sure it's 100 downloaded, not 100 found)
                     if len(temp_all_records) > 100:
                         break
 
@@ -325,10 +342,17 @@ class Scraper:
 
                     # reset waits for next level
                     self.waits[kvk] = 0
+
             except Exception as e:
-                status = str(e)
+                status = str(type(e)) + str(e)                    
                 path = ""
-    
+
+                # save problem with the request for robots.txt (usually page doesn't exist)
+                self.__update_overview_file(kvk, 0, f"{url}/robots.txt", status, path)
+
+            self.waits.pop(kvk)
+            self.errors_website.pop(kvk)
+
     async def __fetch_all(self, records):
         """
         Fetch all urls in records up to a level max_level. Save html to file.
@@ -340,22 +364,29 @@ class Scraper:
 
 
         # create HTTP client
-        async with ClientSession(headers=self.headers, trust_env=True, connector=TCPConnector(limit=self.threads_download, ssl=self.verify_ssl)) as self.session:
+        async with ClientSession(headers=self.headers, 
+                                 trust_env=True, 
+                                 connector=TCPConnector(limit=self.threads_download, #number of websites/request in parallel
+                                                        ssl=self.verify_ssl, 
+                                                        ttl_dns_cache=600, #maintain dns cache to speed up
+                                                        #limit_per_host=1, #only one request per website simultaneously, not a good idea, waits are better
+                                                        force_close=True), #slower but more reliable
+                                 timeout=ClientTimeout(total=None, sock_connect=120, sock_read=120)) as self.session: 
+            
             # for each url, create asynchronous task to fetch company and append to tasks list
             for url in records:
                 task = asyncio.ensure_future(self.__fetch_one_company(url))
                 tasks.append(task) 
-            # create future and group tasks
-            
 
+            # create future and group tasks
             progress = [
                 await f
                 for f in tqdm.tqdm(asyncio.as_completed(tasks), total=len(tasks), leave = True, miniters=1)
             ]
 
             return progress
-    
 
+  
     def scrape_companies(self, urls):
         """
         Create initial asynchronous task to fetch all urls
@@ -367,7 +398,7 @@ class Scraper:
 
         # print(f'Scraper received {len(urls)} urls')
 
-        with ThreadPoolExecutor(max_workers=self.threads_bs4) as self.cpu_executor, ThreadPoolExecutor(max_workers=1) as self.io_executor:
+        with  ThreadPoolExecutor(max_workers=self.threads_bs4) as self.cpu_executor:#, ThreadPoolExecutor(max_workers=1) as self.io_executor:
             self.loop = asyncio.get_event_loop() 
             future = asyncio.ensure_future(self.__fetch_all(urls)) 
             self.loop.run_until_complete(future) 
