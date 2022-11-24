@@ -10,6 +10,13 @@ class Extractor:
         self.metadata = dict()
         self.metadata["id"], self.metadata["domain"], self.metadata["level"], self.metadata["website"], self.metadata["date"], self.metadata["path"] = info    
 
+    def extract():
+        start = time.time()
+
+        file_res = config.get_target_folder_path()  /  ('scraped_data_' + str(datelib.today()) + '.ndjson')
+        pdf_file = config.get_target_folder_path()  /  ('pdf_links_' + str(datelib.today()) + '.ndjson')
+        pdf_list = []
+
     def extracting(self):
 
         # Phone/emails/fax can be found in the HTML

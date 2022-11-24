@@ -32,7 +32,7 @@ def _create_results(path):
 
     start_time_file = time.perf_counter()
     #website_name = os.path.basename(Path(folder).parents[0])
-    # TODO: integrate get scraper into _get_worker method since now no checks are performed if target folders exist
+    # TODO: integrate get scraper into _get_scraper method since now no checks are performed if target folders exist
     cached_corporate = Extractor([id, domain, level, url, date, path])
     metadata = cached_corporate.extracting()
     end_time_file = time.perf_counter()
@@ -63,7 +63,8 @@ def _version_callback(value: bool) -> None:
 
 
 # Helper for all called CLI methods that need to be provided with a WORKER unit
-def _get_worker() -> Scraper:
+def _get_scraper() -> Scraper:
+
     if config.CONFIG_FILE_PATH.exists():
         source_file_path = config.get_source_file_path()
     else:
@@ -81,33 +82,11 @@ def _get_worker() -> Scraper:
         )
         raise typer.Exit(1)
 
+# Helper for all called CLI methods that need to be provided with a WORKER unit
+def _get_extractor() -> Extractor:
 
-@app.command(name = "scrape")
-def _scrape() -> None:
-    """
-    Start caching websites
-    """
-    scrape(config.get_source_file_path())
-
-def scrape(config_file) -> None:
-    """
-    Start caching websites
-    """
-
-    typer.secho(f"Scraper is started with instructions:", fg=typer.colors.YELLOW)
-    typer.secho(f"- source file: {config.get_source_file_path()}", fg=typer.colors.YELLOW)
-    typer.secho(f"- target folder: {config.get_target_folder_path()}\n", fg=typer.colors.YELLOW)
-
-    worker = _get_worker()
-    
-    with open(config_file, "r") as f:
-        f.readline() #header
-        urls = [line.split(",") for line in f.readlines()]        
-        urls = sorted([(kvk.strip(), f"https://www.{url}/") for url, kvk in urls])
-
-    # Run scraper
-    # Start scraper, downloading 20 companies in parallel
-    worker.scrape_companies(urls)
+    #TODO: Implement checks
+    return Scraper(target_folder_path = config.get_target_folder_path(), classifier=classify_url)
 
 
 @app.command(name="config")
@@ -142,6 +121,34 @@ def cli_config(
         )
 
 
+@app.command(name = "scrape")
+def _scrape() -> None:
+    """
+    Start caching websites
+    """
+    scrape(config.get_source_file_path())
+
+def scrape(config_file) -> None:
+    """
+    Start caching websites
+    """
+
+    typer.secho(f"Scraper is started with instructions:", fg=typer.colors.YELLOW)
+    typer.secho(f"- source file: {config.get_source_file_path()}", fg=typer.colors.YELLOW)
+    typer.secho(f"- target folder: {config.get_target_folder_path()}\n", fg=typer.colors.YELLOW)
+
+    worker = _get_scraper()
+    
+    with open(config_file, "r") as f:
+        f.readline() #header
+        urls = [line.split(",") for line in f.readlines()]        
+        urls = sorted([(kvk.strip(), f"https://www.{url}/") for url, kvk in urls])
+
+    # Run scraper
+    # Start scraper, downloading 20 companies in parallel
+    worker.scrape_companies(urls)
+
+
 @app.command()
 def extract() -> None:
     """
@@ -152,18 +159,22 @@ def extract() -> None:
     typer.secho(f"- source folder: {config.get_target_folder_path()}", fg=typer.colors.YELLOW)
     typer.secho(f"- delete extracted files: {config.get_extractor_delete()}\n", fg=typer.colors.YELLOW)
 
+    worker = _get_extractor()
+
+    worker.extraction()
+
     start = time.time()
 
-    
-    i = 0
-
     file_res = config.get_target_folder_path()  /  ('scraped_data_' + str(datelib.today()) + '.ndjson')
-    pdf_file = config.get_target_folder_path(config.CONFIG_FILE_PATH)  /  ('pdf_links_' + str(datelib.today()) + '.ndjson')
+    pdf_file = config.get_target_folder_path()  /  ('pdf_links_' + str(datelib.today()) + '.ndjson')
     pdf_list = []
     
     Path(file_res).parent.mkdir(parents=True, exist_ok=True)
 
-    # Read file
+    #TODO: TEMPORARY, CHECK IF USE SQL > Reset this to use the config data
+    use_sqlite = False # this needs to be a parameter
+    date_start = "2000-01-01"
+    date_end = "3000-01-01"
     if use_sqlite:
         connection = sql.connect(os.path.join(config.get_target_folder_path(config.CONFIG_FILE_PATH),  "overview_urls.db"))
         cursor = connection.cursor()
