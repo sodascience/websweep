@@ -69,7 +69,7 @@ class Scraper:
         self.use_sqlite = use_sqlite
         Path(self.base_path).parent.mkdir(parents=True, exist_ok=True)
 
-        if True:
+        if use_sqlite:
             self.overview_path = f"{self.target_folder_path}/overview_urls.db"
         else:
             self.overview_path = f"{self.target_folder_path}/overview_urls.tsv"
