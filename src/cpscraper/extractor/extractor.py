@@ -167,22 +167,23 @@ class Extractor:
         """
         pdf_links = set()
         pattern = re.compile(r"""
-                            financiele.?rapportage|annual.?report|jaarrekening|jaar.?verslag|jaarrapport|jaarrekening|boekhouding.?rapportage|boekhouding.?rapport|financial.?performance|investor|investeerder|financial.?results
+                            financiele.?rapportage|annual.?report|jaarrekening|jaar.?verslag|jaarrapport|boekhouding.?rapportage|boekhouding.?rapport|financial.?performance|investor.?relations|investeerder.?relaties|financial.?results|financial.?statement
                             """, re.VERBOSE | re.IGNORECASE)
         neg_pattern = re.compile(r"""
-                            medewerker|studeren|slim|algemene.?voorwaarden|privacy|test|asbestos|website|mailto|CO2|webshopp|app|experience|opstellen|zoek|coronavirus|diensten|nieuwsbrief|ZZP|freelancers|wat.?is|vertalen
+                            medewerker|studeren|slim|algemene.?voorwaarden|privacy|test|asbestos|website|mailto|CO2|webshopp|app|experience|opstellen|zoek|coronavirus|diensten|nieuwsbrief|ZZP|freelancers|wat.?is|vertalen|wetboek
                             """, re.VERBOSE | re.IGNORECASE)
 
         for link in self.soup.find_all("a"):
             if re.search(pattern, str(link.get('href'))) and not re.search(neg_pattern, str(link.get('href'))):
                 print(re.search(pattern, str(link.get('href'))))
-                if link.get('href').startswith('/'):
+                if not link.get('href').startswith('www'):
                     url = urljoin(self.metadata['website'], link.get('href'))
                 else:
                     url = link.get('href')
                 pdf_links.add(str(url))
 
-        self.metadata["pdf_links"] = list(pdf_links)
+
+        self.metadata["annual_reports"] = list(pdf_links)
 
     def extract_metadata(self) -> None:
         """        
