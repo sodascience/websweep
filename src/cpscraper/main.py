@@ -158,8 +158,6 @@ def extract() -> None:
 
     
     i = 0
-
-    file_res = config.get_target_folder_path()  /  ('scraped_data_' + str(datelib.today()) + '.ndjson')
     pdf_file = config.get_target_folder_path(config.CONFIG_FILE_PATH)  /  ('pdf_links_' + str(datelib.today()) + '.ndjson')
     pdf_list = []
     
@@ -186,18 +184,27 @@ def extract() -> None:
                 if (date >= date_start) and (date <= date_end) and (status == "200"):
                     results.append([id, domain, level, url, date, path.strip()])
 
-    # Parallelize loop 
-    with Pool() as pool, open(file_res, "w+", encoding='UTF-8') as f_res:
-        writer_res = ndjson.writer(f_res, ensure_ascii=False)
+    # chunking in 1M files
+    n = 1000000
 
+    # parallelize loop 
+    with Pool() as pool, 
+        # track progress
         with tqdm.tqdm(total=len(results), leave = True, miniters=1) as pbar:
-            for result in pool.imap_unordered(_create_results, results):
-                time_dict, json_dict = result
-                writer_res.writerow(json_dict)
-                pbar.update()
-                if json_dict["annual_reports"] != []:
-                    print(json_dict['annual_reports'])
-                    pdf_list.append(json_dict["annual_reports"])
+            # chunk output in files of 1M lines
+            for i in range(0, len(results), n):
+                file_res = config.get_target_folder_path()  /  ('scraped_data_' + str(datelib.today()) + f'{i}_{i+n}.ndjson')
+                with open(file_res, "w+", encoding='UTF-8') as f_res:
+                    writer_res = ndjson.writer(f_res, ensure_ascii=False)
+
+                    for result in pool.imap_unordered(_create_results, results[i:i+n]):
+                        time_dict, json_dict = result
+                        writer_res.writerow(json_dict)
+                        pbar.update()
+                        if json_dict["annual_reports"] != []:
+                            print(json_dict['annual_reports'])
+                            pdf_list.append(json_dict["annual_reports"])
+                            
 
                 # IF you want to only run extract through a part of the dataset, uncomment this and change the if statement
                 # i += 1
