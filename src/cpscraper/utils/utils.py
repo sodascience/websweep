@@ -2,6 +2,7 @@ import re
 from urllib.parse import urlparse
 from pathlib import Path
 import sqlite3 as sql
+from random import sample
 
 def classify_url(url, level):
     """
@@ -48,3 +49,7 @@ def classify_url(url, level):
     else:
         return False
 
+def print_random_sample(samples):
+    sample_list = sample(sorted(samples.items()), 2)
+    for item in sample_list:
+        print(item)

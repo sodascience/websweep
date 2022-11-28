@@ -19,7 +19,7 @@ import webbrowser
 
 from .scraper.scraper import Scraper
 from .extractor.extractor import Extractor
-from .utils.utils import classify_url
+from .utils.utils import classify_url, print_random_sample
 from cpscraper import ERRORS, __app_name__, __version__, config
 
 app = typer.Typer()
@@ -211,6 +211,8 @@ def extract() -> None:
         for folder in os.listdir(data_folder):
             if os.path.isdir(folder):
                 rmtree(os.path.join(data_folder, folder))
+                
+    print_random_sample(json_dict)
 
 
 @app.callback()
