@@ -32,7 +32,7 @@ def current_scraper() -> Path:
         config_parser.read(CONFIG_FILE_PATH)
         return Path(config_parser["Scraper"]["location"])
     except:
-        return None
+        return CONFIG_DIR_PATH
 
 def init_app(target_folder_path: str, source_file_path: str, extractor_delete_files: bool) -> int:
     """Initialize the application."""
