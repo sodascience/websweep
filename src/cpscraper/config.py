@@ -9,6 +9,8 @@ from cpscraper import DIR_ERROR, FILE_ERROR, SUCCESS, __app_name__
 CONFIG_DIR_PATH = Path(typer.get_app_dir(__app_name__))
 CONFIG_FILE_PATH = CONFIG_DIR_PATH / "config.ini" 
 
+print(CONFIG_FILE_PATH)
+
 def _truncate_section(config_file: Path, section: str) -> None:
     config_parser = configparser.ConfigParser()
     
@@ -34,6 +36,8 @@ def current_scraper() -> Path:
 
 def init_app(target_folder_path: str, source_file_path: str, extractor_delete_files: bool) -> int:
     """Initialize the application."""
+
+    print("HAHA")
 
     # create the application config file location, config file and add the location of the scraper
     config_code = _init_application_config_file(Path(target_folder_path))
@@ -153,9 +157,6 @@ def get_source_file_path(config_file: Path = (current_scraper() / "settings.ini"
         return Path(config_parser["Source"]["source_file"])
     except:
         return None
-
-
-
 
 def _save_extractor_delete(extractor_delete_files: bool) -> int:
     _truncate_section(current_scraper() / "settings.ini", "Extractor")

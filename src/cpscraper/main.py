@@ -25,7 +25,7 @@ from cpscraper import ERRORS, __app_name__, __version__, config
 app = typer.Typer()
 
 
-# Helper for scraping
+# Helper for extracting
 def _create_results(path):
     [id, domain, level, url, date, path] = path
     #folder = _get_folder(path)
@@ -204,11 +204,6 @@ def extract() -> None:
                 if json_dict["pdf_links"] != []:
                     print(json_dict['pdf_links'])
                     pdf_list.append(json_dict["pdf_links"])
-
-                # IF you want to only run extract through a part of the dataset, uncomment this and change the if statement
-                # i += 1
-                # if i == 3500:
-                #     break
 
     with open(pdf_file, "w+", encoding='UTF-8') as pdf_res:
         pdf_writer = ndjson.writer(pdf_res, ensure_ascii=False)
