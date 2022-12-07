@@ -79,6 +79,13 @@ def restore_app(target_folder_path: Path) -> int:
     if config_code != SUCCESS:
         return config_code
 
+    try:
+        get_target_folder_path()
+        get_source_file_path()
+        get_extractor_delete()
+    except:
+        return FILE_ERROR
+
     return SUCCESS
 
 
