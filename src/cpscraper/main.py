@@ -16,6 +16,7 @@ import asyncio
 from tqdm import tqdm
 import tqdm.asyncio
 import webbrowser
+import regex as re
 
 from .scraper.scraper import Scraper
 from .extractor.extractor import Extractor
@@ -134,36 +135,26 @@ def scrape(config_file) -> None:
 
 
 @app.command()
-def extract() -> None:
+def extract(
+    start_date: str = typer.Option(None, help="Date on which the files are retreieved and extracted should start extracting"), 
+    end_date: str = typer.Option(None, help="Date on which the files are retreieved and extractor should stop extracting")) -> None:
     """
-    Start scraping the data from cached website files
+    Start extracting data from the fetched files
     """
 
     typer.secho(f"Extractor is started with instructions:", fg=typer.colors.YELLOW)
     typer.secho(f"- source folder: {config.get_target_folder_path()}", fg=typer.colors.YELLOW)
     typer.secho(f"- delete extracted files: {config.get_extractor_delete()}\n", fg=typer.colors.YELLOW)
 
-    worker = _get_extractor()
+    pattern = re.compile("\d\d\d\d-\d\d-\d\d")
+    if pattern.match(start_date) and pattern.match(end_date):
+        typer.secho(f"Given start and/or end date do not conform to the YYYY-MM-DD format", fg=typer.colors.YELLOW)
+        return
 
-
-
+    # worker = _get_extractor()
+    worker = Extractor(target_folder_path = config.get_target_folder_path(), classifier=classify_url)
 
     worker.extraction()
-
-    start = time.time()
-
-    
-
-    
-        
-    
-    print(f"Extracted data from {len(results)} pages in {time.time() - start:2.1f} seconds.")
-
-    if config.get_extractor_delete():
-        data_folder = os.path.join(config.get_target_folder_path(), "data")
-        for folder in os.listdir(data_folder):
-            if os.path.isdir(folder):
-                rmtree(os.path.join(data_folder, folder))
 
 
 @app.callback()
@@ -242,12 +233,12 @@ def init(headless: bool = typer.Option(False, help="Run without GUI elements")) 
     else:
         folder = typer.prompt("ENTER scraper instance folder base PATH\n")
 
+    
+
     app_init_error = config.restore_app(Path(folder))
     if app_init_error:
-        typer.secho(
-            f'Creating config file failed with "{ERRORS[app_init_error]}"',
-            fg=typer.colors.RED,
-        )
+        typer.secho(f'Restoring scraper instance failed with "{ERRORS[app_init_error]}"', fg=typer.colors.RED)
+        typer.secho('The settings file for the given instance is incomplete, does not adhere to the expected format or could not be read.', fg=typer.colors.RED)
         raise typer.Exit(1)
     else :
         typer.secho(f"Scraper is initialised and ready to use \nUse the --help command for instructions\n ", fg=typer.colors.GREEN)
