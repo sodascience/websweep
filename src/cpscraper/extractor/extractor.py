@@ -39,60 +39,7 @@ class Extractor:
         self.metadata = dict()
         self.metadata["id"], self.metadata["domain"], self.metadata["level"], self.metadata["website"], self.metadata["date"], self.metadata["path"] = info    
 
-    def extract(self):
-        start = time.time()
-
-        file_res = self.target_folder_path  /  ('scraped_data_' + str(datelib.today()) + '.ndjson')
-        pdf_file = self.target_folder_path  /  ('pdf_links_' + str(datelib.today()) + '.ndjson')
-        pdf_list = []
-
-        Path(file_res).parent.mkdir(parents=True, exist_ok=True)
-
-        date_start = "2000-01-01"
-        date_end = "3000-01-01"
-        if self.use_sqlite:
-            connection = sql.connect(os.path.join(self.target_folder_path,  "overview_urls.db"))
-            cursor = connection.cursor()
-            results = cursor.execute(f'''SELECT id, domain, level, url, date, path FROM Overview 
-                            WHERE (date >= '{date_start}') 
-                            AND (date <= '{date_end}') 
-                            AND (status == "200")''').fetchall()
-            connection.close()
-        else:
-            with open(os.path.join(self.target_folder_path, "overview_urls.tsv")) as f:
-                f.readline() #header
-                results = []
-                for line in f:
-                    id, domain, level, url, status, date, path = line.split("\t")
-                    if (date >= date_start) and (date <= date_end) and (status == "200"):
-                        results.append([id, domain, level, url, date, path.strip()])
-
-        # Parallelize loop 
-        with Pool() as pool, open(file_res, "w+", encoding='UTF-8') as f_res:
-            writer_res = ndjson.writer(f_res, ensure_ascii=False)
-
-            with tqdm.tqdm(total=len(results), leave = True, miniters=1) as pbar:
-                for result in pool.imap_unordered(_create_results, results):
-                    time_dict, json_dict = result
-                    writer_res.writerow(json_dict)
-                    pbar.update()
-                    if json_dict["pdf_links"] != []:
-                        print(json_dict['pdf_links'])
-                        pdf_list.append(json_dict["pdf_links"])
-
-        with open(pdf_file, "w+", encoding='UTF-8') as pdf_res:
-            pdf_writer = ndjson.writer(pdf_res, ensure_ascii=False)
-            pdf_writer.writerow(pdf_list)
-
-        print(f"Extracted data from {len(results)} pages in {time.time() - start:2.1f} seconds.")
-
-        if self.delete_processed_files:
-            data_folder = os.path.join(self.target_folder_path, "data")
-            for folder in os.listdir(data_folder):
-                if os.path.isdir(folder):
-                    rmtree(os.path.join(data_folder, folder))
-
-    def extracting(self):
+    def extracting(self, info):
 
         # Phone/emails/fax can be found in the HTML
         with open(self.metadata["path"], "r", encoding="UTF-8") as file:
@@ -283,6 +230,20 @@ class Extractor:
     def _clean_html(self) -> None:
         text=self.soup.get_text()
         self.text = text
+
+    
+    # Helper for extracting
+    def _create_results(path):
+        [id, domain, level, url, date, path] = path
+
+        start_time_file = time.perf_counter()
+        #website_name = os.path.basename(Path(folder).parents[0])
+        # TODO: integrate get scraper into _get_scraper method since now no checks are performed if target folders exist
+        cached_corporate = Extractor([id, domain, level, url, date, path])
+        metadata = cached_corporate.extracting()
+        end_time_file = time.perf_counter()
+        
+        return ({path: end_time_file - start_time_file }, metadata)
 
 
     async def __extract_all(self, target_folder_path, results):
