@@ -5,6 +5,8 @@ from bs4 import BeautifulSoup
 from urllib.parse import urljoin
 import time
 from datetime import date as datelib
+from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor
+import asyncio
 from pathlib import Path
 import sqlite3 as sql
 import os
@@ -281,3 +283,96 @@ class Extractor:
     def _clean_html(self) -> None:
         text=self.soup.get_text()
         self.text = text
+
+
+    async def __extract_all(self, target_folder_path, results):
+        """
+        Fetch all urls in records up to a level max_level. Save html to file.
+
+        :param records: List of all level 0 urls to visit
+        """
+
+        file_res = target_folder_path  /  ('scraped_data_' + str(datelib.today()) + '.ndjson')
+        pdf_file = target_folder_path  /  ('pdf_links_' + str(datelib.today()) + '.ndjson')
+        pdf_list = []
+        
+        Path(file_res).parent.mkdir(parents=True, exist_ok=True)
+
+        # Parallelize loop 
+        with Pool() as pool, open(file_res, "w+", encoding='UTF-8') as f_res:
+            writer_res = ndjson.writer(f_res, ensure_ascii=False)
+
+            with tqdm.tqdm(total=len(results), leave = True, miniters=1) as pbar:
+                for result in pool.imap_unordered(_create_results, results):
+                    time_dict, json_dict = result
+                    writer_res.writerow(json_dict)
+                    pbar.update()
+                    if json_dict["pdf_links"] != []:
+                        print(json_dict['pdf_links'])
+                        pdf_list.append(json_dict["pdf_links"])
+
+        #TODO: change that pdf files are saved in same way as the JSON files in the extractor
+        with open(pdf_file, "w+", encoding='UTF-8') as pdf_res:
+            pdf_writer = ndjson.writer(pdf_res, ensure_ascii=False)
+            pdf_writer.writerow(pdf_list)
+
+        # tasks = []
+
+        # # for each url, create asynchronous task to fetch company and append to tasks list
+        # for result in results:
+        #     task = asyncio.ensure_future(self.__extract_one_company(result))
+        #     tasks.append(task) 
+        # # create future and group tasks
+        
+
+        # progress = [
+        #     await f
+        #     for f in tqdm.tqdm(asyncio.as_completed(tasks), total=len(tasks), leave = True, miniters=1)
+        # ]
+
+        # return progress
+
+
+    def extract_companies(self, target_folder_path, delete_raw_files):
+        """
+        Create initial asynchronous task to fetch all urls
+
+        :param urls: List of all level 0 urls to visit
+        """
+
+        start = time()
+
+        #TODO: TEMPORARY, CHECK IF USE SQL > Reset this to use the config data
+        use_sqlite = False # this needs to be a parameter
+        date_start = "2000-01-01"
+        date_end = "3000-01-01"
+        if use_sqlite:
+            connection = sql.connect(os.path.join(target_folder_path,  "overview_urls.db"))
+            cursor = connection.cursor()
+            results = cursor.execute(f'''SELECT id, domain, level, url, date, path FROM Overview 
+                            WHERE (date >= '{date_start}') 
+                            AND (date <= '{date_end}') 
+                            AND (status == "200")''').fetchall()
+            connection.close()
+        else:
+            with open(os.path.join(target_folder_path, "overview_urls.tsv")) as f:
+                f.readline() #header
+                results = []
+                for line in f:
+                    id, domain, level, url, status, date, path = line.split("\t")
+                    if (date >= date_start) and (date <= date_end) and (status == "200"):
+                        results.append([id, domain, level, url, date, path.strip()])
+
+        with ThreadPoolExecutor(max_workers=self.threads_bs4) as self.cpu_executor, ThreadPoolExecutor(max_workers=1) as self.io_executor:
+            self.loop = asyncio.get_event_loop() 
+            future = asyncio.ensure_future(self.__extract_all(target_folder_path, results)) 
+            self.loop.run_until_complete(future) 
+
+        if delete_raw_files:
+            data_folder = os.path.join(target_folder_path, "data")
+            for folder in os.listdir(data_folder):
+                if os.path.isdir(folder):
+                    rmtree(os.path.join(data_folder, folder))
+
+        print(f"Extracted data from {len(results)} pages in {time.time() - start:2.1f} seconds.")
+

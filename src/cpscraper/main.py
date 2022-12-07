@@ -28,7 +28,6 @@ app = typer.Typer()
 # Helper for extracting
 def _create_results(path):
     [id, domain, level, url, date, path] = path
-    #folder = _get_folder(path)
 
     start_time_file = time.perf_counter()
     #website_name = os.path.basename(Path(folder).parents[0])
@@ -38,21 +37,6 @@ def _create_results(path):
     end_time_file = time.perf_counter()
     
     return ({path: end_time_file - start_time_file }, metadata)
-
-# Helper for scraping
-def _get_folder(path):
-    # Remove hidden files
-    next_folder = [_ for _ in os.listdir(path) if not _.startswith(".")][0]
-    final_dir = os.path.join(path, next_folder)
-    
-    # This should be a parameter of the code instead of finding it automatically (TODO). It could use if no parameter is passed.
-    if os.path.isdir(final_dir):
-        list_of_files = os.listdir(final_dir)
-        list_of_files = [_ for _ in list_of_files if not _.startswith(".")]
-        list_of_files.sort(reverse=True)
-        return os.path.join(final_dir, list_of_files[0])
-    else:
-        return None
 
 
 # Helper method for main callback of Typer app
@@ -128,6 +112,7 @@ def _scrape() -> None:
     """
     scrape(config.get_source_file_path())
 
+
 def scrape(config_file) -> None:
     """
     Start caching websites
@@ -145,7 +130,6 @@ def scrape(config_file) -> None:
         urls = sorted([(kvk.strip(), f"https://www.{url}/") for url, kvk in urls])
 
     # Run scraper
-    # Start scraper, downloading 20 companies in parallel
     worker.scrape_companies(urls)
 
 
@@ -161,53 +145,16 @@ def extract() -> None:
 
     worker = _get_extractor()
 
+
+
+
     worker.extraction()
 
     start = time.time()
 
-    file_res = config.get_target_folder_path()  /  ('scraped_data_' + str(datelib.today()) + '.ndjson')
-    pdf_file = config.get_target_folder_path()  /  ('pdf_links_' + str(datelib.today()) + '.ndjson')
-    pdf_list = []
     
-    Path(file_res).parent.mkdir(parents=True, exist_ok=True)
 
-    #TODO: TEMPORARY, CHECK IF USE SQL > Reset this to use the config data
-    use_sqlite = False # this needs to be a parameter
-    date_start = "2000-01-01"
-    date_end = "3000-01-01"
-    if use_sqlite:
-        connection = sql.connect(os.path.join(config.get_target_folder_path(config.CONFIG_FILE_PATH),  "overview_urls.db"))
-        cursor = connection.cursor()
-        results = cursor.execute(f'''SELECT id, domain, level, url, date, path FROM Overview 
-                         WHERE (date >= '{date_start}') 
-                         AND (date <= '{date_end}') 
-                         AND (status == "200")''').fetchall()
-        connection.close()
-    else:
-        with open(os.path.join(config.get_target_folder_path(config.CONFIG_FILE_PATH), "overview_urls.tsv")) as f:
-            f.readline() #header
-            results = []
-            for line in f:
-                id, domain, level, url, status, date, path = line.split("\t")
-                if (date >= date_start) and (date <= date_end) and (status == "200"):
-                    results.append([id, domain, level, url, date, path.strip()])
-
-    # Parallelize loop 
-    with Pool() as pool, open(file_res, "w+", encoding='UTF-8') as f_res:
-        writer_res = ndjson.writer(f_res, ensure_ascii=False)
-
-        with tqdm.tqdm(total=len(results), leave = True, miniters=1) as pbar:
-            for result in pool.imap_unordered(_create_results, results):
-                time_dict, json_dict = result
-                writer_res.writerow(json_dict)
-                pbar.update()
-                if json_dict["pdf_links"] != []:
-                    print(json_dict['pdf_links'])
-                    pdf_list.append(json_dict["pdf_links"])
-
-    with open(pdf_file, "w+", encoding='UTF-8') as pdf_res:
-        pdf_writer = ndjson.writer(pdf_res, ensure_ascii=False)
-        pdf_writer.writerow(pdf_list)
+    
         
     
     print(f"Extracted data from {len(results)} pages in {time.time() - start:2.1f} seconds.")
