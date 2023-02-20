@@ -26,20 +26,6 @@ from cpscraper import ERRORS, __app_name__, __version__, config
 app = typer.Typer()
 
 
-# Helper for extracting
-def _create_results(path):
-    [id, domain, level, url, date, path] = path
-
-    start_time_file = time.perf_counter()
-    #website_name = os.path.basename(Path(folder).parents[0])
-    # TODO: integrate get scraper into _get_scraper method since now no checks are performed if target folders exist
-    cached_corporate = Extractor([id, domain, level, url, date, path])
-    metadata = cached_corporate.extracting()
-    end_time_file = time.perf_counter()
-    
-    return ({path: end_time_file - start_time_file }, metadata)
-
-
 # Helper method for main callback of Typer app
 def _version_callback(value: bool) -> None:
     if value:
@@ -130,7 +116,6 @@ def scrape(config_file) -> None:
         urls = [line.split(",") for line in f.readlines()]        
         urls = sorted([(kvk.strip(), f"https://www.{url}/") for url, kvk in urls])
 
-    # Run scraper
     worker.scrape_companies(urls)
 
 
@@ -146,16 +131,13 @@ def extract(
     typer.secho(f"- source folder: {config.get_target_folder_path()}", fg=typer.colors.YELLOW)
     typer.secho(f"- delete extracted files: {config.get_extractor_delete()}\n", fg=typer.colors.YELLOW)
 
-    pattern = re.compile("\d\d\d\d-\d\d-\d\d")
-    if pattern.match(start_date) and pattern.match(end_date):
-        typer.secho(f"Given start and/or end date do not conform to the YYYY-MM-DD format", fg=typer.colors.YELLOW)
-        return
-
-    # worker = _get_extractor()
-    worker = Extractor(target_folder_path = config.get_target_folder_path(), classifier=classify_url)
-
-    worker.extraction()
-
+    # TODO: Build check whether the provided dates are conform the format and if not indicate that
+    if (start_date is None and end_date is None):
+        worker = Extractor(target_folder_path = config.get_target_folder_path(), use_sqlite = False, extractor_delete_files = True)
+        worker.extract_companies()
+    else:
+        typer.secho(f"Given start and/or end date do not conform to the YYYY-MM-DD format, extractor was terminated", fg=typer.colors.RED)
+        
 
 @app.callback()
 def main(

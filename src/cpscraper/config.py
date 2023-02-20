@@ -9,8 +9,6 @@ from cpscraper import DIR_ERROR, FILE_ERROR, SUCCESS, __app_name__
 CONFIG_DIR_PATH = Path(typer.get_app_dir(__app_name__))
 CONFIG_FILE_PATH = CONFIG_DIR_PATH / "config.ini" 
 
-print(CONFIG_FILE_PATH)
-
 def _truncate_section(config_file: Path, section: str) -> None:
     config_parser = configparser.ConfigParser()
     
@@ -36,8 +34,6 @@ def current_scraper() -> Path:
 
 def init_app(target_folder_path: str, source_file_path: str, extractor_delete_files: bool) -> int:
     """Initialize the application."""
-
-    print("HAHA")
 
     # create the application config file location, config file and add the location of the scraper
     config_code = _init_application_config_file(Path(target_folder_path))
@@ -66,29 +62,6 @@ def init_app(target_folder_path: str, source_file_path: str, extractor_delete_fi
     return SUCCESS
 
 
-def restore_app(target_folder_path: Path) -> int:
-    """Restore existing application."""
-
-    if not Path.is_dir(target_folder_path):
-        return DIR_ERROR
-    if not Path.is_file(target_folder_path / "settings.ini"):
-        return FILE_ERROR
-
-    # create the application config file location, config file and add the location of the scraper
-    config_code = _init_application_config_file(target_folder_path)
-    if config_code != SUCCESS:
-        return config_code
-
-    try:
-        get_target_folder_path()
-        get_source_file_path()
-        get_extractor_delete()
-    except:
-        return FILE_ERROR
-
-    return SUCCESS
-
-
 def _init_application_config_file(location: Path) -> int:
     try:
         CONFIG_DIR_PATH.mkdir(exist_ok=True)
@@ -111,14 +84,6 @@ def _init_application_config_file(location: Path) -> int:
     return SUCCESS
 
 
-def _create_settings_file() -> int:
-    try:
-        Path(current_scraper() / "settings.ini").touch(exist_ok=True)
-    except OSError:
-        return FILE_ERROR
-    return SUCCESS
-
-
 def _init_target_folder(target_folder_path: Path) -> int:
     try:
         (target_folder_path / "data").mkdir(exist_ok=True)
@@ -134,6 +99,37 @@ def _init_target_folder(target_folder_path: Path) -> int:
             config_parser.write(file)
     except OSError:
         return FILE_ERROR
+    return SUCCESS
+
+
+def _create_settings_file() -> int:
+    try:
+        Path(current_scraper() / "settings.ini").touch(exist_ok=True)
+    except OSError:
+        return FILE_ERROR
+    return SUCCESS
+
+
+def restore_app(target_folder_path: Path) -> int:
+    """Restore existing application."""
+
+    if not Path.is_dir(target_folder_path):
+        return DIR_ERROR
+    if not Path.is_file(target_folder_path / "settings.ini"):
+        return FILE_ERROR
+
+    # create the application config file location, config file and add the location of the scraper
+    config_code = _init_application_config_file(target_folder_path)
+    if config_code != SUCCESS:
+        return config_code
+
+    try:
+        get_target_folder_path()
+        get_source_file_path()
+        get_extractor_delete()
+    except:
+        return FILE_ERROR
+
     return SUCCESS
 
 
