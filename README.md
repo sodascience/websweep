@@ -1,7 +1,10 @@
-# Corporate Scraper - Firm Backbone Project
+# Corporate Scraper - FIRMBACKBONE Project
 
-Corporate Scraper - cpscraper - is a Python package, used for web scraping purposes.
-Developed for the [Firm Backbone Project](https://firmbackbone.nl)
+FIRMBACKBONE's Corporate Scraper - cpscraper - is a Python package, used for web scraping purposes, which is specifically developed for the [FIRMBACKBONE Project](https://firmbackbone.nl). Besides scraping the provided URLs this web scraper also recognizes different attributes (for example addresses, phone numbers and registration numbers for the Dutch chambers of commerce) and stores those separately.
+
+FIRMBACKBONE is an organically growing longitudinal data-infrastructure with information on Dutch companies for scientific research. Once it is ready, it will become available for researchers and students affiliated with member universities in the Netherlands through [ODISSEI](https://odissei-data.nl/nl/), the Open Data Infrastructure for Social Science and Economic Innovations.
+
+FIRMBACKBONE is an initiative of Utrecht University and the Vrije Universiteit Amsterdam funded by [PDI-SSH](https://pdi-ssh.nl/nl/home/), the Platform Digital Infrastructure-Social Sciences and Humanities, for the period 2020-2025.
 
 ## Installation (LOCAL - PIP)
 
