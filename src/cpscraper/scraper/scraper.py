@@ -30,8 +30,7 @@ import sqlite3 as sql
 # monkeypatch to avoid "Can not load response cookies" 
 import http.cookies
 http.cookies._is_legal_key = lambda _: True
-import re
-import concurrent.futures
+
 
 def get_urls(r, url):
     """
@@ -50,7 +49,6 @@ def get_urls(r, url):
     base_url = url_parsed.scheme + "://" + url_parsed.netloc
 
     # add netloc/schema when missing
-    # TODO: do we want to keep mailto? mailto:info@frieslandbouwdetachering.nl?
     urls = [urljoin(base_url, url_found) for url_found in urls]
 
     # keep only the urls found within the same domain
@@ -74,15 +72,11 @@ class Scraper:
         else:
             self.overview_path = f"{self.target_folder_path}/overview_urls.tsv"
 
-        self.__create_overview_file()
-
-        # # Check if overview file exists, if not create it
-        # if not Path(self.overview_path).is_file():
-        #     with open(self.overview_path, "w") as f:
-        #         f.write("id\tdomain\tlevel\turl\tstatus\tdate\tpath\n")
-
         self.save_html = save_html
         self.max_level = max_level
+
+        # Create file tracking downloaded packages
+        self.__create_overview_file()
 
         # Avoid error in SSL certificates
         self.verify_ssl = verify_ssl
@@ -103,18 +97,23 @@ class Scraper:
             "Upgrade-Insecure-Requests": "1"}
 
         #self.start = time()
-        self.count_downloads = 0
-        
-
-        #print("Execution type:", exc_type)
-        #print("Execution value:", exc_value)
-        #print("Traceback:", traceback)
- 
+        self.count_downloads = 0 
 
     def test_package():
         return "Hello, this is a return from the main.py file in the cpscraper package"
 
     def __create_overview_file(self):
+        """
+        This function creates an overview file with the required headers if it doesn't exist.
+        If the `use_sqlite` attribute of the object is set to `True`, it creates a SQLite database with the 
+        required table and indexes, and if it's set to `False`, it creates a tab-separated file with the headers.
+        
+        Parameters:
+            self (object): The object instance.
+        
+        Returns:
+            None.
+        """
         if self.use_sqlite:
             connection = sql.connect(self.overview_path)
             cursor = connection.cursor()
@@ -190,9 +189,9 @@ class Scraper:
                 async with ClientSession(headers=self.headers, 
                                          trust_env=True, 
                                          connector=TCPConnector(limit=1, #number of websites/request in parallel
-                                            ssl=self.verify_ssl, 
-                                            ttl_dns_cache=0,
-                                            force_close=True), #a bit slower but more reliable
+                                         ssl=self.verify_ssl, 
+                                         ttl_dns_cache=0,
+                                         force_close=True), #a bit slower but more reliable
                         timeout=ClientTimeout(total=None, sock_connect=300, sock_read=300)) as session:
                     urls = await self.__fetch_one_url_wrapped(url, kvk, level, session)
 
@@ -291,7 +290,7 @@ class Scraper:
                 # TODO: threshold variable
                 # TODO: enhance removing www and http leaders
                 # TODO: make this a called method
-                sourcepath = "data/scraped_data/{}/{}".format(kvk, url.replace("www.", "").replace("http://", "").replace("https://", ""))
+                sourcepath = os.path.join("data","scraped_data",kvk,url.replace("www.", "").replace("http://", "").replace("https://", ""))
                 if Path(sourcepath).exists():
                     crawl_dates = [datetime.datetime.strptime(str(path).rsplit('/', 1)[1], '%Y-%m-%d').date() for path in Path(sourcepath).iterdir() if path.is_dir()]
                     # check if most recent crawldate is within threshold and if so, log finding and stop crawling for this company
@@ -313,7 +312,7 @@ class Scraper:
                     for url in records:
                         # check if we can actually download it in the robots
                         if rp.can_fetch(url, "*"):
-                            task = asyncio.ensure_future(self.__fetch_one_url(url, kvk=kvk, level=level))
+                            task = asyncio.create_task(self.__fetch_one_url(url, kvk=kvk, level=level))
                             tasks.append(task)
 
 
@@ -371,7 +370,7 @@ class Scraper:
             
             # for each url, create asynchronous task to fetch company and append to tasks list
             for url in records:
-                task = asyncio.ensure_future(self.__fetch_one_company(url))
+                task = asyncio.create_task(self.__fetch_one_company(url))
                 tasks.append(task) 
 
             # create future and group tasks
