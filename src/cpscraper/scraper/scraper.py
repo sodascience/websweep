@@ -37,12 +37,8 @@ def get_urls(r, url):
     """
     Parse code and return content and urls. Defined it here to be able to pickle it and process it in a thread pool.
     """
-
-    # resp.content is a byte array, convert to string
-    contents = r.decode("utf-8", "ignore")
-
     # parse
-    soup = BeautifulSoup(contents, 'lxml')
+    soup = BeautifulSoup(r, 'lxml')
 
     # extract urls from html code in beautiful soup
     # <a href="http://www.google.com/">Google</a>
@@ -63,7 +59,7 @@ def get_urls(r, url):
     # remove query string # bol.com/nl/producten/product/...?p=1
     urls = [urlparse(url_found)._replace(query="").geturl() for url_found in urls]
 
-    return contents, urls
+    return urls
 
 
 class Scraper:
@@ -168,7 +164,7 @@ class Scraper:
         Path(path).parent.mkdir(parents=True, exist_ok=True)
 
         # write raw contents to file
-        with open(path, "w") as f:
+        with open(path, "wb") as f:
             f.write(contents)
 
 
@@ -244,13 +240,13 @@ class Scraper:
                 status = response.status
                 if status == 200:
                     # parse the contents and extract URLS
-                    contents, urls = await self.loop.run_in_executor(
+                    urls = await self.loop.run_in_executor(
                         self.cpu_executor,
                         functools.partial(get_urls, r, url))
 
                     if self.save_html:
                         # save raw contents to file
-                        self.__save_to_disk(path, contents)
+                        self.__save_to_disk(path, r)
 
                 else:
                     path = ""
