@@ -13,7 +13,7 @@ class Extractor:
     def extracting(self):
 
         # Phone/emails/fax can be found in the HTML
-        with open(self.metadata["path"], "r", encoding="UTF-8") as file:
+        with open(self.metadata["path"], "rb", encoding="UTF-8") as file:
             self.text = file.read()
             self.soup = BeautifulSoup(self.text,"lxml")
 
