@@ -9,6 +9,8 @@ from cpscraper import DIR_ERROR, FILE_ERROR, SUCCESS, __app_name__
 CONFIG_DIR_PATH = Path(typer.get_app_dir(__app_name__))
 CONFIG_FILE_PATH = CONFIG_DIR_PATH / "config.ini" 
 
+# TODO: Provide comments
+
 def _truncate_section(config_file: Path, section: str) -> None:
     config_parser = configparser.ConfigParser()
     
@@ -178,3 +180,4 @@ def get_extractor_delete(config_file: Path = (current_scraper() / "settings.ini"
     config_parser = configparser.ConfigParser()
     config_parser.read(config_file)
     return eval(config_parser["Extractor"]["extractor_delete_files"])
+    

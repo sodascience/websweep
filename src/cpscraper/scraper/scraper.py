@@ -1,6 +1,7 @@
 """This module provides the Scraper model-controller."""
 
 from pathlib import Path
+from cpscraper.utils.utils import Worker
 from re import S
 from typing import Any, Dict, List, NamedTuple
 
@@ -29,40 +30,7 @@ import sqlite3 as sql
 
 
 
-def get_urls(r, url):
-    """
-    Parse code and return content and urls. Defined it here to be able to pickle it and process it in a thread pool.
-    """
-
-    # resp.content is a byte array, convert to string
-    contents = r.decode("utf-8", "ignore")
-
-    # parse
-    soup = BeautifulSoup(contents, 'lxml')
-
-    # extract urls from html code in beautiful soup
-    # <a href="http://www.google.com/">Google</a>
-    urls = [a.attrs.get('href') for a in soup.select('a[href]')]
-    
-    # filter out urls from other domains
-    # create base url
-    url_parsed = urlparse(url)
-    base_url = url_parsed.scheme + "://" + url_parsed.netloc
-
-    # add netloc/schema when missing
-    # TODO: do we want to keep mailto? mailto:info@frieslandbouwdetachering.nl?
-    urls = [urljoin(base_url, url_found) for url_found in urls]
-
-    # keep only the urls found within the same domain
-    urls = [url_found for url_found in urls if tldextract.extract(url_found).registered_domain == tldextract.extract(url).registered_domain]
-
-    # remove query string # bol.com/nl/producten/product/...?p=1
-    urls = [urlparse(url_found)._replace(query="").geturl() for url_found in urls]
-
-    return contents, urls
-
-
-class Scraper:
+class Scraper(Worker):
     def __init__(self, target_folder_path, save_html=True, max_level=3, classifier=lambda url, level: True, verify_ssl=False, concurrency_companies=1000, threads_bs4=10, threads_download=1000, use_sqlite=False):
         self.target_folder_path = target_folder_path
         self.base_path = self.target_folder_path / "data" 
@@ -108,6 +76,38 @@ class Scraper:
         #print("Execution type:", exc_type)
         #print("Execution value:", exc_value)
         #print("Traceback:", traceback)
+
+    def get_urls(r, url):
+        """
+        Parse code and return content and urls. Defined it here to be able to pickle it and process it in a thread pool.
+        """
+
+        # resp.content is a byte array, convert to string
+        contents = r.decode("utf-8", "ignore")
+
+        # parse
+        soup = BeautifulSoup(contents, 'lxml')
+
+        # extract urls from html code in beautiful soup
+        # <a href="http://www.google.com/">Google</a>
+        urls = [a.attrs.get('href') for a in soup.select('a[href]')]
+        
+        # filter out urls from other domains
+        # create base url
+        url_parsed = urlparse(url)
+        base_url = url_parsed.scheme + "://" + url_parsed.netloc
+
+        # add netloc/schema when missing
+        # TODO: do we want to keep mailto? mailto:info@frieslandbouwdetachering.nl?
+        urls = [urljoin(base_url, url_found) for url_found in urls]
+
+        # keep only the urls found within the same domain
+        urls = [url_found for url_found in urls if tldextract.extract(url_found).registered_domain == tldextract.extract(url).registered_domain]
+
+        # remove query string # bol.com/nl/producten/product/...?p=1
+        urls = [urlparse(url_found)._replace(query="").geturl() for url_found in urls]
+
+        return contents, urls
  
 
     def test_package():
@@ -211,7 +211,7 @@ class Scraper:
                     # parse the contents and extract URLS
                     contents, urls = await self.loop.run_in_executor(
                         self.cpu_executor,
-                        functools.partial(get_urls,r, url))
+                        functools.partial(self.get_urls,r, url))
 
                     if self.save_html:
                         # save raw contents to file
@@ -375,5 +375,3 @@ class Scraper:
         #Read what we did
 
         print(f"Downloaded {self.count_downloads} pages from {len(urls)} urls to level {3} in {time() - start:2.1f} seconds.")
-
-

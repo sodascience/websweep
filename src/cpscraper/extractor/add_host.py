@@ -38,7 +38,8 @@ def get_host(domain):
 #         domain = line.split(",")[0]
 #         host = get_host(domain)
 #         fout.write("\t".join(host)+"\n")
-        
+
+# TODO: change to config source file
 import pandas as pd
 df = pd.read_csv("data/tmp_data/sidn_test_info.csv", sep="\t")
 for col in ["Host", "Host_addr", "hostname", "country", "org",  "hostname_in-addr", "country_in-addr",  "org_in-addr"]:
@@ -47,3 +48,4 @@ for col in ["Host", "Host_addr", "hostname", "country", "org",  "hostname_in-add
     else:
         print(df[col].dropna().value_counts().head(10))
     print("--"*40+"\n\n")
+    

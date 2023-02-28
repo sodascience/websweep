@@ -1,3 +1,4 @@
+from cpscraper.utils.utils import Worker
 import re
 import typer
 from xmlrpc.client import Boolean
@@ -16,7 +17,7 @@ import tqdm
 from shutil import rmtree
 
 
-class Extractor():
+class Extractor(Worker):
     def __init__(self, target_folder_path, use_sqlite = False, extractor_delete_files = False):
         self.target_folder_path = target_folder_path
         self.use_sqlite = use_sqlite
@@ -400,4 +401,3 @@ class FileExtractor:
     #                 rmtree(os.path.join(data_folder, folder))
 
     #     print(f"Extracted data from {len(results)} pages in {time.time() - start:2.1f} seconds.")
-
