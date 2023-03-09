@@ -77,6 +77,7 @@ def operate():
     return deco_operate
 
 
+
 # Opens the current cpscraper working folder that is stored in the system's application config.ini file
 # Does not work in headless operation mode as it involves GUI commands
 @app.command(name="instance")
@@ -89,6 +90,7 @@ def scraper_address() -> None:
         webbrowser.open("file:////{}".format(config.current_scraper()))
     except:
         typer.secho("Could not open scraper instance folder\n", fg=typer.colors.RED)
+
 
 
 # Allows for the modification of the settings.ini file in the active working cpscraper instance folder
@@ -159,12 +161,14 @@ def scrape() -> None:
     """
 
     typer.secho(f"Scraper is started with instructions:", fg=typer.colors.YELLOW)
+
     typer.secho(
         f"- source file: {config.get_source_file_path()}", fg=typer.colors.YELLOW
     )
     typer.secho(
         f"- target folder: {config.get_target_folder_path()}\n", fg=typer.colors.YELLOW
     )
+
 
     with open(config.get_source_file_path(), "r") as f:
         f.readline()  # header
@@ -287,11 +291,13 @@ def init(headless: bool = typer.Option(False, help="Run without GUI elements")) 
         )
 
 
+
 # Set up a new cpscraper instance
 # Creates system application cpscraper folder and creates config.ini file therein
 # Stores new cpscraper instance location in the system's application config.ini file
 # Stores a newly created settings.ini file in the cpscraper folder
 # Can be run at any time and does not need the operation verification
+
 @app.command(name="init")
 def init(headless: bool = typer.Option(False, help="Run without GUI elements")) -> None:
     """
@@ -356,6 +362,7 @@ def init(headless: bool = typer.Option(False, help="Run without GUI elements")) 
     else:
         file = typer.prompt("ENTER source file location base PATH\n")
 
+
     typer.secho("Source file {file} selected\n", fg=typer.colors.YELLOW)
     time.sleep(0.5)
 
@@ -366,9 +373,10 @@ def init(headless: bool = typer.Option(False, help="Run without GUI elements")) 
     typer.secho(
         f"Raw files will be removed: {ask_delete_files}\n", fg=typer.colors.YELLOW
     )
+
     time.sleep(0.5)
 
-    app_init_error = config.init_app(str(folder), str(file), ask_delete_files)
+    app_init_error = config.init_app(str(folder), str(file), ask_delete_files, ask_use_sql)
     if app_init_error:
         typer.secho(
             f'Creating config file failed with "{ERRORS[app_init_error]}"',
