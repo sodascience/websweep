@@ -27,7 +27,20 @@ def _truncate_section(config_file: Path, section: str) -> None:
         pass
 
 def current_scraper() -> Path:
-    """Return the current scraper location"""
+    """
+    Return the current scraper location.
+    This function reads the scraper location from the system's application config.ini file
+    and returns it as a Path object. If the scraper location cannot be read, it returns
+    the path to the system's application config directory.
+
+    Returns:
+        Path: The current scraper location.
+
+    Example:
+        >>> current_scraper()
+        Path('/home/user/cpscraper')
+
+    """
     try:
         config_parser = configparser.ConfigParser()
         config_parser.read(CONFIG_FILE_PATH)
@@ -36,8 +49,27 @@ def current_scraper() -> Path:
         return CONFIG_DIR_PATH
 
 def init_app(target_folder_path: str, source_file_path: str, extractor_delete_files: bool, use_database: bool) -> int:
-    """Initialize the application."""
+    """Initialize the application.
 
+    Parameters:
+        target_folder_path : str
+            The path to the target folder.
+        source_file_path : str
+            The path to the source file.
+        extractor_delete_files : bool
+            A flag indicating whether to delete the extracted files.
+        use_database : bool
+            A flag indicating whether to use a database.
+
+    Returns:
+        int
+            An integer code indicating whether the initialization was successful.
+    
+    Examples:
+        >>> init_app('/path/to/target/folder', '/path/to/source/file', True, False)
+        SUCCESS
+
+    """
     # create the application config file location, config file and add the location of the scraper
     config_code = _init_application_config_file(Path(target_folder_path))
     if config_code != SUCCESS:
@@ -118,7 +150,28 @@ def _create_settings_file() -> int:
 
 
 def restore_app(target_folder_path: Path) -> int:
-    """Restore existing application."""
+    """
+    Restore an existing application with the given target folder path.
+    This function checks whether the given target folder path exists and contains
+    a "settings.ini" file. If both conditions are satisfied, it initializes the
+    application configuration file and checks whether the required settings
+    (target folder path, source file path, extractor delete flag) are present in
+    the settings file. If any of these checks fail, the function returns an error
+    code.
+
+    Parameters:
+        target_folder_path : Path
+            The path to the target folder of the application.
+
+    Returns:
+        int
+            An integer representing the status code of the restore operation.
+
+    Example:
+        >>> restore_app(Path("/path/to/target/folder"))
+        SUCCESS
+
+    """
 
     if not Path.is_dir(target_folder_path):
         return DIR_ERROR
@@ -141,7 +194,22 @@ def restore_app(target_folder_path: Path) -> int:
 
 
 def get_target_folder_path(config_file: Path = (current_scraper() / "settings.ini")) -> Path:
-    """Return the current scraper location path"""
+    """
+    Return the path of the current scraper location.
+
+    Parameters:
+        config_file : Path, optional
+            The path to the configuration file, by default the current scraper's "settings.ini".
+
+    Returns:
+        Path
+            The path of the current scraper location.
+
+    Example:
+        >>> get_target_folder_path(Path("path/to/settings.ini"))
+        Path('/path/to/cpscraper/')
+
+    """
     config_parser = configparser.ConfigParser()
     config_parser.read(config_file)
     return Path(config_parser["Scraper"]["location"])
@@ -160,7 +228,22 @@ def _save_source_file(source_file_path: Path) -> int:
     return SUCCESS
 
 def get_source_file_path(config_file: Path = (current_scraper() / "settings.ini")) -> Path:
-    """Return the current source file path"""
+    """
+    Return the current source file path.
+
+    Parameters:
+        config_file : Path, optional
+            The path to the configuration file (default is the current scraper's settings.ini file).
+
+    Returns:
+        Path or None
+            The current source file path if it exists in the configuration file, otherwise None.
+
+    Example:
+        >>> get_source_file_path()
+        Path('/path/to/source_file.csv')
+
+    """
     try:
         config_parser = configparser.ConfigParser()
         config_parser.read(config_file)
@@ -181,7 +264,22 @@ def _save_extractor_delete(extractor_delete_files: bool) -> int:
     return SUCCESS
 
 def get_extractor_delete(config_file: Path = (current_scraper() / "settings.ini")) -> bool:
-    """Return whether to delete processed raw files"""
+    """
+    Return whether to delete processed raw files.
+
+    Parameters:
+        config_file : Path, optional
+            The path to the configuration file (default is current scraper's "settings.ini")
+
+    Returns:
+        bool
+            Whether to delete processed raw files (True or False)
+
+    Example:
+        >>> get_extractor_delete()
+        True
+
+    """
     config_parser = configparser.ConfigParser()
     config_parser.read(config_file)
     return eval(config_parser["Extractor"]["extractor_delete_files"])
@@ -199,13 +297,39 @@ def _save_use_database(use_database: bool) -> int:
     return SUCCESS
 
 def get_use_database(config_file: Path = (current_scraper() / "settings.ini")) -> bool:
-    """Return whether to use database"""
+    """
+    Return whether to use database.
+
+    Parameters:
+        config_file : Path object, optional
+            The location of the scraper's configuration file, default is `current_scraper() / "settings.ini"`.
+
+    Returns:
+        bool
+            A boolean value indicating whether to use database.
+
+    Example:
+        >>> get_use_database()
+        True
+
+    """
     config_parser = configparser.ConfigParser()
     config_parser.read(config_file)
     return eval(config_parser["Database"]["use_database"])
 
 def set_last_scrape_date() -> bool:
-    """Set the last scraper date"""
+    """
+    Set the last scrape date in the application settings file.
+
+    Returns:
+        bool
+            A boolean indicating whether the operation was successful or not.
+
+    Example:
+        >>> set_last_scrape_date()
+        True
+        
+    """
     _truncate_section(current_scraper() / "settings.ini", "History")
     config_parser = configparser.ConfigParser()
     config_parser.add_section('History')
