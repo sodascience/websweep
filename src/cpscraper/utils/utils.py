@@ -3,9 +3,11 @@ from urllib.parse import urlparse
 from pathlib import Path
 import sqlite3 as sql
 
+
 class Worker:
     def __init__(self):
         pass
+
 
 def classify_url(url, level):
     """
@@ -15,8 +17,7 @@ def classify_url(url, level):
         return True
 
     # Taking the path (next step) will remove this part, we need to catch it before
-    regex = re.compile(r'^mailto:|^tel:',
-                    re.IGNORECASE)
+    regex = re.compile(r"^mailto:|^tel:", re.IGNORECASE)
     if re.search(regex, url):
         return False
 
@@ -27,8 +28,10 @@ def classify_url(url, level):
     url = urlparse(url).path
 
     # Don't download these
-    regex = re.compile(r'png$|jpg$|jpeg$|pdf$|collections|email\-protection|product|aanbod|assortiment|voorraad|koop|shop|artikelen|merken|wintersport|bouw|zoeken|search',
-                        re.IGNORECASE)
+    regex = re.compile(
+        r"png$|jpg$|jpeg$|pdf$|collections|email\-protection|product|aanbod|assortiment|voorraad|koop|shop|artikelen|merken|wintersport|bouw|zoeken|search",
+        re.IGNORECASE,
+    )
     if re.search(regex, url):
         return False
     # Maybe if there are many links in one level we can skip it
@@ -37,14 +40,17 @@ def classify_url(url, level):
     if level == 1:
         # Cloudfare protection --> reject
         # If only numbers and characters (e.g. https:/www.horstingkilder.nl/553-504") --> reject
-        if re.search("^[^a-zA-Z]+$",url):
+        if re.search("^[^a-zA-Z]+$", url):
             return False
         else:
             return True
     if level == 2:
         # Keep only if it seems important
-        regex = re.compile(r'over\-ons|contact|duurzaamheid|index\.php|algemene\-voorwaarden|vacatures|disclaimer|klantenservice|privacy\-policy|cookie\-policy|cookies|cookie|cookie\-beleid|over|overons|blogs|privacyverklaring|about|about\-us',
-                            re.IGNORECASE)
+
+        regex = re.compile(
+            r"over\-ons|contact|duurzaamheid|index\.php|algemene\-voorwaarden|vacatures|disclaimer|klantenservice|privacy\-policy|cookie\-policy|cookies|cookie|cookie\-beleid|over|overons|blogs|privacyverklaring|about|about\-us",
+            re.IGNORECASE,
+        )
         report_regex = re.compile(r"""
                             financiele.?rapportage|annual.?report|jaarrekening|jaar.?verslag|jaarrapport|boekhouding.?rapportage|boekhouding.?rapport|financial.?performance|investor.?relations|investeerder.?relaties|financial.?results|financial.?statement
                             """, re.VERBOSE | re.IGNORECASE)

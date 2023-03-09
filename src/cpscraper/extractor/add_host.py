@@ -4,13 +4,23 @@ import json
 
 key = open("ipinfokey.key").read()
 
+
 def get_location(ip):
     # More detailed info on the host (50k queries/month)
-    r = requests.get(f'http://ipinfo.io/{ip}?token={key}')
+    r = requests.get(f"http://ipinfo.io/{ip}?token={key}")
     others = json.loads(r.text)
-    others = [others.get("hostname"), others.get("city"), others.get("region"), others.get("country"),
-    others.get("loc"), others.get("org"), others.get("postal"), others.get("timezone")]
+    others = [
+        others.get("hostname"),
+        others.get("city"),
+        others.get("region"),
+        others.get("country"),
+        others.get("loc"),
+        others.get("org"),
+        others.get("postal"),
+        others.get("timezone"),
+    ]
     return others
+
 
 def get_host(domain):
     """
@@ -23,11 +33,15 @@ def get_host(domain):
         host = socket.gethostbyaddr(ip)
     except:
         return [domain] + [""] * 11
-    
-    others = get_location(ip)
-    others_add = get_location(host[1][0].replace(".in-addr.arpa",""))
 
-    return [domain, ip, host[0], host[1][0]] + [str(_) for _ in others] + [str(_) for _ in others_add]
+    others = get_location(ip)
+    others_add = get_location(host[1][0].replace(".in-addr.arpa", ""))
+
+    return (
+        [domain, ip, host[0], host[1][0]]
+        + [str(_) for _ in others]
+        + [str(_) for _ in others_add]
+    )
 
 
 # with open("data/tmp_data/sidn_test.csv") as f, open("data/tmp_data/sidn_test_info.csv", "w+") as fout:
@@ -41,11 +55,26 @@ def get_host(domain):
 
 # TODO: change to config source file
 import pandas as pd
+
 df = pd.read_csv("data/tmp_data/sidn_test_info.csv", sep="\t")
-for col in ["Host", "Host_addr", "hostname", "country", "org",  "hostname_in-addr", "country_in-addr",  "org_in-addr"]:
+for col in [
+    "Host",
+    "Host_addr",
+    "hostname",
+    "country",
+    "org",
+    "hostname_in-addr",
+    "country_in-addr",
+    "org_in-addr",
+]:
     if col == "Host":
-        print(df[col].dropna().apply(lambda x: tuple(x.split(".")[-2:])).value_counts().head(10))
+        print(
+            df[col]
+            .dropna()
+            .apply(lambda x: tuple(x.split(".")[-2:]))
+            .value_counts()
+            .head(10)
+        )
     else:
         print(df[col].dropna().value_counts().head(10))
-    print("--"*40+"\n\n")
-    
+    print("--" * 40 + "\n\n")
