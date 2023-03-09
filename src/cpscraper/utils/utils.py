@@ -45,7 +45,11 @@ def classify_url(url, level):
         # Keep only if it seems important
         regex = re.compile(r'over\-ons|contact|duurzaamheid|index\.php|algemene\-voorwaarden|vacatures|disclaimer|klantenservice|privacy\-policy|cookie\-policy|cookies|cookie|cookie\-beleid|over|overons|blogs|privacyverklaring|about|about\-us',
                             re.IGNORECASE)
-        if re.search(regex, url):
+        report_regex = re.compile(r"""
+                            financiele.?rapportage|annual.?report|jaarrekening|jaar.?verslag|jaarrapport|boekhouding.?rapportage|boekhouding.?rapport|financial.?performance|investor.?relations|investeerder.?relaties|financial.?results|financial.?statement
+                            """, re.VERBOSE | re.IGNORECASE)
+        
+        if re.search(regex, url) or re.search(report_regex, url):
             return True
         else:
             return False

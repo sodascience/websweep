@@ -17,7 +17,7 @@ from urllib.parse import urljoin, urlparse
 from protego import Protego
 import functools
 
-from aiohttp import ClientSession, TCPConnector
+from aiohttp import ClientSession, TCPConnector, ClientTimeout
 from bs4 import BeautifulSoup
 from pathlib import Path
 
@@ -27,6 +27,10 @@ import datetime
 import tldextract
 import os
 import sqlite3 as sql
+
+# monkeypatch to avoid "Can not load response cookies" 
+import http.cookies
+http.cookies._is_legal_key = lambda _: True
 
 
 
@@ -42,15 +46,11 @@ class Scraper(Worker):
         else:
             self.overview_path = f"{self.target_folder_path}/overview_urls.tsv"
 
-        self.__create_overview_file()
-
-        # # Check if overview file exists, if not create it
-        # if not Path(self.overview_path).is_file():
-        #     with open(self.overview_path, "w") as f:
-        #         f.write("id\tdomain\tlevel\turl\tstatus\tdate\tpath\n")
-
         self.save_html = save_html
         self.max_level = max_level
+
+        # Create file tracking downloaded packages
+        self.__create_overview_file()
 
         # Avoid error in SSL certificates
         self.verify_ssl = verify_ssl
@@ -62,6 +62,7 @@ class Scraper(Worker):
         self.threads_download = threads_download
 
         self.waits = dict()
+        self.errors_website = dict()
         self.headers = {
             "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:98.0) Gecko/20100101 Firefox/98.0",
             "DNT": "1",
@@ -70,6 +71,7 @@ class Scraper(Worker):
             "Upgrade-Insecure-Requests": "1"}
 
         #self.start = time()
+
         self.count_downloads = 0
         
 
@@ -114,6 +116,17 @@ class Scraper(Worker):
         return "Hello, this is a return from the main.py file in the cpscraper package"
 
     def __create_overview_file(self):
+        """
+        This function creates an overview file with the required headers if it doesn't exist.
+        If the `use_sqlite` attribute of the object is set to `True`, it creates a SQLite database with the 
+        required table and indexes, and if it's set to `False`, it creates a tab-separated file with the headers.
+        
+        Parameters:
+            self (object): The object instance.
+        
+        Returns:
+            None.
+        """
         if self.use_sqlite:
             connection = sql.connect(self.overview_path)
             cursor = connection.cursor()
@@ -143,7 +156,8 @@ class Scraper(Worker):
             # opening the file is fast (0.00x per query), minimum gain to keep it open (and potential trouble with threading)
             connection = sql.connect(self.overview_path)
             cursor = connection.cursor()
-            cursor.execute(f"INSERT INTO Overview VALUES ('{id}', '{domain}', {level}, '{url}', '{status}', '{date}', '{path}')")
+
+            cursor.execute(f"INSERT INTO Overview VALUES (?, ?, ?, ?, ?, ?, ?)", (id, domain, level, url, status, date, path))
             connection.commit()
             connection.close()
             
@@ -162,16 +176,48 @@ class Scraper(Worker):
         Path(path).parent.mkdir(parents=True, exist_ok=True)
 
         # write raw contents to file
-        with open(path, "w") as f:
+        with open(path, "wb") as f:
             f.write(contents)
 
 
     def __get_current_date(self):
         # return current day in format "YYYY-MM-DD"
         return datetime.datetime.now().strftime("%Y-%m-%d")
-            
 
+    
+            
     async def __fetch_one_url(self, url, kvk, level):
+        # be nice and wait a bit per url (non blocking)
+        self.waits[kvk] += 0.1
+        await asyncio.sleep(self.waits[kvk])
+
+        try_number = 0
+        while (try_number < 3) and (self.errors_website[kvk] < 20):
+            if try_number == 0:
+                urls = await self.__fetch_one_url_wrapped(url, kvk, level, self.session)
+            else:
+                await asyncio.sleep(20)
+
+                #If failure, give an individual session
+                async with ClientSession(headers=self.headers, 
+                                         trust_env=True, 
+                                         connector=TCPConnector(limit=1, #number of websites/request in parallel
+                                         ssl=self.verify_ssl, 
+                                         ttl_dns_cache=0,
+                                         force_close=True), #a bit slower but more reliable
+                        timeout=ClientTimeout(total=None, sock_connect=300, sock_read=300)) as session:
+                    urls = await self.__fetch_one_url_wrapped(url, kvk, level, session)
+
+            try_number += 1
+            
+            if urls is not None:
+                return urls
+        
+        return []
+
+         
+
+    async def __fetch_one_url_wrapped(self, url, kvk, level, session):
         """
         Fetch one url, save the html, and return the list of urls found on the page.
         """
@@ -179,22 +225,16 @@ class Scraper(Worker):
         #     self.io_executor,
         #     functools.partial(self.classifier, url, level))
 
-        flag_download = self.classifier(url, level)
-        #print(url, flag_download)
+
         # classify url to see if it should be crawled
-        if not flag_download:#self.classifier(url, level):
+        if not self.classifier(url, level):
             # add to file, without path
-            self.__update_overview_file(kvk, level, url, -9, "")
+            #self.__update_overview_file(kvk, level, url, -9, "")
             return []
 
-        # be nice and wait a second per url (non blocking)
-        self.waits[kvk] += 1
-        await asyncio.sleep(self.waits[kvk])
+        
 
         urls = []
-        # hash url to give an ID (collisions are possible)
-        #hash_url = hashlib.sha1(url.encode()).hexdigest()
-
 
         # create path www.google.com/something/ --> something
         if url[-1] == "/":
@@ -202,56 +242,39 @@ class Scraper(Worker):
         else: #Create path www.google.com/something --> something
             path = f"{self.base_path}/{kvk}/{urlparse(url).netloc.replace('www.','')}/{self.__get_current_date()}/{url.split('/')[-1]}"
         path = path.replace(" ", "_")
+    
+  
 
         try:
-            async with self.session.get(url) as response:
+            async with session.get(url) as response:
+                await asyncio.sleep(0.001)
                 r = await response.read()
                 status = response.status
                 if status == 200:
                     # parse the contents and extract URLS
-                    contents, urls = await self.loop.run_in_executor(
+                    urls = await self.loop.run_in_executor(
                         self.cpu_executor,
+
                         functools.partial(self.get_urls,r, url))
 
                     if self.save_html:
                         # save raw contents to file
-                        self.__save_to_disk(path, contents)
-
-                    # parse
-                    soup = BeautifulSoup(contents, 'lxml')
-
-                    # extract urls from html code in beautiful soup
-                    urls = [a.attrs.get('href') for a in soup.select('a[href]')]
-                    # print(urls)
-
-                    # filter out urls from other domains
-                    # create base url
-                    url_parsed = urlparse(url)
-                    base_url = url_parsed.scheme + "://" + url_parsed.netloc
-
-                    # add netloc/schema when missing
-                    # TODO: do we want to keep mailto? mailto:info@frieslandbouwdetachering.nl?
-                    urls = [urljoin(base_url, url_found) for url_found in urls]
-
-                    # keep only the urls found within the same domain
-                    urls = [url_found for url_found in urls if tldextract.extract(url_found).registered_domain == tldextract.extract(url).registered_domain]
-
-                    # remove query string and fragment (coming after #)
-                    urls = [urlparse(url_found)._replace(query="", fragment="").geturl() for url_found in urls]
+                        self.__save_to_disk(path, r)
 
                 else:
                     path = ""
+                
+                self.__update_overview_file(kvk, level, url, status, path)
+                
+                return urls
 
         except Exception as e:
-            status = str(e)
+            status = str(type(e)) + str(e)
             path = ""
-        
-        # print(f"{kvk}\t{urlparse(url).netloc}\t{level}\t{url}\t{status}\t{self.__get_current_date()}\t{path}")
-        # save records to file
+            self.__update_overview_file(kvk, level, url, status, path)
+            self.errors_website[kvk] += 1
+            return None
 
-        self.__update_overview_file(kvk, level, url, status, path)
-        
-        return urls
 
 
     async def __fetch_one_company(self, url):
@@ -270,6 +293,8 @@ class Scraper(Worker):
                 kvk, url = url
 
                 self.waits[kvk] = 0
+                self.errors_website[kvk] = 0
+
 
                 level = 0
                 all_records = [url]
@@ -279,7 +304,7 @@ class Scraper(Worker):
                 # TODO: threshold variable
                 # TODO: enhance removing www and http leaders
                 # TODO: make this a called method
-                sourcepath = "data/scraped_data/{}/{}".format(kvk, url.replace("www.", "").replace("http://", "").replace("https://", ""))
+                sourcepath = os.path.join("data","scraped_data",kvk,url.replace("www.", "").replace("http://", "").replace("https://", ""))
                 if Path(sourcepath).exists():
                     crawl_dates = [datetime.datetime.strptime(str(path).rsplit('/', 1)[1], '%Y-%m-%d').date() for path in Path(sourcepath).iterdir() if path.is_dir()]
                     # check if most recent crawldate is within threshold and if so, log finding and stop crawling for this company
@@ -288,6 +313,7 @@ class Scraper(Worker):
 
                 # Read the robots
                 async with self.session.get(f"{url}/robots.txt") as response:
+                    await asyncio.sleep(0.001)
                     r = await response.read()
                     rp = Protego.parse(r.decode("utf-8", "ignore"))
 
@@ -300,7 +326,7 @@ class Scraper(Worker):
                     for url in records:
                         # check if we can actually download it in the robots
                         if rp.can_fetch(url, "*"):
-                            task = asyncio.ensure_future(self.__fetch_one_url(url, kvk=kvk, level=level))
+                            task = asyncio.create_task(self.__fetch_one_url(url, kvk=kvk, level=level))
                             tasks.append(task)
 
 
@@ -312,7 +338,7 @@ class Scraper(Worker):
                     # speed up search using a set (and remove www to avoid downloading twice the same url)
                     temp_all_records = set([url.replace("www.", "") for url in all_records])
 
-                    # make sure the scraper doesn't run forever
+                    # make sure the scraper doesn't run forever (TODO: make sure it's 100 downloaded, not 100 found)
                     if len(temp_all_records) > 100:
                         break
 
@@ -325,10 +351,17 @@ class Scraper(Worker):
 
                     # reset waits for next level
                     self.waits[kvk] = 0
+
             except Exception as e:
-                status = str(e)
+                status = str(type(e)) + str(e)                    
                 path = ""
-    
+
+                # save problem with the request for robots.txt (usually page doesn't exist)
+                self.__update_overview_file(kvk, 0, f"{url}/robots.txt", status, path)
+
+            self.waits.pop(kvk)
+            self.errors_website.pop(kvk)
+
     async def __fetch_all(self, records):
         """
         Fetch all urls in records up to a level max_level. Save html to file.
@@ -340,22 +373,29 @@ class Scraper(Worker):
 
 
         # create HTTP client
-        async with ClientSession(headers=self.headers, trust_env=True, connector=TCPConnector(limit=self.threads_download, ssl=self.verify_ssl)) as self.session:
+        async with ClientSession(headers=self.headers, 
+                                 trust_env=True, 
+                                 connector=TCPConnector(limit=self.threads_download, #number of websites/request in parallel
+                                                        ssl=self.verify_ssl, 
+                                                        ttl_dns_cache=600, #maintain dns cache to speed up
+                                                        #limit_per_host=1, #only one request per website simultaneously, not a good idea, waits are better
+                                                        force_close=True), #slower but more reliable
+                                 timeout=ClientTimeout(total=None, sock_connect=120, sock_read=120)) as self.session: 
+            
             # for each url, create asynchronous task to fetch company and append to tasks list
             for url in records:
-                task = asyncio.ensure_future(self.__fetch_one_company(url))
+                task = asyncio.create_task(self.__fetch_one_company(url))
                 tasks.append(task) 
-            # create future and group tasks
-            
 
+            # create future and group tasks
             progress = [
                 await f
                 for f in tqdm.tqdm(asyncio.as_completed(tasks), total=len(tasks), leave = True, miniters=1)
             ]
 
             return progress
-    
 
+  
     def scrape_companies(self, urls):
         """
         Create initial asynchronous task to fetch all urls
@@ -367,7 +407,7 @@ class Scraper(Worker):
 
         # print(f'Scraper received {len(urls)} urls')
 
-        with ThreadPoolExecutor(max_workers=self.threads_bs4) as self.cpu_executor, ThreadPoolExecutor(max_workers=1) as self.io_executor:
+        with  ThreadPoolExecutor(max_workers=self.threads_bs4) as self.cpu_executor:#, ThreadPoolExecutor(max_workers=1) as self.io_executor:
             self.loop = asyncio.get_event_loop() 
             future = asyncio.ensure_future(self.__fetch_all(urls)) 
             self.loop.run_until_complete(future) 

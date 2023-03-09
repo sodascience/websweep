@@ -107,7 +107,7 @@ class FileExtractor:
     def extracting(self):
 
         # Phone/emails/fax can be found in the HTML
-        with open(self.metadata["path"], "r", encoding="UTF-8") as file:
+        with open(self.metadata["path"], "rb", encoding="UTF-8") as file:
             self.text = file.read()
             self.soup = BeautifulSoup(self.text,"lxml")
 
@@ -175,15 +175,24 @@ class FileExtractor:
         
         self.kvk = set()
         
+        #Pattern 1
         pattern = re.compile(r"""
                                 k\.?v\.?k.{0,12}?(\b\d{8}) | (\b\d{8}).{0,5}?k\.?v\.?k
                                 """, re.VERBOSE | re.IGNORECASE)
-        result_list = re.findall(pattern, self.text)
         result_list = set(re.findall(pattern, self.text))
         for item in result_list:
             for subitem in item:
                 if len(subitem) > 0:
                     self.kvk.add(subitem)
+
+        #Pattern 2
+        pattern2 = re.compile(r"""
+                                (?<=kamer van koophandel).{0,50}(\d{8})
+                                """, re.VERBOSE | re.IGNORECASE)
+        result_list = set(re.findall(pattern2, self.text))
+        for item in result_list:
+            self.kvk.add(item)
+
 
         self.metadata["kvk"] = list(self.kvk)
         
@@ -252,14 +261,15 @@ class FileExtractor:
         """
         pdf_links = set()
         pattern = re.compile(r"""
-                            financiele.?rapportage|annual.?report|jaarrekening|jaar.?verslag|jaarrapport|jaarrekening|boekhouding.?rapportage|boekhouding.?rapport|financial.?performance|investor|investeerder|financial.?results
+                            financiele.?rapportage|annual.?report|jaarrekening|jaar.?verslag|jaarrapport|boekhouding.?rapportage|boekhouding.?rapport|financial.?performance|investor.?relations|investeerder.?relaties|financial.?results|financial.?statement
                             """, re.VERBOSE | re.IGNORECASE)
         neg_pattern = re.compile(r"""
-                            medewerker|studeren|slim|algemene.?voorwaarden|privacy|test|asbestos|website|mailto|CO2|webshopp|app|experience|opstellen|zoek|coronavirus|diensten|nieuwsbrief|ZZP|freelancers|wat.?is|vertalen
+                            medewerker|studeren|slim|algemene.?voorwaarden|privacy|test|asbestos|website|mailto|CO2|webshopp|app|experience|opstellen|zoek|coronavirus|diensten|nieuwsbrief|ZZP|freelancers|wat.?is|vertalen|wetboek
                             """, re.VERBOSE | re.IGNORECASE)
 
         for link in self.soup.find_all("a"):
             if re.search(pattern, str(link.get('href'))) and not re.search(neg_pattern, str(link.get('href'))):
+
                 # print(re.search(pattern, str(link.get('href'))))
                 if link.get('href').startswith('/'):
                     url = urljoin(self.metadata['website'], link.get('href'))

@@ -4,6 +4,7 @@ import configparser
 from pathlib import Path
 import os
 import typer
+from datetime import datetime
 from cpscraper import DIR_ERROR, FILE_ERROR, SUCCESS, __app_name__
 
 CONFIG_DIR_PATH = Path(typer.get_app_dir(__app_name__))
@@ -34,7 +35,7 @@ def current_scraper() -> Path:
     except:
         return CONFIG_DIR_PATH
 
-def init_app(target_folder_path: str, source_file_path: str, extractor_delete_files: bool) -> int:
+def init_app(target_folder_path: str, source_file_path: str, extractor_delete_files: bool, use_database: bool) -> int:
     """Initialize the application."""
 
     # create the application config file location, config file and add the location of the scraper
@@ -60,6 +61,10 @@ def init_app(target_folder_path: str, source_file_path: str, extractor_delete_fi
     extractor_delete_files_code = _save_extractor_delete(extractor_delete_files)
     if extractor_delete_files_code != SUCCESS:
         return extractor_delete_files_code
+
+    use_database = _save_use_database(use_database)
+    if use_database != SUCCESS:
+        return use_database
 
     return SUCCESS
 
@@ -180,4 +185,35 @@ def get_extractor_delete(config_file: Path = (current_scraper() / "settings.ini"
     config_parser = configparser.ConfigParser()
     config_parser.read(config_file)
     return eval(config_parser["Extractor"]["extractor_delete_files"])
-    
+
+def _save_use_database(use_database: bool) -> int:
+    _truncate_section(current_scraper() / "settings.ini", "Database")
+    config_parser = configparser.ConfigParser()
+    config_parser.add_section('Database')
+    config_parser.set('Database', 'use_database', str(use_database))
+    try:
+        with (current_scraper() / "settings.ini").open("a") as file:
+            config_parser.write(file)
+    except OSError:
+        return FILE_ERROR
+    return SUCCESS
+
+def get_use_database(config_file: Path = (current_scraper() / "settings.ini")) -> bool:
+    """Return whether to use database"""
+    config_parser = configparser.ConfigParser()
+    config_parser.read(config_file)
+    return eval(config_parser["Database"]["use_database"])
+
+def set_last_scrape_date() -> bool:
+    """Set the last scraper date"""
+    _truncate_section(current_scraper() / "settings.ini", "History")
+    config_parser = configparser.ConfigParser()
+    config_parser.add_section('History')
+    config_parser.set('History', 'last_scrape', str(datetime.today().strftime('%Y-%m-%d %H:%M:%S')))
+    try:
+        with (current_scraper() / "settings.ini").open("a") as file:
+            config_parser.write(file)
+    except OSError:
+        return FILE_ERROR
+    return SUCCESS
+
