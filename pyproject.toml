@@ -27,6 +27,7 @@ ndjson = "^0.3.1"
 multiprocess = "^0.70.13"
 Protego = "^0.2.1"
 tqdm = "^4.64.1"
+functools = "^0.5"
 
 [tool.poetry.dev-dependencies]
 pytest = "^5.2"

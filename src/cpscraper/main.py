@@ -16,102 +16,62 @@ import asyncio
 from tqdm import tqdm
 import tqdm.asyncio
 import webbrowser
+import regex as re
 
 from .scraper.scraper import Scraper
 from .extractor.extractor import Extractor
-from .utils.utils import classify_url
+from .utils.utils import classify_url, Worker
 from cpscraper import ERRORS, __app_name__, __version__, config
+from functools import wraps
 
 app = typer.Typer()
 
 
-# Helper for scraping
-def _create_results(path):
-    [id, domain, level, url, date, path] = path
-    #folder = _get_folder(path)
+# Wrapping function (decorator) for operating application commands
+# Verifies whether the application is ready to receive various operational commands such as scraping and extracting as the application should first be configured
+# TODO: This function is of high importance for the stability of the application and should be extended with validity checks
+def operate():
+    def deco_operate(f):
+        @wraps(f)
+        def f_operate(*args, **kwargs):
 
-    start_time_file = time.perf_counter()
-    #website_name = os.path.basename(Path(folder).parents[0])
-    # TODO: integrate get scraper into _get_worker method since now no checks are performed if target folders exist
-    cached_corporate = Extractor([id, domain, level, url, date, path])
-    metadata = cached_corporate.extracting()
-    end_time_file = time.perf_counter()
-    
-    return ({path: end_time_file - start_time_file }, metadata)
+            if not config.CONFIG_FILE_PATH.exists():
+                typer.secho('Application config file was not found. Please run "scraper init" or use scraper --help', fg=typer.colors.RED)
+                return
+            elif config.current_scraper() == config.CONFIG_DIR_PATH or not config.current_scraper().exists():
+                typer.secho('Application config file has no instance location pointer. Please initalise or restore an instance or use cpscraper --help', fg=typer.colors.RED)
+                return
+            elif config.get_source_file_path() is None or not config.get_source_file_path().exists():
+                typer.secho('Settings file does not contain essential instance data. Please initalise or restore an instance or use cpscraper --help', fg=typer.colors.RED)
+                return
 
-# Helper for scraping
-def _get_folder(path):
-    # Remove hidden files
-    next_folder = [_ for _ in os.listdir(path) if not _.startswith(".")][0]
-    final_dir = os.path.join(path, next_folder)
-    
-    # This should be a parameter of the code instead of finding it automatically (TODO). It could use if no parameter is passed.
-    if os.path.isdir(final_dir):
-        list_of_files = os.listdir(final_dir)
-        list_of_files = [_ for _ in list_of_files if not _.startswith(".")]
-        list_of_files.sort(reverse=True)
-        return os.path.join(final_dir, list_of_files[0])
-    else:
-        return None
+            if f.__name__ == "extract" and not (config.get_target_folder_path() / "data").exists():
+                typer.secho('There are no scraped files to extract from. Please start scraping using "scrape" or use cpscraper --help', fg=typer.colors.RED)
+                return
+
+            return f(*args, **kwargs)
+        return f_operate 
+    return deco_operate
 
 
-# Helper method for main callback of Typer app
-def _version_callback(value: bool) -> None:
-    if value:
-        typer.echo(f"{__app_name__} v{__version__}")
-        raise typer.Exit()
 
-
-# Helper for all called CLI methods that need to be provided with a WORKER unit
-def _get_worker() -> Scraper:
-    if config.CONFIG_FILE_PATH.exists():
-        source_file_path = config.get_source_file_path()
-    else:
-        typer.secho(
-            'Config file not found. Please, run "scraper init" or use scraper --help',
-            fg=typer.colors.RED,
-        )
-        raise typer.Exit(1)
-    if source_file_path.exists():
-        return Scraper(target_folder_path = config.get_target_folder_path(), classifier=classify_url, use_sqlite = config.get_use_database())
-    else:
-        typer.secho(
-            'Source file not found. Please, run "scraper init" or use scrape --help',
-            fg=typer.colors.RED,
-        )
-        raise typer.Exit(1)
-
-
-@app.command(name = "scrape")
-def _scrape() -> None:
+# Opens the current cpscraper working folder that is stored in the system's application config.ini file
+# Does not work in headless operation mode as it involves GUI commands
+@app.command(name = "instance")
+@operate()
+def scraper_address() -> None:
     """
-    Start caching websites
+    Open configured scraper instance folder
     """
-    scrape(config.get_source_file_path())
-
-def scrape(config_file) -> None:
-    """
-    Start caching websites
-    """
-
-    config.set_last_scrape_date()
-
-    typer.secho(f"Scraper is started with instructions:", fg=typer.colors.YELLOW)
-    typer.secho(f"- source file: {config.get_source_file_path()}", fg=typer.colors.YELLOW)
-    typer.secho(f"- target folder: {config.get_target_folder_path()}\n", fg=typer.colors.YELLOW)
-
-    worker = _get_worker()
-    
-    with open(config_file, "r") as f:
-        f.readline() #header
-        urls = [line.split(",") for line in f.readlines()]        
-        urls = sorted([(kvk.strip(), f"https://www.{url}/") for url, kvk in urls])
-
-    # Run scraper
-    # Start scraper, downloading 20 companies in parallel
-    worker.scrape_companies(urls)
+    try:
+        webbrowser.open('file:////{}'.format(config.current_scraper()))
+    except: 
+        typer.secho("Could not open scraper instance folder\n", fg=typer.colors.RED)
 
 
+
+# Allows for the modification of the settings.ini file in the active working cpscraper instance folder
+# Allows modification of the source file and target folder locations + whether extracted documents are deleted
 @app.command(name="config")
 def cli_config(
     delete_processed_files: bool = typer.Option(None, help="Delete / Not-Delete extractor processed raw files"),
@@ -134,124 +94,76 @@ def cli_config(
                 config._save_extractor_delete(True)
             else:
                 config._save_extractor_delete(False)
+        # TODO: Verify what happens when the target folder location is changed, the folder should be moved as well
         if target_folder_path is not None:
             config._save_target_folder(target_folder_path)
         if source_file_path is not None:
             config._save_source_file(source_file_path)
         
-        typer.secho(
-            f"Config settings saved", fg=typer.colors.GREEN
-        )
+        typer.secho(f"Config settings saved", fg=typer.colors.GREEN)
 
 
-@app.command()
-def extract() -> None:
+# Starts the scraping of targets from the set source file in the settings.ini file in the active working cpscraper instance settings folder
+# Calls a Scraper instance which handles the scraping procedure
+# Scraped documents are stored in the active working cpscraper instance folder under 'data'
+# Can only be run when the application has been initialised
+@app.command(name = "scrape")
+@operate()
+def scrape() -> None:
     """
-    Start scraping the data from cached website files
+    Start caching websites
+    """
+
+    typer.secho(f"Scraper is started with instructions:", fg=typer.colors.YELLOW)
+    typer.secho(f"- source file: {config.get_source_file_path()}", fg=typer.colors.YELLOW)
+    typer.secho(f"- target folder: {config.get_target_folder_path()}\n", fg=typer.colors.YELLOW)
+
+    
+    with open(config.get_source_file_path(), "r") as f:
+        f.readline() #header
+        urls = [line.split(",") for line in f.readlines()]        
+        urls = sorted([(kvk.strip(), f"https://www.{url}/") for url, kvk in urls])
+
+    worker = Scraper(target_folder_path = config.get_target_folder_path(), classifier=classify_url)
+    worker.scrape_companies(urls)
+
+
+# Starts the extracting of files in the active working cpscraper instance folder
+# Calls an Extractor instance which handles the extracting procedure
+# Extracted data is stored in the active working cpscraper instance folder under 'scraped_data'
+# Can only be run when the application has been initialised
+# Can only be run when the scrape function has been called before and there are extractable documents in the 'data' folder
+@app.command()
+@operate()
+def extract(
+    start_date: str = typer.Option(None, help="Date on which the files are retreieved and extracted should start extracting"), 
+    end_date: str = typer.Option(None, help="Date on which the files are retreieved and extractor should stop extracting")) -> None:
+    """
+    Start extracting data from the fetched files
     """
 
     typer.secho(f"Extractor is started with instructions:", fg=typer.colors.YELLOW)
     typer.secho(f"- source folder: {config.get_target_folder_path()}", fg=typer.colors.YELLOW)
     typer.secho(f"- delete extracted files: {config.get_extractor_delete()}\n", fg=typer.colors.YELLOW)
 
-    start = time.time()
-
-    
-    i = 0
-
-    file_res = config.get_target_folder_path()  /  ('scraped_data_' + str(datelib.today()) + '.ndjson')
-    pdf_file = config.get_target_folder_path(config.CONFIG_FILE_PATH)  /  ('pdf_links_' + str(datelib.today()) + '.ndjson')
-    pdf_list = []
-    
-    Path(file_res).parent.mkdir(parents=True, exist_ok=True)
-
-    date_start = datelib.today()
-    date_end = datelib.today()
-
-    # Read file
-    if config.get_use_database():
-        connection = sql.connect(os.path.join(config.get_target_folder_path(), "overview_urls.db"))
-        cursor = connection.cursor()
-        results = cursor.execute(f'''SELECT id, domain, level, url, date, path FROM Overview 
-                         WHERE (date >= '{date_start}') 
-                         AND (date <= '{date_end}') 
-                         AND (status == "200")''').fetchall()
-        connection.close()
+    # TODO: Build check whether the provided dates are conform the format and if not indicate that
+    if (start_date is None and end_date is None):
+        worker = Extractor(target_folder_path = config.get_target_folder_path(), use_sqlite = False, extractor_delete_files = True)
+        worker.extract_companies()
     else:
-        with open(os.path.join(config.get_target_folder_path(config.CONFIG_FILE_PATH), "overview_urls.tsv")) as f:
-            f.readline() #header
-            results = []
-            for line in f:
-                id, domain, level, url, status, date, path = line.split("\t")
-                if (date >= date_start) and (date <= date_end) and (status == "200"):
-                    results.append([id, domain, level, url, date, path.strip()])
-
-    # Parallelize loop 
-    with Pool() as pool, open(file_res, "w+", encoding='UTF-8') as f_res:
-        writer_res = ndjson.writer(f_res, ensure_ascii=False)
-
-        with tqdm.tqdm(total=len(results), leave = True, miniters=1) as pbar:
-            for result in pool.imap_unordered(_create_results, results):
-                time_dict, json_dict = result
-                writer_res.writerow(json_dict)
-                pbar.update()
-                if json_dict["annual_reports"] != []:
-                    print(json_dict['annual_reports'])
-                    pdf_list.append(json_dict["annual_reports"])
-
-                # IF you want to only run extract through a part of the dataset, uncomment this and change the if statement
-                # i += 1
-                # if i == 3500:
-                #     break
-
-    with open(pdf_file, "w+", encoding='UTF-8') as pdf_res:
-        pdf_writer = ndjson.writer(pdf_res, ensure_ascii=False)
-        pdf_list = list(tuple(pdf_list))
-        pdf_writer.writerow(pdf_list)
+        typer.secho(f"Given start and/or end date do not conform to the YYYY-MM-DD format, extractor was terminated", fg=typer.colors.RED)
         
-    
-    print(f"Extracted data from {len(results)} pages in {time.time() - start:2.1f} seconds.")
 
-    if config.get_extractor_delete():
-        data_folder = os.path.join(config.get_target_folder_path(), "data")
-        for folder in os.listdir(data_folder):
-            if os.path.isdir(folder):
-                rmtree(os.path.join(data_folder, folder))
-
-
-@app.callback()
-def main(
-    version: Optional[bool] = typer.Option(
-        None,
-        "--version",
-        "-v",
-        help="Show the application's version and exit.",
-        callback=_version_callback,
-        is_eager=True,
-    )
-) -> None:
-    return
-
-
-
-@app.command(name = "instance")
-def scraper_address() -> None:
-    """
-    Open configured scraper instance folder
-    """
-    try:
-        webbrowser.open('file:////{}'.format(config.current_scraper()))
-    except: 
-        typer.secho(
-            "Could not open scraper instance folder\n", fg=typer.colors.RED
-        )
-
-
-
+# Restores an existing cpscraper instance as the active instance which can be worked on
+# Creates system application cpscraper folder and creates config.ini file therein
+# Stores the existing cpscraper instance location in the system's application config.ini file and overwrites any previous ones
+# Verifies whether the expected values are within the settings.ini file
+# Can be run at any time and does not need the operation verification
 @app.command(name = "restore")
 def init(headless: bool = typer.Option(False, help="Run without GUI elements")) -> None:
     """
-    Restore configuration of existing scraper instance
+    Restore configuration of existing scraper instance.
+    The exisiting location is stored in the application config file and the exisiting settings in the settings file are validated.
     """
 
     if headless == False:
@@ -261,55 +173,51 @@ def init(headless: bool = typer.Option(False, help="Run without GUI elements")) 
         except:
             headless = True
 
-    typer.secho(
-        "\nWELCOME to the corporate scraper.\nFollow the instructions to restore an existing scraper instance.\n", fg=typer.colors.GREEN
-    )
+    typer.secho("\nWELCOME to the corporate scraper.\nFollow the instructions to restore an existing scraper instance.\n", fg=typer.colors.GREEN)
 
     if headless == True:
-        typer.secho(
-            "headless mode turned on\n", fg=typer.colors.YELLOW
-        )
+        typer.secho("headless mode turned on\n", fg=typer.colors.YELLOW)
     else:
-        typer.secho(
-            "headless mode turned off\n", fg=typer.colors.YELLOW
-        )
+        typer.secho("headless mode turned off\n", fg=typer.colors.YELLOW)
 
     time.sleep(0.5)
 
     if headless == False:
         ask_continue_folder = typer.confirm("SELECT a scraper instance folder \nContinue?\n")
         if not ask_continue_folder:
-            typer.secho(
-                f'Restoring stopped\n',
-                fg=typer.colors.RED,
-            )
+            typer.secho(f'Restoring stopped\n', fg=typer.colors.RED)
             raise typer.Exit(1)
         try:
             Tk().withdraw()
             folder = fd.askdirectory()
         except:
-            typer.secho(
-                "\nGUI Interface failed to load", fg=typer.colors.RED
-            )
+            typer.secho("\nGUI Interface failed to load", fg=typer.colors.RED)
             folder = typer.prompt("ENTER scraper instance folder base PATH\n")
     else:
         folder = typer.prompt("ENTER scraper instance folder base PATH\n")
 
     app_init_error = config.restore_app(Path(folder))
     if app_init_error:
-        typer.secho(
-            f'Creating config file failed with "{ERRORS[app_init_error]}"',
-            fg=typer.colors.RED,
-        )
+        typer.secho(f'Restoring scraper instance failed with "{ERRORS[app_init_error]}"', fg=typer.colors.RED)
+        typer.secho('The settings file for the given instance is incomplete, does not adhere to the expected format or could not be read.', fg=typer.colors.RED)
         raise typer.Exit(1)
     else :
         typer.secho(f"Scraper is initialised and ready to use \nUse the --help command for instructions\n ", fg=typer.colors.GREEN)
 
 
+
+# Set up a new cpscraper instance
+# Creates system application cpscraper folder and creates config.ini file therein
+# Stores new cpscraper instance location in the system's application config.ini file
+# Stores a newly created settings.ini file in the cpscraper folder
+# Can be run at any time and does not need the operation verification
+
 @app.command(name = "init")
 def init(headless: bool = typer.Option(False, help="Run without GUI elements")) -> None:
     """
-    Initialise a new scraper instance
+    Initialise a new scraper instance.
+    The instance location is stored in the application config file, 
+    a new folder location is created and a setting file is created within this folder.
     """
 
     if headless == False:
@@ -319,69 +227,48 @@ def init(headless: bool = typer.Option(False, help="Run without GUI elements")) 
         except:
             headless = True
 
-    typer.secho(
-        "\nWELCOME to the corporate scraper.\nFollow the instructions to set up a new scraper instance and start scraping.\n", fg=typer.colors.GREEN
-    )
+    typer.secho("\nWELCOME to the corporate scraper.\nFollow the instructions to set up a new scraper instance and start scraping.\n", fg=typer.colors.GREEN)
 
     if headless == True:
-        typer.secho(
-            "headless mode turned on\n", fg=typer.colors.YELLOW
-        )
+        typer.secho("headless mode turned on\n", fg=typer.colors.YELLOW)
     else:
-        typer.secho(
-            "headless mode turned off\n", fg=typer.colors.YELLOW
-        )
+        typer.secho("headless mode turned off\n", fg=typer.colors.YELLOW)
 
     time.sleep(0.5)
 
     if headless == False:
         ask_continue_folder = typer.confirm("SELECT a configuration and scraper output storage folder \nContinue?\n")
         if not ask_continue_folder:
-            typer.secho(
-                f'Initalisation stopped\n',
-                fg=typer.colors.RED,
-            )
+            typer.secho(f'Initalisation stopped\n', fg=typer.colors.RED)
             raise typer.Exit(1)
         try:
             Tk().withdraw()
             folder = fd.askdirectory()
         except:
-            typer.secho(
-                "\nGUI Interface failed to load", fg=typer.colors.RED
-            )
+            typer.secho("\nGUI Interface failed to load", fg=typer.colors.RED)
             folder = typer.prompt("ENTER target folder base PATH\n")
     else:
         folder = typer.prompt("ENTER target folder base PATH\n")
    
-    typer.secho(
-        "Folder {} selected\n".format(folder), fg=typer.colors.YELLOW
-    )
+    typer.secho("Folder {} selected\n".format(folder), fg=typer.colors.YELLOW)
     time.sleep(0.5)
 
     if headless == False:
         ask_continue_folder = typer.confirm("SELECT a source file (.csv) with kvk and url columns \nContinue?\n")
         if not ask_continue_folder:
-            typer.secho(
-                f'Initalisation stopped\n',
-                fg=typer.colors.RED,
-            )
+            typer.secho(f'Initalisation stopped\n', fg=typer.colors.RED)
             raise typer.Exit(1)
         try:
             Tk().withdraw()
-            file = fd.askopenfilename(
-                title="Choose a file",
-                filetypes=[('csv files', '.csv')])
+            file = fd.askopenfilename(title="Choose a file", filetypes=[('csv files', '.csv')])
         except:
-            typer.secho(
-                "\nGUI Interface failed to load", fg=typer.colors.RED
-            )
+            typer.secho("\nGUI Interface failed to load", fg=typer.colors.RED)
             file = typer.prompt("ENTER source file location base PATH\n")
     else:
         file = typer.prompt("ENTER source file location base PATH\n")
 
-    typer.secho(
-        "Source file {file} selected\n", fg=typer.colors.YELLOW
-    )
+
+    typer.secho( "Source file {file} selected\n", fg=typer.colors.YELLOW)
     time.sleep(0.5)
 
 
@@ -395,18 +282,35 @@ def init(headless: bool = typer.Option(False, help="Run without GUI elements")) 
 
     ask_delete_files = typer.confirm("SELECT to remove raw files after extractor processing?\n")
 
-    typer.secho(
-        f"Raw files removed: {ask_delete_files}\n", fg=typer.colors.YELLOW
-    )
+
+    typer.secho(f"Raw files will be removed: {ask_delete_files}\n", fg=typer.colors.YELLOW)
     time.sleep(0.5)
 
     app_init_error = config.init_app(str(folder), str(file), ask_delete_files, ask_use_sql)
     if app_init_error:
-        typer.secho(
-            f'Creating config file failed with "{ERRORS[app_init_error]}"',
-            fg=typer.colors.RED,
-        )
+        typer.secho(f'Creating config file failed with "{ERRORS[app_init_error]}"', fg=typer.colors.RED,)
         raise typer.Exit(1)
     else :
         typer.secho(f"Scraper is initialised and ready to use \nUse the --help command for instructions\n ", fg=typer.colors.GREEN)
 
+
+# Helper method for main callback of Typer app
+def _version_callback(value: bool) -> None:
+    if value:
+        typer.echo(f"{__app_name__} v{__version__}")
+        raise typer.Exit()
+
+
+# Main Typer app callback
+@app.callback()
+def main(
+    version: Optional[bool] = typer.Option(
+        None,
+        "--version",
+        "-v",
+        help="Show the application's version and exit.",
+        callback=_version_callback,
+        is_eager=True,
+    )
+) -> None:
+    return
