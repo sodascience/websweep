@@ -15,6 +15,7 @@ from multiprocess import Pool
 import ndjson
 import tqdm
 from shutil import rmtree
+import unicodedata
 
 
 class Extractor(Worker):
@@ -35,10 +36,10 @@ class Extractor(Worker):
         metadata = FileExtractor([id, domain, level, url, date, path]).extracting()
         end_time_file = time.perf_counter()
 
-        return ({path: end_time_file - start_time_file}, metadata)
+        return metadata
 
+    
     def extract_companies(self):
-
         start = time.time()
 
         # TODO: Link back to config data
@@ -72,7 +73,7 @@ class Extractor(Worker):
                         and (status == "200")
                     ):
                         results.append([id, domain, level, url, date, path.strip()])
-
+        
         # chunking in 1M files
         n = 1000000
 
@@ -103,11 +104,10 @@ class Extractor(Worker):
                         writer_res = ndjson.writer(f_res, ensure_ascii=False)
                         writer_rep = ndjson.writer(f_rep, ensure_ascii=False)
 
-                        for result in pool.imap_unordered(
+
+                        for json_dict in pool.imap_unordered(
                             self._create_results, results[i : i + n]
                         ):
-                            time_dict, json_dict = result
-
                             writer_res.writerow(json_dict)
                             if json_dict["annual_reports"] != []:
                                 writer_rep.writerow(json_dict["annual_reports"])
@@ -124,7 +124,7 @@ class Extractor(Worker):
             f"Extracted data from {len(results)} pages in {time.time() - start:2.1f} seconds."
         )
 
-
+#TODO allow users to change FileExtractor with their own function (base = scraper + some info; modules to get different info (e.g. doewnload corporates))
 class FileExtractor:
     def __init__(self, info):
         self.metadata = dict()
@@ -138,7 +138,6 @@ class FileExtractor:
         ) = info
 
     def extracting(self):
-
         # Phone/emails/fax can be found in the HTML
         with open(self.metadata["path"], "rb") as file:
             self.text = file.read().decode("utf-8", "ignore")
@@ -146,17 +145,20 @@ class FileExtractor:
 
         # Get metadata
         self.extract_metadata()
+        
 
         # Extract the data
+        self.extract_annual_report()
         self.extract_kvk()
         self.extract_btw()
         self.extract_phone()
         self.extract_email()
         self.extract_fax()
-        self.extract_annual_report()
+        
 
-        # Zip and address can better be found in raw text
+        # Zip and address can better be found without html
         self._clean_html()
+        self.metadata["text"] = self.text #TODO, ask Peter if better to save raw 
 
         self.extract_zip()
         self.extract_address()
@@ -168,16 +170,25 @@ class FileExtractor:
         Scrape the adres from the input file, and add found adres to self.adres in set form
         """
         add_found = []
+  
         for zipcode in self.metadata["zipcode"]:
+            add, *_ = self.text.partition(zipcode)
+            if _[0] == "":
+                continue
+    
+            add = add[-100:].rstrip().rsplit("\n", 2)
+            if len(add[-1]) < 5: #sometimes the postcode is NL-1933XX
+                add = add[-2]
+            else:
+                add = add[-1] 
+
             pattern = (
-                r"(((\b[a-zA-ZÀ-ÿ]+)\s+[0-9][0-9-_a-z,/]*)(\s+(?=("
-                + zipcode
-                + r"))|(?=("
-                + zipcode
-                + "))))"
-            )
-            findall = re.findall(pattern, self.text)
-            add_found += [item[1] for item in findall]
+                r"\b([ a-zA-ZÀ-ÿ]+\s+[\s0-9-_a-zA-Z]{1,9})" + #address part
+                r"[\s\-,\|]{0,5}"
+                )
+            f = re.findall(pattern, add.strip())
+            if len(f) > 0:
+                add_found.append(f[-1])
 
         self.metadata["address"] = add_found
 
@@ -217,32 +228,16 @@ class FileExtractor:
         """
         Scrape the KVK number from the input file, and add found KVK number to self.kvk in set form
         """
-
-        self.kvk = set()
-
-
         pattern = re.compile(
             r"""
-                                k\.?v\.?k.{0,12}?(\b\d{8}) | (\b\d{8}).{0,5}?k\.?v\.?k
+                                k\.?v\.?k.{0,12}?(\b\d{8}) | (\b\d{8}).{0,5}?k\.?v\.?k | (?<=kamer van koophandel).{0,50}(\d{8})
                                 """,
             re.VERBOSE | re.IGNORECASE,
         )
         result_list = re.findall(pattern, self.text)
 
-        result_list = set(re.findall(pattern, self.text))
-        for item in result_list:
-            for subitem in item:
-                if len(subitem) > 0:
-                    self.kvk.add(subitem)
-
-        #Pattern 2
-        pattern2 = re.compile(r"""
-                                (?<=kamer van koophandel).{0,50}(\d{8})
-                                """, re.VERBOSE | re.IGNORECASE)
-        result_list = set(re.findall(pattern2, self.text))
-        for item in result_list:
-            self.kvk.add(item)
-
+        
+        self.kvk = set([subitem for item in result_list for subitem in item if len(subitem) > 0])
 
         self.metadata["kvk"] = list(self.kvk)
 
@@ -377,7 +372,7 @@ class FileExtractor:
 
     def _clean_html(self) -> None:
         text = self.soup.get_text()
-        self.text = text
+        self.text = unicodedata.normalize("NFKD", text)
 
     # # Helper for extracting
     # def _create_results(path):
