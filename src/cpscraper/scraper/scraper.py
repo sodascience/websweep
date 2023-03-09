@@ -90,7 +90,7 @@ class Scraper(Worker):
         # print("Execution value:", exc_value)
         # print("Traceback:", traceback)
 
-    def get_urls(r, url):
+    def get_urls(self, r, url):
         """
         Parse code and return content and urls. Defined it here to be able to pickle it and process it in a thread pool.
         """
@@ -165,7 +165,7 @@ class Scraper(Worker):
     def __update_overview_file(self, id, level, url, status, path):
 
         date = self.__get_current_date()
-        if ":" in url[:6]:  # tel: or mailto:
+        if (":" in url[:6]) and (url[:4] != "http"):  # tel: or mailto:
             domain = url
         else:
             domain = urlparse(url).netloc.replace("www.", "")
@@ -340,11 +340,11 @@ class Scraper(Worker):
                     if (datetime.date.today() - max(crawl_dates)).days < 30:
                         return
 
-                # Read the robots
+                # Read the robots (if robots.txt does not exist all requets are accepted)
                 async with self.session.get(f"{url}/robots.txt") as response:
                     await asyncio.sleep(0.001)
                     r = await response.read()
-                    rp = Protego.parse(r.decode("utf-8", "ignore"))
+                    rp = Protego.parse(r.decode("utf-8", "ignore")) 
 
                 # Breath first search algorithm from urls
                 while (len(records) > 0) and (level < self.max_level):
@@ -464,7 +464,7 @@ class Scraper(Worker):
             max_workers=self.threads_bs4
         ) as self.cpu_executor, ThreadPoolExecutor(max_workers=1) as self.io_executor:
             self.loop = asyncio.get_event_loop()
-            future = asyncio.create_task(self.__fetch_all(urls))
+            future = asyncio.ensure_future(self.__fetch_all(urls))
             self.loop.run_until_complete(future)
 
 

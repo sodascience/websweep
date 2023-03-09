@@ -40,7 +40,7 @@ def current_scraper() -> Path:
 
 
 def init_app(
-    target_folder_path: str, source_file_path: str, extractor_delete_files: bool
+    target_folder_path: str, source_file_path: str, extractor_delete_files: bool, use_database: bool,
 ) -> int:
     """Initialize the application."""
 

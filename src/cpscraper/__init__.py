@@ -5,7 +5,7 @@ __app_name__ = "cpscraper"
     SUCCESS,
     DIR_ERROR,
     FILE_ERROR,
-) = range(4)
+) = range(3)
 
 ERRORS = {
     DIR_ERROR: "Config directory error",
