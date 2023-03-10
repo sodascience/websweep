@@ -145,7 +145,7 @@ class FileExtractor:
 
         # Get metadata
         self.extract_metadata()
-        
+        self._clean_html()
 
         # Extract the data
         self.extract_annual_report()
@@ -155,11 +155,7 @@ class FileExtractor:
         self.extract_email()
         self.extract_fax()
         
-
-        # Zip and address can better be found without html
-        self._clean_html()
-        self.metadata["text"] = self.text #TODO, ask Peter if better to save raw 
-
+        self.metadata["text"] = self.text
         self.extract_zip()
         self.extract_address()
 
@@ -177,7 +173,7 @@ class FileExtractor:
                 continue
     
             add = add[-100:].rstrip().rsplit("\n", 2)
-            if len(add[-1]) < 5: #sometimes the postcode is NL-1933XX
+            if (len(add[-1]) < 5) and (len(add)>1): #sometimes the postcode is NL-1933XX
                 add = add[-2]
             else:
                 add = add[-1] 
@@ -211,42 +207,39 @@ class FileExtractor:
         """
         Scrape the BTW number from the input file, and add found BTW Numbers (usually only 1) to self.btw in list form
         """
-        self.btw = set()
 
         pattern = re.compile(
-            r"""
-                                (btw|BTW|VAT|vat)(.+)(\bNL\s*[0-9-_.]{9,12}\s*[B 0-9\.]{0,5}|\bNL\b[0-9-_.B]+)
-                                """,
+                        r"""
+                        (btw|BTW|VAT|vat)(.+)(\bNL\s*[0-9-_.]{9,12}\s*[B 0-9\.]{0,5}|\bNL\b[0-9-_.B]+)
+                        """,
             re.VERBOSE,
         )
         result_list = set(re.findall(pattern, self.text))
-        for item in result_list:
-            self.btw.add(item[2])
-        self.metadata["btw"] = list(self.btw)
+        btw = {item[2] for item in result_list}
+        self.metadata["btw"] = list(btw)
 
-    def extract_kvk(self) -> None:
+    def extract_kvk(self.text) -> None:
         """
         Scrape the KVK number from the input file, and add found KVK number to self.kvk in set form
         """
         pattern = re.compile(
-            r"""
-                                k\.?v\.?k.{0,12}?(\b\d{8}) | (\b\d{8}).{0,5}?k\.?v\.?k | (?<=kamer van koophandel).{0,50}(\d{8})
-                                """,
+                r"""
+                k\.?v\.?k.{0,10}?((?:\b|[A-Z]{2})\d{8}\b)    | 
+                ((?:\b|[A-Z]{2})\d{8}\b).{0,5}?k\.?v\.?k     | 
+                (?<=kamer van koophandel).{0,0}((?:\b|[A-Z]{2})\d{8}\b)
+                """,
             re.VERBOSE | re.IGNORECASE,
         )
         result_list = re.findall(pattern, self.text)
 
         
-        self.kvk = set([subitem for item in result_list for subitem in item if len(subitem) > 0])
-
-        self.metadata["kvk"] = list(self.kvk)
+        kvk = set([subitem for item in result_list for subitem in item if len(subitem) > 0])
+        self.metadata["kvk"] = list(kvk)
 
     def extract_phone(self) -> None:
         """
         Scrape the phone number from the input file, and add found phone numbers to self.phone in set form
         """
-
-        self.phone = set()
         pattern = re.compile(
             r"""
                                 (Tel:\s{0,4}|
@@ -264,17 +257,15 @@ class FileExtractor:
         )
         # Phone numbers can be indicated by a variety of different ways, this regex tries to incorporate all of those as a possibillity
         result_list = set(re.findall(pattern, self.text))
-        for item in result_list:
-            temp = item[0] + " " + item[2]
-            self.phone.add(temp)
-        self.metadata["phone"] = list(self.phone)
+        phone = {item[2] for item in result_list}
+        self.metadata["phone"] = list(phone)
 
     def extract_fax(self) -> None:
         """
         Scrape the fax number from the input file, and add found fax numbers to self.fax in set form
         """
 
-        self.fax = set()
+        
         pattern = re.compile(
             r"""
                                 (Fax:\s|
@@ -286,10 +277,8 @@ class FileExtractor:
             re.VERBOSE,
         )
         result_list = set(re.findall(pattern, self.text))
-        for item in result_list:
-            self.fax.add(item[1])
-
-        self.metadata["fax"] = list(self.fax)
+        fax = {item[1] for item in result_list}
+        self.metadata["fax"] = list(fax)
 
     def extract_email(self) -> None:
         """
@@ -347,17 +336,28 @@ class FileExtractor:
         This function is used to extract the metadata from the file, and return it as a dictionary.
         # Example of metadata
         """
-        tags = self.soup("meta")
+        # keep only the most used tags (>10% of a random subset of pages)
+        options = {'og:title', 'article:publisher', 'msapplication-TileImage', 'robots', 'og:description', 'author', 'og:image:type', 
+                   'format-detection', 'og:image:width', 'msapplication-TileColor', 'twitter:title', 'og:site_name', 'twitter:label1', 
+                   'theme-color', 'og:type', 'twitter:description', 'og:image', 'generator', 'encoding', 'twitter:data1', 'og:url', 
+                   'twitter:card', 'viewport', 'article:modified_time', 'keywords', 'description', 'og:locale', 'twitter:image', 
+                   'google-site-verification', 'og:image:height'}
 
-        lst = [
-            value
-            for item in tags
-            for key, value in item.attrs.items()
-            if not type(value) == list
-        ]
+        metadata = dict()
+        for el in self.soup("meta"):
+            el = el.attrs
+            encoding = el.get("charset")
+            if encoding is not None:
+                metadata["meta_encoding"] = encoding
 
-        it = iter(lst)
-        metadata = dict(zip(it, it))
+            for type in ["name","property"]:
+                nam = el.get(type) 
+                if (nam is not None) and (nam in options):
+                    cont = el.get("content")
+                    if cont is not None:
+                        metadata[f"meta_{nam}"] = cont
+                        break #continue to next element, it won't have name and property
+
         self.metadata.update(metadata)
 
     def _zipcode_warning(self) -> None:
