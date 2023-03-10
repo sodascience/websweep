@@ -74,12 +74,15 @@ class Scraper(Worker):
 
         self.waits = dict()
         self.errors_website = dict()
+        
         self.headers = {
-            "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:98.0) Gecko/20100101 Firefox/98.0",
-            "DNT": "1",
-            "Connection": "keep-alive",
+            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:109.0) Gecko/20100101 Firefox/110.0',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
             "Cookie": "cookielawinfo-checkbox-necessary=yes; cookielawinfo-checkbox-functional=no; cookielawinfo-checkbox-performance=no; cookielawinfo-checkbox-analytics=no; cookielawinfo-checkbox-advertisement=no; cookielawinfo-checkbox-others=no; CookieLawInfoConsent=eyJuZWNlc3NhcnkiOnRydWUsImZ1bmN0aW9uYWwiOmZhbHNlLCJwZXJmb3JtYW5jZSI6ZmFsc2UsImFuYWx5dGljcyI6ZmFsc2UsImFkdmVydGlzZW1lbnQiOmZhbHNlLCJvdGhlcnMiOmZhbHNlfQ==; viewed_cookie_policy=yes; optiMonkClientId=f299334f-0413-e0e3-489b-d0ae48a7beb5",
-            "Upgrade-Insecure-Requests": "1",
+            'DNT': '1',
+            'Connection': 'keep-alive',
+            'Upgrade-Insecure-Requests': '1',
+            'Sec-GPC': '1',
         }
 
 
@@ -219,11 +222,12 @@ class Scraper(Worker):
                 #If failure, give an individual session
                 async with ClientSession(headers=self.headers, 
                                          trust_env=True, 
-                                         connector=TCPConnector(limit=1, #number of websites/request in parallel
-                                         ssl=self.verify_ssl, 
-                                         ttl_dns_cache=0,
-                                         force_close=True), #a bit slower but more reliable
-                        timeout=ClientTimeout(total=None, sock_connect=300, sock_read=300)) as session:
+                                         connector=
+                                         TCPConnector(limit=1, #number of websites/request in parallel
+                                            ssl=self.verify_ssl, 
+                                            ttl_dns_cache=0,
+                                            force_close=True), #a bit slower but more reliable
+                                            timeout=ClientTimeout(total=None, sock_connect=300, sock_read=300)) as session:
                     urls = await self.__fetch_one_url_wrapped(url, kvk, level, session)
 
             try_number += 1
@@ -425,7 +429,9 @@ class Scraper(Worker):
                                    ssl=self.verify_ssl, 
                                    ttl_dns_cache=600, #maintain dns cache to speed up
                                    # limit_per_host=1, #only one request per website simultaneously, not a good idea, waits are better
-                                   force_close=True), #slower but more reliable
+                                   force_close=True,  #slower but more reliable
+                                   timeout=ClientTimeout(total=None, sock_connect=120, sock_read=120) #
+
         ) as self.session:
             # for each url, create asynchronous task to fetch company and append to tasks list
             for url in records:
