@@ -430,7 +430,7 @@ class Scraper(Worker):
                                    ttl_dns_cache=600, #maintain dns cache to speed up
                                    # limit_per_host=1, #only one request per website simultaneously, not a good idea, waits are better
                                    force_close=True,  #slower but more reliable
-                                   timeout=ClientTimeout(total=None, sock_connect=120, sock_read=120) #
+                                   timeout=ClientTimeout(total=None, sock_connect=120, sock_read=120)) #
 
         ) as self.session:
             # for each url, create asynchronous task to fetch company and append to tasks list

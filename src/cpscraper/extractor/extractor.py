@@ -218,7 +218,7 @@ class FileExtractor:
         btw = {item[2] for item in result_list}
         self.metadata["btw"] = list(btw)
 
-    def extract_kvk(self.text) -> None:
+    def extract_kvk(self) -> None:
         """
         Scrape the KVK number from the input file, and add found KVK number to self.kvk in set form
         """
