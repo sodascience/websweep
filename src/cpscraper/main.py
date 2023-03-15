@@ -416,7 +416,7 @@ def extract(
     if start_date is None and end_date is None:
         worker = Extractor(
             target_folder_path=config.get_target_folder_path(),
-            use_sqlite=False,
+            use_sqlite=config.get_use_database(),
             extractor_delete_files=True,
         )
         worker.extract_companies()
