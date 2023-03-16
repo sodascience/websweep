@@ -7,7 +7,6 @@ from typing import Any, Dict, List, NamedTuple
 
 # TODO: Temporary, remove!
 import warnings
-
 warnings.filterwarnings("ignore")
 
 import asyncio
@@ -256,8 +255,6 @@ class Scraper(Worker):
             #self.__update_overview_file(kvk, level, url, -9, "")
             return []
 
-        
-
         urls = []
         # create path www.google.com/something/ --> something
         if url[-1] == "/":
@@ -266,8 +263,6 @@ class Scraper(Worker):
             path = f"{self.base_path}/{kvk}/{urlparse(url).netloc.replace('www.','')}/{self.__get_current_date()}/{url.split('/')[-1]}"
         path = path.replace(" ", "_")
     
-  
-
         try:
             async with session.get(url) as response:
                 await asyncio.sleep(0.001)
@@ -281,7 +276,6 @@ class Scraper(Worker):
                     if self.save_html:
                         # save raw contents to file
                         self.__save_to_disk(path, r)
-
 
                 else:
                     path = ""
@@ -307,8 +301,6 @@ class Scraper(Worker):
 
         async with self.sem_num_comps:
             try:
-                # print(f"{url} started at {time()-self.start:2.1f} seconds")
-                # start = time()
 
                 # name and url
                 kvk, url = url
@@ -425,20 +417,20 @@ class Scraper(Worker):
         async with ClientSession(
             headers=self.headers,
             trust_env=True,
-            connector=TCPConnector(limit=self.threads_download, #number of websites/request in parallel
-                                   ssl=self.verify_ssl, 
-                                   ttl_dns_cache=600, #maintain dns cache to speed up
-                                   # limit_per_host=1, #only one request per website simultaneously, not a good idea, waits are better
-                                   force_close=True,  #slower but more reliable
-                                   timeout=ClientTimeout(total=None, sock_connect=120, sock_read=120) #
+            timeout=ClientTimeout(total=None, sock_connect=120, sock_read=120),
+            connector=TCPConnector(
+                limit=self.threads_download, #number of websites/request in parallel
+                ssl=self.verify_ssl, 
+                ttl_dns_cache=600, #maintain dns cache to speed up
+                # limit_per_host=1, #only one request per website simultaneously, not a good idea, waits are better
+                force_close=True,  #slower but more reliable
+            )
 
         ) as self.session:
             # for each url, create asynchronous task to fetch company and append to tasks list
             for url in records:
                 task = asyncio.create_task(self.__fetch_one_company(url))
                 tasks.append(task)
-            # create future and group tasks
-
 
             # create future and group tasks
             progress = [
@@ -463,18 +455,12 @@ class Scraper(Worker):
 
         start = time()
 
-        # print(f'Scraper received {len(urls)} urls')
-
-
         with ThreadPoolExecutor(
             max_workers=self.threads_bs4
         ) as self.cpu_executor, ThreadPoolExecutor(max_workers=1) as self.io_executor:
             self.loop = asyncio.get_event_loop()
             future = asyncio.ensure_future(self.__fetch_all(urls))
             self.loop.run_until_complete(future)
-
-
-        # Read what we did
 
         print(
             f"Downloaded {self.count_downloads} pages from {len(urls)} urls to level {3} in {time() - start:2.1f} seconds."
