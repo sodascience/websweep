@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>cpscraper.main &mdash; Corporate Scraper 1.0.0 documentation</title>
+      <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
+        <script src="../../_static/doctools.js"></script>
+        <script src="../../_static/sphinx_highlight.js"></script>
+    <script src="../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../index.html" class="icon icon-home">
+            Corporate Scraper
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../modules.html">cpscraper</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">Corporate Scraper</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">cpscraper.main</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for cpscraper.main</h1><div class="highlight"><pre>
+<span></span><span class="kn">from</span> <span class="nn">importlib.resources</span> <span class="kn">import</span> <span class="n">path</span>
+<span class="kn">import</span> <span class="nn">typer</span>
+<span class="kn">from</span> <span class="nn">pathlib</span> <span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">List</span><span class="p">,</span> <span class="n">Optional</span>
+<span class="kn">from</span> <span class="nn">tkinter</span> <span class="kn">import</span> <span class="n">filedialog</span> <span class="k">as</span> <span class="n">fd</span>
+<span class="kn">from</span> <span class="nn">tkinter</span> <span class="kn">import</span> <span class="n">Tk</span>
+<span class="kn">import</span> <span class="nn">time</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">ndjson</span>
+<span class="kn">from</span> <span class="nn">datetime</span> <span class="kn">import</span> <span class="n">date</span> <span class="k">as</span> <span class="n">datelib</span>
+<span class="kn">from</span> <span class="nn">multiprocess</span> <span class="kn">import</span> <span class="n">Pool</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+<span class="kn">from</span> <span class="nn">shutil</span> <span class="kn">import</span> <span class="n">rmtree</span>
+<span class="kn">import</span> <span class="nn">sqlite3</span> <span class="k">as</span> <span class="nn">sql</span>
+<span class="kn">import</span> <span class="nn">asyncio</span>
+<span class="kn">from</span> <span class="nn">tqdm</span> <span class="kn">import</span> <span class="n">tqdm</span>
+<span class="kn">import</span> <span class="nn">tqdm.asyncio</span>
+<span class="kn">import</span> <span class="nn">webbrowser</span>
+<span class="kn">import</span> <span class="nn">regex</span> <span class="k">as</span> <span class="nn">re</span>
+
+<span class="kn">from</span> <span class="nn">.scraper.scraper</span> <span class="kn">import</span> <span class="n">Scraper</span>
+<span class="kn">from</span> <span class="nn">.extractor.extractor</span> <span class="kn">import</span> <span class="n">Extractor</span>
+<span class="kn">from</span> <span class="nn">.utils.utils</span> <span class="kn">import</span> <span class="n">classify_url</span>
+<span class="kn">from</span> <span class="nn">cpscraper</span> <span class="kn">import</span> <span class="n">ERRORS</span><span class="p">,</span> <span class="n">__app_name__</span><span class="p">,</span> <span class="n">__version__</span><span class="p">,</span> <span class="n">config</span>
+
+<span class="n">app</span> <span class="o">=</span> <span class="n">typer</span><span class="o">.</span><span class="n">Typer</span><span class="p">()</span>
+
+
+<span class="c1"># Helper method for main callback of Typer app</span>
+<span class="k">def</span> <span class="nf">_version_callback</span><span class="p">(</span><span class="n">value</span><span class="p">:</span> <span class="nb">bool</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="k">if</span> <span class="n">value</span><span class="p">:</span>
+        <span class="n">typer</span><span class="o">.</span><span class="n">echo</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">__app_name__</span><span class="si">}</span><span class="s2"> v</span><span class="si">{</span><span class="n">__version__</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">raise</span> <span class="n">typer</span><span class="o">.</span><span class="n">Exit</span><span class="p">()</span>
+
+
+<span class="c1"># Helper for all called CLI methods that need to be provided with a WORKER unit</span>
+<span class="k">def</span> <span class="nf">_get_scraper</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">Scraper</span><span class="p">:</span>
+
+    <span class="k">if</span> <span class="n">config</span><span class="o">.</span><span class="n">CONFIG_FILE_PATH</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+        <span class="n">source_file_path</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">get_source_file_path</span><span class="p">()</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">typer</span><span class="o">.</span><span class="n">secho</span><span class="p">(</span>
+            <span class="s1">&#39;Config file not found. Please, run &quot;scraper init&quot; or use scraper --help&#39;</span><span class="p">,</span>
+            <span class="n">fg</span><span class="o">=</span><span class="n">typer</span><span class="o">.</span><span class="n">colors</span><span class="o">.</span><span class="n">RED</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="k">raise</span> <span class="n">typer</span><span class="o">.</span><span class="n">Exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">source_file_path</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+        <span class="k">return</span> <span class="n">Scraper</span><span class="p">(</span><span class="n">target_folder_path</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">get_target_folder_path</span><span class="p">(),</span> <span class="n">classifier</span><span class="o">=</span><span class="n">classify_url</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">typer</span><span class="o">.</span><span class="n">secho</span><span class="p">(</span>
+            <span class="s1">&#39;Source file not found. Please, run &quot;scraper init&quot; or use scrape --help&#39;</span><span class="p">,</span>
+            <span class="n">fg</span><span class="o">=</span><span class="n">typer</span><span class="o">.</span><span class="n">colors</span><span class="o">.</span><span class="n">RED</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="k">raise</span> <span class="n">typer</span><span class="o">.</span><span class="n">Exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+
+<span class="c1"># Helper for all called CLI methods that need to be provided with a WORKER unit</span>
+<span class="k">def</span> <span class="nf">_get_extractor</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">Extractor</span><span class="p">:</span>
+
+    <span class="c1">#TODO: Implement checks</span>
+    <span class="k">return</span> <span class="n">Scraper</span><span class="p">(</span><span class="n">target_folder_path</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">get_target_folder_path</span><span class="p">(),</span> <span class="n">classifier</span><span class="o">=</span><span class="n">classify_url</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="cli_config"><a class="viewcode-back" href="../../cpscraper.html#cpscraper.main.cli_config">[docs]</a><span class="nd">@app</span><span class="o">.</span><span class="n">command</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s2">&quot;config&quot;</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">cli_config</span><span class="p">(</span>
+    <span class="n">delete_processed_files</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="n">typer</span><span class="o">.</span><span class="n">Option</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Delete / Not-Delete extractor processed raw files&quot;</span><span class="p">),</span>
+    <span class="n">target_folder_path</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">typer</span><span class="o">.</span><span class="n">Option</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="s2">&quot;--target-folder-path&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Set new path for scraped data output&quot;</span><span class="p">),</span> 
+    <span class="n">source_file_path</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">typer</span><span class="o">.</span><span class="n">Option</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="s2">&quot;--source-file-path&quot;</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Set new path for csv source file&quot;</span><span class="p">))</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Alter scraper configuration settings</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">if</span> <span class="n">delete_processed_files</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">target_folder_path</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">source_file_path</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">typer</span><span class="o">.</span><span class="n">secho</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Scraper is configured:&quot;</span><span class="p">,</span> <span class="n">fg</span><span class="o">=</span><span class="n">typer</span><span class="o">.</span><span class="n">colors</span><span class="o">.</span><span class="n">YELLOW</span><span class="p">)</span>
+        <span class="n">typer</span><span class="o">.</span><span class="n">secho</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;- scraper config location: </span><span class="si">{</span><span class="n">config</span><span class="o">.</span><span class="n">CONFIG_FILE_PATH</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">fg</span><span class="o">=</span><span class="n">typer</span><span class="o">.</span><span class="n">colors</span><span class="o">.</span><span class="n">YELLOW</span><span class="p">)</span>
+        <span class="n">typer</span><span class="o">.</span><span class="n">secho</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;- scraper instance location: </span><span class="si">{</span><span class="n">config</span><span class="o">.</span><span class="n">get_target_folder_path</span><span class="p">()</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">fg</span><span class="o">=</span><span class="n">typer</span><span class="o">.</span><span class="n">colors</span><span class="o">.</span><span class="n">YELLOW</span><span class="p">)</span>
+        <span class="n">typer</span><span class="o">.</span><span class="n">secho</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;- source file location: </span><span class="si">{</span><span class="n">config</span><span class="o">.</span><span class="n">get_source_file_path</span><span class="p">()</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">fg</span><span class="o">=</span><span class="n">typer</span><span class="o">.</span><span class="n">colors</span><span class="o">.</span><span class="n">YELLOW</span><span class="p">)</span>
+        <span class="n">typer</span><span class="o">.</span><span class="n">secho</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;- delete extracted files: </span><span class="si">{</span><span class="n">config</span><span class="o">.</span><span class="n">get_extractor_delete</span><span class="p">()</span><span class="si">}</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">fg</span><span class="o">=</span><span class="n">typer</span><span class="o">.</span><span class="n">colors</span><span class="o">.</span><span class="n">YELLOW</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">delete_processed_files</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">delete_processed_files</span><span class="p">:</span>
+                <span class="n">config</span><span class="o">.</span><span class="n">_save_extractor_delete</span><span class="p">(</span><span class="kc">True</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">config</span><span class="o">.</span><span class="n">_save_extractor_delete</span><span class="p">(</span><span class="kc">False</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">target_folder_path</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">config</span><span class="o">.</span><span class="n">_save_target_folder</span><span class="p">(</span><span class="n">target_folder_path</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">source_file_path</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">config</span><span class="o">.</span><span class="n">_save_source_file</span><span class="p">(</span><span class="n">source_file_path</span><span class="p">)</span>
+        
+        <span class="n">typer</span><span class="o">.</span><span class="n">secho</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;Config settings saved&quot;</span><span class="p">,</span> <span class="n">fg</span><span class="o">=</span><span class="n">typer</span><span class="o">.</span><span class="n">colors</span><span class="o">.</span><span class="n">GREEN</span>
+        <span class="p">)</span></div>
+
+
+<span class="nd">@app</span><span class="o">.</span><span class="n">command</span><span class="p">(</span><span class="n">name</span> <span class="o">=</span> <span class="s2">&quot;scrape&quot;</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">_scrape</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Start caching websites</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">scrape</span><span class="p">(</span><span class="n">config</span><span class="o">.</span><span class="n">get_source_file_path</span><span class="p">())</span>
+
+
+<div class="viewcode-block" id="scrape"><a class="viewcode-back" href="../../cpscraper.html#cpscraper.main.scrape">[docs]</a><span class="k">def</span> <span class="nf">scrape</span><span class="p">(</span><span class="n">config_file</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Start caching websites</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">typer</span><span class="o">.</span><span class="n">secho</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Scraper is started with instructions:&quot;</span><span class="p">,</span> <span class="n">fg</span><span class="o">=</span><span class="n">typer</span><span class="o">.</span><span class="n">colors</span><span class="o">.</span><span class="n">YELLOW</span><span class="p">)</span>
+    <span class="n">typer</span><span class="o">.</span><span class="n">secho</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;- source file: </span><span class="si">{</span><span class="n">config</span><span class="o">.</span><span class="n">get_source_file_path</span><span class="p">()</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">fg</span><span class="o">=</span><span class="n">typer</span><span class="o">.</span><span class="n">colors</span><span class="o">.</span><span class="n">YELLOW</span><span class="p">)</span>
+    <span class="n">typer</span><span class="o">.</span><span class="n">secho</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;- target folder: </span><span class="si">{</span><span class="n">config</span><span class="o">.</span><span class="n">get_target_folder_path</span><span class="p">()</span><span class="si">}</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">fg</span><span class="o">=</span><span class="n">typer</span><span class="o">.</span><span class="n">colors</span><span class="o">.</span><span class="n">YELLOW</span><span class="p">)</span>
+
+    <span class="n">worker</span> <span class="o">=</span> <span class="n">_get_scraper</span><span class="p">()</span>
+    
+    <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">config_file</span><span class="p">,</span> <span class="s2">&quot;r&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+        <span class="n">f</span><span class="o">.</span><span class="n">readline</span><span class="p">()</span> <span class="c1">#header</span>
+        <span class="n">urls</span> <span class="o">=</span> <span class="p">[</span><span class="n">line</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;,&quot;</span><span class="p">)</span> <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">f</span><span class="o">.</span><span class="n">readlines</span><span class="p">()]</span>        
+        <span class="n">urls</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">([(</span><span class="n">kvk</span><span class="o">.</span><span class="n">strip</span><span class="p">(),</span> <span class="sa">f</span><span class="s2">&quot;https://www.</span><span class="si">{</span><span class="n">url</span><span class="si">}</span><span class="s2">/&quot;</span><span class="p">)</span> <span class="k">for</span> <span class="n">url</span><span class="p">,</span> <span class="n">kvk</span> <span class="ow">in</span> <span class="n">urls</span><span class="p">])</span>
+
+    <span class="c1"># Run scraper</span>
+    <span class="n">worker</span><span class="o">.</span><span class="n">scrape_companies</span><span class="p">(</span><span class="n">urls</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="extract"><a class="viewcode-back" href="../../cpscraper.html#cpscraper.main.extract">[docs]</a><span class="nd">@app</span><span class="o">.</span><span class="n">command</span><span class="p">()</span>
+<span class="k">def</span> <span class="nf">extract</span><span class="p">(</span>
+    <span class="n">start_date</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">typer</span><span class="o">.</span><span class="n">Option</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Date on which the files are retreieved and extracted should start extracting&quot;</span><span class="p">),</span> 
+    <span class="n">end_date</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="n">typer</span><span class="o">.</span><span class="n">Option</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Date on which the files are retreieved and extractor should stop extracting&quot;</span><span class="p">))</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Start extracting data from the fetched files</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">typer</span><span class="o">.</span><span class="n">secho</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Extractor is started with instructions:&quot;</span><span class="p">,</span> <span class="n">fg</span><span class="o">=</span><span class="n">typer</span><span class="o">.</span><span class="n">colors</span><span class="o">.</span><span class="n">YELLOW</span><span class="p">)</span>
+    <span class="n">typer</span><span class="o">.</span><span class="n">secho</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;- source folder: </span><span class="si">{</span><span class="n">config</span><span class="o">.</span><span class="n">get_target_folder_path</span><span class="p">()</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">fg</span><span class="o">=</span><span class="n">typer</span><span class="o">.</span><span class="n">colors</span><span class="o">.</span><span class="n">YELLOW</span><span class="p">)</span>
+    <span class="n">typer</span><span class="o">.</span><span class="n">secho</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;- delete extracted files: </span><span class="si">{</span><span class="n">config</span><span class="o">.</span><span class="n">get_extractor_delete</span><span class="p">()</span><span class="si">}</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">fg</span><span class="o">=</span><span class="n">typer</span><span class="o">.</span><span class="n">colors</span><span class="o">.</span><span class="n">YELLOW</span><span class="p">)</span>
+
+    <span class="c1"># TODO: Build check whether the provided dates are conform the format and if not indicate that</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">start_date</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">end_date</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">):</span>
+        <span class="n">worker</span> <span class="o">=</span> <span class="n">Extractor</span><span class="p">(</span><span class="n">target_folder_path</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">get_target_folder_path</span><span class="p">(),</span> <span class="n">use_sqlite</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span> <span class="n">extractor_delete_files</span> <span class="o">=</span> <span class="kc">True</span><span class="p">)</span>
+        <span class="n">worker</span><span class="o">.</span><span class="n">extract_companies</span><span class="p">()</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">typer</span><span class="o">.</span><span class="n">secho</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Given start and/or end date do not conform to the YYYY-MM-DD format, extractor was terminated&quot;</span><span class="p">,</span> <span class="n">fg</span><span class="o">=</span><span class="n">typer</span><span class="o">.</span><span class="n">colors</span><span class="o">.</span><span class="n">RED</span><span class="p">)</span></div>
+        
+
+<div class="viewcode-block" id="main"><a class="viewcode-back" href="../../cpscraper.html#cpscraper.main.main">[docs]</a><span class="nd">@app</span><span class="o">.</span><span class="n">callback</span><span class="p">()</span>
+<span class="k">def</span> <span class="nf">main</span><span class="p">(</span>
+    <span class="n">version</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">bool</span><span class="p">]</span> <span class="o">=</span> <span class="n">typer</span><span class="o">.</span><span class="n">Option</span><span class="p">(</span>
+        <span class="kc">None</span><span class="p">,</span>
+        <span class="s2">&quot;--version&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;-v&quot;</span><span class="p">,</span>
+        <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Show the application&#39;s version and exit.&quot;</span><span class="p">,</span>
+        <span class="n">callback</span><span class="o">=</span><span class="n">_version_callback</span><span class="p">,</span>
+        <span class="n">is_eager</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="k">return</span></div>
+
+
+
+<div class="viewcode-block" id="scraper_address"><a class="viewcode-back" href="../../cpscraper.html#cpscraper.main.scraper_address">[docs]</a><span class="nd">@app</span><span class="o">.</span><span class="n">command</span><span class="p">(</span><span class="n">name</span> <span class="o">=</span> <span class="s2">&quot;instance&quot;</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">scraper_address</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Open configured scraper instance folder</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">webbrowser</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="s1">&#39;file:////</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">config</span><span class="o">.</span><span class="n">current_scraper</span><span class="p">()))</span>
+    <span class="k">except</span><span class="p">:</span> 
+        <span class="n">typer</span><span class="o">.</span><span class="n">secho</span><span class="p">(</span>
+            <span class="s2">&quot;Could not open scraper instance folder</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">fg</span><span class="o">=</span><span class="n">typer</span><span class="o">.</span><span class="n">colors</span><span class="o">.</span><span class="n">RED</span>
+        <span class="p">)</span></div>
+
+
+
+<span class="nd">@app</span><span class="o">.</span><span class="n">command</span><span class="p">(</span><span class="n">name</span> <span class="o">=</span> <span class="s2">&quot;restore&quot;</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">init</span><span class="p">(</span><span class="n">headless</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="n">typer</span><span class="o">.</span><span class="n">Option</span><span class="p">(</span><span class="kc">False</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Run without GUI elements&quot;</span><span class="p">))</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Restore configuration of existing scraper instance</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">if</span> <span class="n">headless</span> <span class="o">==</span> <span class="kc">False</span><span class="p">:</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">sys</span><span class="o">.</span><span class="n">stdin</span><span class="o">.</span><span class="n">isatty</span><span class="p">():</span>
+                <span class="n">headless</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="k">except</span><span class="p">:</span>
+            <span class="n">headless</span> <span class="o">=</span> <span class="kc">True</span>
+
+    <span class="n">typer</span><span class="o">.</span><span class="n">secho</span><span class="p">(</span>
+        <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">WELCOME to the corporate scraper.</span><span class="se">\n</span><span class="s2">Follow the instructions to restore an existing scraper instance.</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">fg</span><span class="o">=</span><span class="n">typer</span><span class="o">.</span><span class="n">colors</span><span class="o">.</span><span class="n">GREEN</span>
+    <span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">headless</span> <span class="o">==</span> <span class="kc">True</span><span class="p">:</span>
+        <span class="n">typer</span><span class="o">.</span><span class="n">secho</span><span class="p">(</span>
+            <span class="s2">&quot;headless mode turned on</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">fg</span><span class="o">=</span><span class="n">typer</span><span class="o">.</span><span class="n">colors</span><span class="o">.</span><span class="n">YELLOW</span>
+        <span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">typer</span><span class="o">.</span><span class="n">secho</span><span class="p">(</span>
+            <span class="s2">&quot;headless mode turned off</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">fg</span><span class="o">=</span><span class="n">typer</span><span class="o">.</span><span class="n">colors</span><span class="o">.</span><span class="n">YELLOW</span>
+        <span class="p">)</span>
+
+    <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">0.5</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">headless</span> <span class="o">==</span> <span class="kc">False</span><span class="p">:</span>
+        <span class="n">ask_continue_folder</span> <span class="o">=</span> <span class="n">typer</span><span class="o">.</span><span class="n">confirm</span><span class="p">(</span><span class="s2">&quot;SELECT a scraper instance folder </span><span class="se">\n</span><span class="s2">Continue?</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">ask_continue_folder</span><span class="p">:</span>
+            <span class="n">typer</span><span class="o">.</span><span class="n">secho</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s1">&#39;Restoring stopped</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">,</span>
+                <span class="n">fg</span><span class="o">=</span><span class="n">typer</span><span class="o">.</span><span class="n">colors</span><span class="o">.</span><span class="n">RED</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="k">raise</span> <span class="n">typer</span><span class="o">.</span><span class="n">Exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">Tk</span><span class="p">()</span><span class="o">.</span><span class="n">withdraw</span><span class="p">()</span>
+            <span class="n">folder</span> <span class="o">=</span> <span class="n">fd</span><span class="o">.</span><span class="n">askdirectory</span><span class="p">()</span>
+        <span class="k">except</span><span class="p">:</span>
+            <span class="n">typer</span><span class="o">.</span><span class="n">secho</span><span class="p">(</span>
+                <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">GUI Interface failed to load&quot;</span><span class="p">,</span> <span class="n">fg</span><span class="o">=</span><span class="n">typer</span><span class="o">.</span><span class="n">colors</span><span class="o">.</span><span class="n">RED</span>
+            <span class="p">)</span>
+            <span class="n">folder</span> <span class="o">=</span> <span class="n">typer</span><span class="o">.</span><span class="n">prompt</span><span class="p">(</span><span class="s2">&quot;ENTER scraper instance folder base PATH</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">folder</span> <span class="o">=</span> <span class="n">typer</span><span class="o">.</span><span class="n">prompt</span><span class="p">(</span><span class="s2">&quot;ENTER scraper instance folder base PATH</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    
+
+    <span class="n">app_init_error</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">restore_app</span><span class="p">(</span><span class="n">Path</span><span class="p">(</span><span class="n">folder</span><span class="p">))</span>
+    <span class="k">if</span> <span class="n">app_init_error</span><span class="p">:</span>
+        <span class="n">typer</span><span class="o">.</span><span class="n">secho</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;Restoring scraper instance failed with &quot;</span><span class="si">{</span><span class="n">ERRORS</span><span class="p">[</span><span class="n">app_init_error</span><span class="p">]</span><span class="si">}</span><span class="s1">&quot;&#39;</span><span class="p">,</span> <span class="n">fg</span><span class="o">=</span><span class="n">typer</span><span class="o">.</span><span class="n">colors</span><span class="o">.</span><span class="n">RED</span><span class="p">)</span>
+        <span class="n">typer</span><span class="o">.</span><span class="n">secho</span><span class="p">(</span><span class="s1">&#39;The settings file for the given instance is incomplete, does not adhere to the expected format or could not be read.&#39;</span><span class="p">,</span> <span class="n">fg</span><span class="o">=</span><span class="n">typer</span><span class="o">.</span><span class="n">colors</span><span class="o">.</span><span class="n">RED</span><span class="p">)</span>
+        <span class="k">raise</span> <span class="n">typer</span><span class="o">.</span><span class="n">Exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+    <span class="k">else</span> <span class="p">:</span>
+        <span class="n">typer</span><span class="o">.</span><span class="n">secho</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Scraper is initialised and ready to use </span><span class="se">\n</span><span class="s2">Use the --help command for instructions</span><span class="se">\n</span><span class="s2"> &quot;</span><span class="p">,</span> <span class="n">fg</span><span class="o">=</span><span class="n">typer</span><span class="o">.</span><span class="n">colors</span><span class="o">.</span><span class="n">GREEN</span><span class="p">)</span>
+
+
+
+
+
+<div class="viewcode-block" id="init"><a class="viewcode-back" href="../../cpscraper.html#cpscraper.main.init">[docs]</a><span class="nd">@app</span><span class="o">.</span><span class="n">command</span><span class="p">(</span><span class="n">name</span> <span class="o">=</span> <span class="s2">&quot;init&quot;</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">init</span><span class="p">(</span><span class="n">headless</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="n">typer</span><span class="o">.</span><span class="n">Option</span><span class="p">(</span><span class="kc">False</span><span class="p">,</span> <span class="n">help</span><span class="o">=</span><span class="s2">&quot;Run without GUI elements&quot;</span><span class="p">))</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Initialise a new scraper instance</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">if</span> <span class="n">headless</span> <span class="o">==</span> <span class="kc">False</span><span class="p">:</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">sys</span><span class="o">.</span><span class="n">stdin</span><span class="o">.</span><span class="n">isatty</span><span class="p">():</span>
+                <span class="n">headless</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="k">except</span><span class="p">:</span>
+            <span class="n">headless</span> <span class="o">=</span> <span class="kc">True</span>
+
+    <span class="n">typer</span><span class="o">.</span><span class="n">secho</span><span class="p">(</span>
+        <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">WELCOME to the corporate scraper.</span><span class="se">\n</span><span class="s2">Follow the instructions to set up a new scraper instance and start scraping.</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">fg</span><span class="o">=</span><span class="n">typer</span><span class="o">.</span><span class="n">colors</span><span class="o">.</span><span class="n">GREEN</span>
+    <span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">headless</span> <span class="o">==</span> <span class="kc">True</span><span class="p">:</span>
+        <span class="n">typer</span><span class="o">.</span><span class="n">secho</span><span class="p">(</span>
+            <span class="s2">&quot;headless mode turned on</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">fg</span><span class="o">=</span><span class="n">typer</span><span class="o">.</span><span class="n">colors</span><span class="o">.</span><span class="n">YELLOW</span>
+        <span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">typer</span><span class="o">.</span><span class="n">secho</span><span class="p">(</span>
+            <span class="s2">&quot;headless mode turned off</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">fg</span><span class="o">=</span><span class="n">typer</span><span class="o">.</span><span class="n">colors</span><span class="o">.</span><span class="n">YELLOW</span>
+        <span class="p">)</span>
+
+    <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">0.5</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">headless</span> <span class="o">==</span> <span class="kc">False</span><span class="p">:</span>
+        <span class="n">ask_continue_folder</span> <span class="o">=</span> <span class="n">typer</span><span class="o">.</span><span class="n">confirm</span><span class="p">(</span><span class="s2">&quot;SELECT a configuration and scraper output storage folder </span><span class="se">\n</span><span class="s2">Continue?</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">ask_continue_folder</span><span class="p">:</span>
+            <span class="n">typer</span><span class="o">.</span><span class="n">secho</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s1">&#39;Initalisation stopped</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">,</span>
+                <span class="n">fg</span><span class="o">=</span><span class="n">typer</span><span class="o">.</span><span class="n">colors</span><span class="o">.</span><span class="n">RED</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="k">raise</span> <span class="n">typer</span><span class="o">.</span><span class="n">Exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">Tk</span><span class="p">()</span><span class="o">.</span><span class="n">withdraw</span><span class="p">()</span>
+            <span class="n">folder</span> <span class="o">=</span> <span class="n">fd</span><span class="o">.</span><span class="n">askdirectory</span><span class="p">()</span>
+        <span class="k">except</span><span class="p">:</span>
+            <span class="n">typer</span><span class="o">.</span><span class="n">secho</span><span class="p">(</span>
+                <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">GUI Interface failed to load&quot;</span><span class="p">,</span> <span class="n">fg</span><span class="o">=</span><span class="n">typer</span><span class="o">.</span><span class="n">colors</span><span class="o">.</span><span class="n">RED</span>
+            <span class="p">)</span>
+            <span class="n">folder</span> <span class="o">=</span> <span class="n">typer</span><span class="o">.</span><span class="n">prompt</span><span class="p">(</span><span class="s2">&quot;ENTER target folder base PATH</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">folder</span> <span class="o">=</span> <span class="n">typer</span><span class="o">.</span><span class="n">prompt</span><span class="p">(</span><span class="s2">&quot;ENTER target folder base PATH</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+   
+    <span class="n">typer</span><span class="o">.</span><span class="n">secho</span><span class="p">(</span>
+        <span class="s2">&quot;Folder </span><span class="si">{}</span><span class="s2"> selected</span><span class="se">\n</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">folder</span><span class="p">),</span> <span class="n">fg</span><span class="o">=</span><span class="n">typer</span><span class="o">.</span><span class="n">colors</span><span class="o">.</span><span class="n">YELLOW</span>
+    <span class="p">)</span>
+    <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">0.5</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">headless</span> <span class="o">==</span> <span class="kc">False</span><span class="p">:</span>
+        <span class="n">ask_continue_folder</span> <span class="o">=</span> <span class="n">typer</span><span class="o">.</span><span class="n">confirm</span><span class="p">(</span><span class="s2">&quot;SELECT a source file (.csv) with kvk and url columns </span><span class="se">\n</span><span class="s2">Continue?</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">ask_continue_folder</span><span class="p">:</span>
+            <span class="n">typer</span><span class="o">.</span><span class="n">secho</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s1">&#39;Initalisation stopped</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">,</span>
+                <span class="n">fg</span><span class="o">=</span><span class="n">typer</span><span class="o">.</span><span class="n">colors</span><span class="o">.</span><span class="n">RED</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="k">raise</span> <span class="n">typer</span><span class="o">.</span><span class="n">Exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">Tk</span><span class="p">()</span><span class="o">.</span><span class="n">withdraw</span><span class="p">()</span>
+            <span class="n">file</span> <span class="o">=</span> <span class="n">fd</span><span class="o">.</span><span class="n">askopenfilename</span><span class="p">(</span>
+                <span class="n">title</span><span class="o">=</span><span class="s2">&quot;Choose a file&quot;</span><span class="p">,</span>
+                <span class="n">filetypes</span><span class="o">=</span><span class="p">[(</span><span class="s1">&#39;csv files&#39;</span><span class="p">,</span> <span class="s1">&#39;.csv&#39;</span><span class="p">)])</span>
+        <span class="k">except</span><span class="p">:</span>
+            <span class="n">typer</span><span class="o">.</span><span class="n">secho</span><span class="p">(</span>
+                <span class="s2">&quot;</span><span class="se">\n</span><span class="s2">GUI Interface failed to load&quot;</span><span class="p">,</span> <span class="n">fg</span><span class="o">=</span><span class="n">typer</span><span class="o">.</span><span class="n">colors</span><span class="o">.</span><span class="n">RED</span>
+            <span class="p">)</span>
+            <span class="n">file</span> <span class="o">=</span> <span class="n">typer</span><span class="o">.</span><span class="n">prompt</span><span class="p">(</span><span class="s2">&quot;ENTER source file location base PATH</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">file</span> <span class="o">=</span> <span class="n">typer</span><span class="o">.</span><span class="n">prompt</span><span class="p">(</span><span class="s2">&quot;ENTER source file location base PATH</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+
+   
+    <span class="n">typer</span><span class="o">.</span><span class="n">secho</span><span class="p">(</span>
+        <span class="s2">&quot;Source file </span><span class="si">{file}</span><span class="s2"> selected</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">fg</span><span class="o">=</span><span class="n">typer</span><span class="o">.</span><span class="n">colors</span><span class="o">.</span><span class="n">YELLOW</span>
+    <span class="p">)</span>
+    <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">0.5</span><span class="p">)</span>
+
+    <span class="n">ask_delete_files</span> <span class="o">=</span> <span class="n">typer</span><span class="o">.</span><span class="n">confirm</span><span class="p">(</span><span class="s2">&quot;SELECT to remove raw files after extractor processing?</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="n">typer</span><span class="o">.</span><span class="n">secho</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;Raw files will be removed: </span><span class="si">{</span><span class="n">ask_delete_files</span><span class="si">}</span><span class="se">\n</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">fg</span><span class="o">=</span><span class="n">typer</span><span class="o">.</span><span class="n">colors</span><span class="o">.</span><span class="n">YELLOW</span>
+    <span class="p">)</span>
+    <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">0.5</span><span class="p">)</span>
+
+    <span class="n">app_init_error</span> <span class="o">=</span> <span class="n">config</span><span class="o">.</span><span class="n">init_app</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">folder</span><span class="p">),</span> <span class="nb">str</span><span class="p">(</span><span class="n">file</span><span class="p">),</span> <span class="n">ask_delete_files</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">app_init_error</span><span class="p">:</span>
+        <span class="n">typer</span><span class="o">.</span><span class="n">secho</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s1">&#39;Creating config file failed with &quot;</span><span class="si">{</span><span class="n">ERRORS</span><span class="p">[</span><span class="n">app_init_error</span><span class="p">]</span><span class="si">}</span><span class="s1">&quot;&#39;</span><span class="p">,</span>
+            <span class="n">fg</span><span class="o">=</span><span class="n">typer</span><span class="o">.</span><span class="n">colors</span><span class="o">.</span><span class="n">RED</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="k">raise</span> <span class="n">typer</span><span class="o">.</span><span class="n">Exit</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+    <span class="k">else</span> <span class="p">:</span>
+        <span class="n">typer</span><span class="o">.</span><span class="n">secho</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Scraper is initialised and ready to use </span><span class="se">\n</span><span class="s2">Use the --help command for instructions</span><span class="se">\n</span><span class="s2"> &quot;</span><span class="p">,</span> <span class="n">fg</span><span class="o">=</span><span class="n">typer</span><span class="o">.</span><span class="n">colors</span><span class="o">.</span><span class="n">GREEN</span><span class="p">)</span></div>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2023, FIRMBACKBONE.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
