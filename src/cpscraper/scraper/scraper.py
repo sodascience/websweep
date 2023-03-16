@@ -176,10 +176,9 @@ class Scraper(Worker):
             # opening the file is fast (0.00x per query), minimum gain to keep it open (and potential trouble with threading)
             connection = sql.connect(self.overview_path)
             cursor = connection.cursor()
+            
+            cursor.execute("INSERT INTO Overview VALUES (?, ?, ?, ?, ?, ?, ?)", (id, domain, level, url, status, date, path))
 
-            cursor.execute(
-                f"INSERT INTO Overview VALUES ('{id}', '{domain}', {level}, '{url}', '{status}', '{date}', '{path}')"
-            )
             connection.commit()
             connection.close()
 
