@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>cpscraper.extractor.extractor &mdash; Corporate Scraper 1.0.0 documentation</title>
+      <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../../../_static/css/theme.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="../../../_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="../../../" id="documentation_options" src="../../../_static/documentation_options.js"></script>
+        <script src="../../../_static/doctools.js"></script>
+        <script src="../../../_static/sphinx_highlight.js"></script>
+    <script src="../../../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../../../index.html" class="icon icon-home">
+            Corporate Scraper
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../modules.html">cpscraper</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../../index.html">Corporate Scraper</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../../../index.html" class="icon icon-home" aria-label="Home"></a></li>
+          <li class="breadcrumb-item"><a href="../../index.html">Module code</a></li>
+      <li class="breadcrumb-item active">cpscraper.extractor.extractor</li>
+      <li class="wy-breadcrumbs-aside">
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <h1>Source code for cpscraper.extractor.extractor</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span> <span class="nn">re</span>
+<span class="kn">import</span> <span class="nn">typer</span>
+<span class="kn">from</span> <span class="nn">xmlrpc.client</span> <span class="kn">import</span> <span class="n">Boolean</span>
+<span class="kn">from</span> <span class="nn">bs4</span> <span class="kn">import</span> <span class="n">BeautifulSoup</span>
+<span class="kn">from</span> <span class="nn">urllib.parse</span> <span class="kn">import</span> <span class="n">urljoin</span>
+<span class="kn">import</span> <span class="nn">time</span>
+<span class="kn">from</span> <span class="nn">datetime</span> <span class="kn">import</span> <span class="n">date</span> <span class="k">as</span> <span class="n">datelib</span>
+<span class="kn">from</span> <span class="nn">concurrent.futures</span> <span class="kn">import</span> <span class="n">ThreadPoolExecutor</span><span class="p">,</span> <span class="n">ProcessPoolExecutor</span>
+<span class="kn">import</span> <span class="nn">asyncio</span>
+<span class="kn">from</span> <span class="nn">pathlib</span> <span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">import</span> <span class="nn">sqlite3</span> <span class="k">as</span> <span class="nn">sql</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">from</span> <span class="nn">multiprocess</span> <span class="kn">import</span> <span class="n">Pool</span>
+<span class="kn">import</span> <span class="nn">ndjson</span>
+<span class="kn">import</span> <span class="nn">tqdm</span>
+<span class="kn">from</span> <span class="nn">shutil</span> <span class="kn">import</span> <span class="n">rmtree</span>
+
+
+<div class="viewcode-block" id="Extractor"><a class="viewcode-back" href="../../../cpscraper.extractor.html#cpscraper.extractor.extractor.Extractor">[docs]</a><span class="k">class</span> <span class="nc">Extractor</span><span class="p">():</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">target_folder_path</span><span class="p">,</span> <span class="n">use_sqlite</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span> <span class="n">extractor_delete_files</span> <span class="o">=</span> <span class="kc">False</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">target_folder_path</span> <span class="o">=</span> <span class="n">target_folder_path</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">use_sqlite</span> <span class="o">=</span> <span class="n">use_sqlite</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">extractor_delete_files</span> <span class="o">=</span> <span class="n">extractor_delete_files</span>
+
+
+    <span class="k">def</span> <span class="nf">_create_results</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">):</span>
+        <span class="p">[</span><span class="nb">id</span><span class="p">,</span> <span class="n">domain</span><span class="p">,</span> <span class="n">level</span><span class="p">,</span> <span class="n">url</span><span class="p">,</span> <span class="n">date</span><span class="p">,</span> <span class="n">path</span><span class="p">]</span> <span class="o">=</span> <span class="n">path</span>
+        <span class="c1">#folder = _get_folder(path)</span>
+
+        <span class="n">start_time_file</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">perf_counter</span><span class="p">()</span>
+        <span class="c1">#website_name = os.path.basename(Path(folder).parents[0])</span>
+        <span class="c1"># TODO: integrate get scraper into _get_worker method since now no checks are performed if target folders exist</span>
+        <span class="n">metadata</span> <span class="o">=</span> <span class="n">FileExtractor</span><span class="p">([</span><span class="nb">id</span><span class="p">,</span> <span class="n">domain</span><span class="p">,</span> <span class="n">level</span><span class="p">,</span> <span class="n">url</span><span class="p">,</span> <span class="n">date</span><span class="p">,</span> <span class="n">path</span><span class="p">])</span><span class="o">.</span><span class="n">extracting</span><span class="p">()</span>
+        <span class="n">end_time_file</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">perf_counter</span><span class="p">()</span>
+
+        <span class="k">return</span> <span class="p">({</span><span class="n">path</span><span class="p">:</span> <span class="n">end_time_file</span> <span class="o">-</span> <span class="n">start_time_file</span> <span class="p">},</span> <span class="n">metadata</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="Extractor.extract_companies"><a class="viewcode-back" href="../../../cpscraper.extractor.html#cpscraper.extractor.extractor.Extractor.extract_companies">[docs]</a>    <span class="k">def</span> <span class="nf">extract_companies</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+
+        <span class="n">start</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+
+        <span class="n">file_res</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">target_folder_path</span>  <span class="o">/</span>  <span class="p">(</span><span class="s1">&#39;scraped_data_&#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">datelib</span><span class="o">.</span><span class="n">today</span><span class="p">())</span> <span class="o">+</span> <span class="s1">&#39;.ndjson&#39;</span><span class="p">)</span>
+        <span class="n">pdf_file</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">target_folder_path</span> <span class="o">/</span> <span class="p">(</span><span class="s1">&#39;scraped_data_&#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">())</span><span class="o">/</span>  <span class="p">(</span><span class="s1">&#39;annual_reports_&#39;</span> <span class="o">+</span> <span class="nb">str</span><span class="p">(</span><span class="n">datelib</span><span class="o">.</span><span class="n">today</span><span class="p">())</span> <span class="o">+</span> <span class="s1">&#39;.ndjson&#39;</span><span class="p">)</span>
+        <span class="n">pdf_list</span> <span class="o">=</span> <span class="p">[]</span>
+        
+        <span class="n">Path</span><span class="p">(</span><span class="n">file_res</span><span class="p">)</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">Path</span><span class="p">(</span><span class="n">pdf_file</span><span class="p">)</span><span class="o">.</span><span class="n">parent</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+        <span class="n">date_start</span> <span class="o">=</span> <span class="n">datelib</span><span class="o">.</span><span class="n">today</span><span class="p">()</span>
+        <span class="n">date_end</span> <span class="o">=</span> <span class="n">datelib</span><span class="o">.</span><span class="n">today</span><span class="p">()</span>
+
+        <span class="c1">#TODO: TEMPORARY, CHECK IF USE SQL &gt; Reset this to use the config data</span>
+        <span class="n">date_start</span> <span class="o">=</span> <span class="s2">&quot;2000-01-01&quot;</span>
+        <span class="n">date_end</span> <span class="o">=</span> <span class="s2">&quot;3000-01-01&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">use_sqlite</span><span class="p">:</span>
+            <span class="n">connection</span> <span class="o">=</span> <span class="n">sql</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">target_folder_path</span><span class="p">,</span>  <span class="s2">&quot;overview_urls.db&quot;</span><span class="p">))</span>
+            <span class="n">cursor</span> <span class="o">=</span> <span class="n">connection</span><span class="o">.</span><span class="n">cursor</span><span class="p">()</span>
+            <span class="n">results</span> <span class="o">=</span> <span class="n">cursor</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;&#39;&#39;SELECT id, domain, level, url, date, path FROM Overview </span>
+<span class="s1">                            WHERE (date &gt;= &#39;</span><span class="si">{</span><span class="n">date_start</span><span class="si">}</span><span class="s1">&#39;) </span>
+<span class="s1">                            AND (date &lt;= &#39;</span><span class="si">{</span><span class="n">date_end</span><span class="si">}</span><span class="s1">&#39;) </span>
+<span class="s1">                            AND (status == &quot;200&quot;)&#39;&#39;&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">fetchall</span><span class="p">()</span>
+            <span class="n">connection</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">target_folder_path</span><span class="p">,</span> <span class="s2">&quot;overview_urls.tsv&quot;</span><span class="p">))</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+                <span class="n">f</span><span class="o">.</span><span class="n">readline</span><span class="p">()</span> <span class="c1">#header</span>
+                <span class="n">results</span> <span class="o">=</span> <span class="p">[]</span>
+                <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="n">f</span><span class="p">:</span>
+                    <span class="nb">id</span><span class="p">,</span> <span class="n">domain</span><span class="p">,</span> <span class="n">level</span><span class="p">,</span> <span class="n">url</span><span class="p">,</span> <span class="n">status</span><span class="p">,</span> <span class="n">date</span><span class="p">,</span> <span class="n">path</span> <span class="o">=</span> <span class="n">line</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\t</span><span class="s2">&quot;</span><span class="p">)</span>
+                    <span class="k">if</span> <span class="p">(</span><span class="n">date</span> <span class="o">&gt;=</span> <span class="n">date_start</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="n">date</span> <span class="o">&lt;=</span> <span class="n">date_end</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="n">status</span> <span class="o">==</span> <span class="s2">&quot;200&quot;</span><span class="p">):</span>
+                        <span class="n">results</span><span class="o">.</span><span class="n">append</span><span class="p">([</span><span class="nb">id</span><span class="p">,</span> <span class="n">domain</span><span class="p">,</span> <span class="n">level</span><span class="p">,</span> <span class="n">url</span><span class="p">,</span> <span class="n">date</span><span class="p">,</span> <span class="n">path</span><span class="o">.</span><span class="n">strip</span><span class="p">()])</span>
+
+        <span class="c1"># Parallelize loop </span>
+        <span class="k">with</span> <span class="n">Pool</span><span class="p">()</span> <span class="k">as</span> <span class="n">pool</span><span class="p">,</span> <span class="nb">open</span><span class="p">(</span><span class="n">file_res</span><span class="p">,</span> <span class="s2">&quot;w+&quot;</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s1">&#39;UTF-8&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f_res</span><span class="p">:</span>
+            <span class="n">writer_res</span> <span class="o">=</span> <span class="n">ndjson</span><span class="o">.</span><span class="n">writer</span><span class="p">(</span><span class="n">f_res</span><span class="p">,</span> <span class="n">ensure_ascii</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+            <span class="k">with</span> <span class="n">tqdm</span><span class="o">.</span><span class="n">tqdm</span><span class="p">(</span><span class="n">total</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">results</span><span class="p">),</span> <span class="n">leave</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span> <span class="n">miniters</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span> <span class="k">as</span> <span class="n">pbar</span><span class="p">:</span>
+                <span class="k">for</span> <span class="n">result</span> <span class="ow">in</span> <span class="n">pool</span><span class="o">.</span><span class="n">imap_unordered</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_create_results</span><span class="p">,</span> <span class="n">results</span><span class="p">):</span>
+                    <span class="n">time_dict</span><span class="p">,</span> <span class="n">json_dict</span> <span class="o">=</span> <span class="n">result</span>
+                    <span class="n">writer_res</span><span class="o">.</span><span class="n">writerow</span><span class="p">(</span><span class="n">json_dict</span><span class="p">)</span>
+                    <span class="n">pbar</span><span class="o">.</span><span class="n">update</span><span class="p">()</span>
+                    <span class="k">if</span> <span class="n">json_dict</span><span class="p">[</span><span class="s2">&quot;annual_reports&quot;</span><span class="p">]</span> <span class="o">!=</span> <span class="p">[]:</span>
+                        <span class="n">pdf_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">json_dict</span><span class="p">[</span><span class="s2">&quot;annual_reports&quot;</span><span class="p">])</span>
+
+                    <span class="c1"># IF you want to only run extract through a part of the dataset, uncomment this and change the if statement</span>
+                    <span class="c1"># i += 1</span>
+                    <span class="c1"># if i == 3500:</span>
+                    <span class="c1">#     break</span>
+
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">pdf_file</span><span class="p">,</span> <span class="s2">&quot;w+&quot;</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s1">&#39;UTF-8&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">pdf_res</span><span class="p">:</span>
+            <span class="n">pdf_writer</span> <span class="o">=</span> <span class="n">ndjson</span><span class="o">.</span><span class="n">writer</span><span class="p">(</span><span class="n">pdf_res</span><span class="p">,</span> <span class="n">ensure_ascii</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+            <span class="n">pdf_list</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">tuple</span><span class="p">(</span><span class="n">pdf_list</span><span class="p">))</span>
+            <span class="n">pdf_writer</span><span class="o">.</span><span class="n">writerow</span><span class="p">(</span><span class="n">pdf_list</span><span class="p">)</span>
+            
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Extracted data from </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">results</span><span class="p">)</span><span class="si">}</span><span class="s2"> pages in </span><span class="si">{</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">start</span><span class="si">:</span><span class="s2">2.1f</span><span class="si">}</span><span class="s2"> seconds.&quot;</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">extractor_delete_files</span><span class="p">:</span>
+            <span class="n">data_folder</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">target_folder_path</span><span class="p">,</span> <span class="s2">&quot;data&quot;</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">folder</span> <span class="ow">in</span> <span class="n">os</span><span class="o">.</span><span class="n">listdir</span><span class="p">(</span><span class="n">data_folder</span><span class="p">):</span>
+                <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">isdir</span><span class="p">(</span><span class="n">folder</span><span class="p">):</span>
+                    <span class="n">rmtree</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">data_folder</span><span class="p">,</span> <span class="n">folder</span><span class="p">))</span></div></div>
+    
+
+<div class="viewcode-block" id="FileExtractor"><a class="viewcode-back" href="../../../cpscraper.extractor.html#cpscraper.extractor.extractor.FileExtractor">[docs]</a><span class="k">class</span> <span class="nc">FileExtractor</span><span class="p">:</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">info</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">metadata</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">metadata</span><span class="p">[</span><span class="s2">&quot;id&quot;</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">metadata</span><span class="p">[</span><span class="s2">&quot;domain&quot;</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">metadata</span><span class="p">[</span><span class="s2">&quot;level&quot;</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">metadata</span><span class="p">[</span><span class="s2">&quot;website&quot;</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">metadata</span><span class="p">[</span><span class="s2">&quot;date&quot;</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">metadata</span><span class="p">[</span><span class="s2">&quot;path&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">info</span>    
+
+<div class="viewcode-block" id="FileExtractor.extracting"><a class="viewcode-back" href="../../../cpscraper.extractor.html#cpscraper.extractor.extractor.FileExtractor.extracting">[docs]</a>    <span class="k">def</span> <span class="nf">extracting</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+
+        <span class="c1"># Phone/emails/fax can be found in the HTML</span>
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">metadata</span><span class="p">[</span><span class="s2">&quot;path&quot;</span><span class="p">],</span> <span class="s2">&quot;r&quot;</span><span class="p">,</span> <span class="n">encoding</span><span class="o">=</span><span class="s2">&quot;UTF-8&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">file</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">text</span> <span class="o">=</span> <span class="n">file</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">soup</span> <span class="o">=</span> <span class="n">BeautifulSoup</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">text</span><span class="p">,</span><span class="s2">&quot;lxml&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Get metadata</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">extract_metadata</span><span class="p">()</span>
+
+        <span class="c1">#Extract the data</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">extract_kvk</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">extract_btw</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">extract_phone</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">extract_email</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">extract_fax</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">extract_annual_report</span><span class="p">()</span>
+
+        <span class="c1">#Zip and address can better be found in raw text</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_clean_html</span><span class="p">()</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">extract_zip</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">extract_address</span><span class="p">()</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">metadata</span></div>
+
+<div class="viewcode-block" id="FileExtractor.extract_address"><a class="viewcode-back" href="../../../cpscraper.extractor.html#cpscraper.extractor.extractor.FileExtractor.extract_address">[docs]</a>    <span class="k">def</span> <span class="nf">extract_address</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Scrape the adres from the input file, and add found adres to self.adres in set form</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">add_found</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">zipcode</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">metadata</span><span class="p">[</span><span class="s2">&quot;zipcode&quot;</span><span class="p">]:</span>
+            <span class="n">pattern</span> <span class="o">=</span> <span class="sa">r</span><span class="s1">&#39;(((\b[a-zA-ZÀ-ÿ]+)\s+[0-9][0-9-_a-z,/]*)(\s+(?=(&#39;</span> <span class="o">+</span> <span class="n">zipcode</span> <span class="o">+</span> <span class="sa">r</span><span class="s1">&#39;))|(?=(&#39;</span> <span class="o">+</span> <span class="n">zipcode</span> <span class="o">+</span> <span class="s1">&#39;))))&#39;</span>
+            <span class="n">findall</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">findall</span><span class="p">(</span><span class="n">pattern</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">text</span><span class="p">)</span>
+            <span class="n">add_found</span> <span class="o">+=</span> <span class="p">[</span><span class="n">item</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">findall</span><span class="p">]</span>
+        
+        <span class="bp">self</span><span class="o">.</span><span class="n">metadata</span><span class="p">[</span><span class="s2">&quot;address&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">add_found</span></div>
+
+<div class="viewcode-block" id="FileExtractor.extract_zip"><a class="viewcode-back" href="../../../cpscraper.extractor.html#cpscraper.extractor.extractor.FileExtractor.extract_zip">[docs]</a>    <span class="k">def</span> <span class="nf">extract_zip</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Scrape the zipcode from the input file, and add found zipcodes to self.zipcode in set form</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+    
+        <span class="n">pattern</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">                                (\b\d</span><span class="si">{4}</span><span class="s2">\s?(?!SS)(?!SD)(?!SA)(?!px)(?!em)(?!rm)[A-Z]</span><span class="si">{2}</span><span class="s2">\b)</span>
+<span class="s2">                                &quot;&quot;&quot;</span><span class="p">,</span> <span class="n">re</span><span class="o">.</span><span class="n">VERBOSE</span><span class="p">)</span>
+        <span class="n">zipcodes</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="n">re</span><span class="o">.</span><span class="n">findall</span><span class="p">(</span><span class="n">pattern</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">text</span><span class="p">)))</span>
+        
+        <span class="bp">self</span><span class="o">.</span><span class="n">metadata</span><span class="p">[</span><span class="s2">&quot;zipcode&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">zipcodes</span></div>
+        
+<div class="viewcode-block" id="FileExtractor.extract_btw"><a class="viewcode-back" href="../../../cpscraper.extractor.html#cpscraper.extractor.extractor.FileExtractor.extract_btw">[docs]</a>    <span class="k">def</span> <span class="nf">extract_btw</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Scrape the BTW number from the input file, and add found BTW Numbers (usually only 1) to self.btw in list form</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">btw</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+
+        <span class="n">pattern</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">                                (btw|BTW|VAT|vat)(.+)(\bNL\s*[0-9-_.]{9,12}\s*[B 0-9\.]{0,5}|\bNL\b[0-9-_.B]+)</span>
+<span class="s2">                                &quot;&quot;&quot;</span><span class="p">,</span> <span class="n">re</span><span class="o">.</span><span class="n">VERBOSE</span><span class="p">)</span>
+        <span class="n">result_list</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">re</span><span class="o">.</span><span class="n">findall</span><span class="p">(</span><span class="n">pattern</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">text</span><span class="p">))</span>
+        <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">result_list</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">btw</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">item</span><span class="p">[</span><span class="mi">2</span><span class="p">])</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">metadata</span><span class="p">[</span><span class="s1">&#39;btw&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">btw</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="FileExtractor.extract_kvk"><a class="viewcode-back" href="../../../cpscraper.extractor.html#cpscraper.extractor.extractor.FileExtractor.extract_kvk">[docs]</a>    <span class="k">def</span> <span class="nf">extract_kvk</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Scrape the KVK number from the input file, and add found KVK number to self.kvk in set form</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        
+        <span class="bp">self</span><span class="o">.</span><span class="n">kvk</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+        
+        <span class="n">pattern</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">                                k\.?v\.?k.{0,12}?(\b\d</span><span class="si">{8}</span><span class="s2">) | (\b\d</span><span class="si">{8}</span><span class="s2">).{0,5}?k\.?v\.?k</span>
+<span class="s2">                                &quot;&quot;&quot;</span><span class="p">,</span> <span class="n">re</span><span class="o">.</span><span class="n">VERBOSE</span> <span class="o">|</span> <span class="n">re</span><span class="o">.</span><span class="n">IGNORECASE</span><span class="p">)</span>
+        <span class="n">result_list</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">findall</span><span class="p">(</span><span class="n">pattern</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">text</span><span class="p">)</span>
+        <span class="n">result_list</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">re</span><span class="o">.</span><span class="n">findall</span><span class="p">(</span><span class="n">pattern</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">text</span><span class="p">))</span>
+        <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">result_list</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">subitem</span> <span class="ow">in</span> <span class="n">item</span><span class="p">:</span>
+                <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">subitem</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">kvk</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">subitem</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">metadata</span><span class="p">[</span><span class="s2">&quot;kvk&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">kvk</span><span class="p">)</span></div>
+        
+<div class="viewcode-block" id="FileExtractor.extract_phone"><a class="viewcode-back" href="../../../cpscraper.extractor.html#cpscraper.extractor.extractor.FileExtractor.extract_phone">[docs]</a>    <span class="k">def</span> <span class="nf">extract_phone</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Scrape the phone number from the input file, and add found phone numbers to self.phone in set form</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        
+        <span class="bp">self</span><span class="o">.</span><span class="n">phone</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+        <span class="n">pattern</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">                                (Tel:\s{0,4}|</span>
+<span class="s2">                                tel:\s{0,4}|</span>
+<span class="s2">                                telefoon:\s{0,4}|</span>
+<span class="s2">                                Telefoon:\s{0,4}|</span>
+<span class="s2">                                T:\s{0,4}|</span>
+<span class="s2">                                t:\s{0,4}|</span>
+<span class="s2">                                T\s{0,4}|</span>
+<span class="s2">                                T\.\s{0,4})</span>
+<span class="s2">                                (&amp;nbsp;|/{0,2})?</span>
+<span class="s2">                                ((\+?|\&quot;?)(\d|\s|\(|\)|-){9,22}\d)</span>
+<span class="s2">                                &quot;&quot;&quot;</span><span class="p">,</span> <span class="n">re</span><span class="o">.</span><span class="n">VERBOSE</span><span class="p">)</span>
+                                <span class="c1"># Phone numbers can be indicated by a variety of different ways, this regex tries to incorporate all of those as a possibillity</span>
+        <span class="n">result_list</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">re</span><span class="o">.</span><span class="n">findall</span><span class="p">(</span><span class="n">pattern</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">text</span><span class="p">))</span>
+        <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">result_list</span><span class="p">:</span>
+            <span class="n">temp</span> <span class="o">=</span> <span class="n">item</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="s1">&#39; &#39;</span> <span class="o">+</span> <span class="n">item</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">phone</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">temp</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">metadata</span><span class="p">[</span><span class="s2">&quot;phone&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">phone</span><span class="p">)</span></div>
+        
+<div class="viewcode-block" id="FileExtractor.extract_fax"><a class="viewcode-back" href="../../../cpscraper.extractor.html#cpscraper.extractor.extractor.FileExtractor.extract_fax">[docs]</a>    <span class="k">def</span> <span class="nf">extract_fax</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Scrape the fax number from the input file, and add found fax numbers to self.fax in set form</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        
+        <span class="bp">self</span><span class="o">.</span><span class="n">fax</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+        <span class="n">pattern</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">                                (Fax:\s|</span>
+<span class="s2">                                fax:\s|</span>
+<span class="s2">                                F:\s|</span>
+<span class="s2">                                f:\s)</span>
+<span class="s2">                                ((\+?|\&quot;?)(\d|\s|\(|\)|-){9,22}\d)</span>
+<span class="s2">                                &quot;&quot;&quot;</span><span class="p">,</span> <span class="n">re</span><span class="o">.</span><span class="n">VERBOSE</span><span class="p">)</span>
+        <span class="n">result_list</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">re</span><span class="o">.</span><span class="n">findall</span><span class="p">(</span><span class="n">pattern</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">text</span><span class="p">))</span>
+        <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">result_list</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">fax</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">item</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+        
+        <span class="bp">self</span><span class="o">.</span><span class="n">metadata</span><span class="p">[</span><span class="s2">&quot;fax&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">fax</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="FileExtractor.extract_email"><a class="viewcode-back" href="../../../cpscraper.extractor.html#cpscraper.extractor.extractor.FileExtractor.extract_email">[docs]</a>    <span class="k">def</span> <span class="nf">extract_email</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Scrape the Email adress from the input file, and adds the found email adress to self.email in set form</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">pattern</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">                        ([a-zA-Z0-9_.+-]+   # one (or more) sets of all characters which numbers, letters or a subset of punctuations</span>
+<span class="s2">                        @                   # needs a @    </span>
+<span class="s2">                        [a-zA-Z0-9-]{1,25}  # again, grab any number or letter</span>
+<span class="s2">                        \.                  # the dot in the email</span>
+<span class="s2">                        (?!png)(?!jpg)[a-zA-Z-.]{1,8}     # grab any combination of letters/numbers/dots, to ensure we also grab stuff like .co.uk</span>
+<span class="s2">                        )&quot;&quot;&quot;</span><span class="p">,</span> <span class="n">re</span><span class="o">.</span><span class="n">VERBOSE</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">email</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">re</span><span class="o">.</span><span class="n">findall</span><span class="p">(</span><span class="n">pattern</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">text</span><span class="p">))</span>
+        <span class="n">emails</span> <span class="o">=</span> <span class="p">[</span><span class="n">email</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="k">if</span> <span class="n">email</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;.&#39;</span> <span class="k">else</span> <span class="n">email</span> <span class="k">for</span> <span class="n">email</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">email</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">metadata</span><span class="p">[</span><span class="s2">&quot;email&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">emails</span></div>
+        
+<div class="viewcode-block" id="FileExtractor.extract_annual_report"><a class="viewcode-back" href="../../../cpscraper.extractor.html#cpscraper.extractor.extractor.FileExtractor.extract_annual_report">[docs]</a>    <span class="k">def</span> <span class="nf">extract_annual_report</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Look for and try to scrape the annual report of a website, if found add to #TODO where to add?</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">pdf_links</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+        <span class="n">pattern</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">                            financiele.?rapportage|annual.?report|jaarrekening|jaar.?verslag|jaarrapport|jaarrekening|boekhouding.?rapportage|boekhouding.?rapport|financial.?performance|investor|investeerder|financial.?results</span>
+<span class="s2">                            &quot;&quot;&quot;</span><span class="p">,</span> <span class="n">re</span><span class="o">.</span><span class="n">VERBOSE</span> <span class="o">|</span> <span class="n">re</span><span class="o">.</span><span class="n">IGNORECASE</span><span class="p">)</span>
+        <span class="n">neg_pattern</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="sa">r</span><span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">                            medewerker|studeren|slim|algemene.?voorwaarden|privacy|test|asbestos|website|mailto|CO2|webshopp|app|experience|opstellen|zoek|coronavirus|diensten|nieuwsbrief|ZZP|freelancers|wat.?is|vertalen</span>
+<span class="s2">                            &quot;&quot;&quot;</span><span class="p">,</span> <span class="n">re</span><span class="o">.</span><span class="n">VERBOSE</span> <span class="o">|</span> <span class="n">re</span><span class="o">.</span><span class="n">IGNORECASE</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">link</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">soup</span><span class="o">.</span><span class="n">find_all</span><span class="p">(</span><span class="s2">&quot;a&quot;</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">re</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="n">pattern</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">link</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;href&#39;</span><span class="p">)))</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">re</span><span class="o">.</span><span class="n">search</span><span class="p">(</span><span class="n">neg_pattern</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">link</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;href&#39;</span><span class="p">))):</span>
+                <span class="c1"># print(re.search(pattern, str(link.get(&#39;href&#39;))))</span>
+                <span class="k">if</span> <span class="n">link</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;href&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;/&#39;</span><span class="p">):</span>
+                    <span class="n">url</span> <span class="o">=</span> <span class="n">urljoin</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">metadata</span><span class="p">[</span><span class="s1">&#39;website&#39;</span><span class="p">],</span> <span class="n">link</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;href&#39;</span><span class="p">))</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">url</span> <span class="o">=</span> <span class="n">link</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;href&#39;</span><span class="p">)</span>
+                <span class="n">pdf_links</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">url</span><span class="p">))</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">metadata</span><span class="p">[</span><span class="s2">&quot;annual_reports&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">pdf_links</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="FileExtractor.extract_metadata"><a class="viewcode-back" href="../../../cpscraper.extractor.html#cpscraper.extractor.extractor.FileExtractor.extract_metadata">[docs]</a>    <span class="k">def</span> <span class="nf">extract_metadata</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;        </span>
+<span class="sd">        This function is used to extract the metadata from the file, and return it as a dictionary.</span>
+<span class="sd">        # Example of metadata</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">tags</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">soup</span><span class="p">(</span><span class="s1">&#39;meta&#39;</span><span class="p">)</span>
+        
+        <span class="n">lst</span> <span class="o">=</span> <span class="p">[</span><span class="n">value</span> <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">tags</span> <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">value</span> <span class="ow">in</span> <span class="n">item</span><span class="o">.</span><span class="n">attrs</span><span class="o">.</span><span class="n">items</span><span class="p">()</span> <span class="k">if</span> <span class="ow">not</span> <span class="nb">type</span><span class="p">(</span><span class="n">value</span><span class="p">)</span> <span class="o">==</span> <span class="nb">list</span><span class="p">]</span>
+
+        <span class="n">it</span> <span class="o">=</span> <span class="nb">iter</span><span class="p">(</span><span class="n">lst</span><span class="p">)</span>
+        <span class="n">metadata</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="n">it</span><span class="p">,</span><span class="n">it</span><span class="p">))</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">metadata</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">metadata</span><span class="p">)</span></div>
+
+    <span class="k">def</span> <span class="nf">_zipcode_warning</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        If the extractor did find a zipcode, but not an address, there is probably a bug. This notifies the user.=</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">metadata</span><span class="p">[</span><span class="s2">&quot;zipcode&quot;</span><span class="p">])</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span> <span class="ow">and</span> <span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">metadata</span><span class="p">[</span><span class="s2">&quot;address&quot;</span><span class="p">])</span> <span class="o">==</span> <span class="mi">0</span><span class="p">):</span>
+            <span class="n">typer</span><span class="o">.</span><span class="n">secho</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s1">&#39;Found zipcodes, but found no address for </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">metadata</span><span class="p">[</span><span class="s2">&quot;website&quot;</span><span class="p">]</span><span class="si">}</span><span class="s1">, this is probably a bug&#39;</span><span class="p">,</span>
+                    <span class="n">fg</span><span class="o">=</span><span class="n">typer</span><span class="o">.</span><span class="n">colors</span><span class="o">.</span><span class="n">YELLOW</span><span class="p">,</span>
+                <span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_clean_html</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">text</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">soup</span><span class="o">.</span><span class="n">get_text</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">text</span> <span class="o">=</span> <span class="n">text</span></div>
+
+    
+    <span class="c1"># # Helper for extracting</span>
+    <span class="c1"># def _create_results(path):</span>
+    <span class="c1">#     [id, domain, level, url, date, path] = path</span>
+
+    <span class="c1">#     start_time_file = time.perf_counter()</span>
+    <span class="c1">#     #website_name = os.path.basename(Path(folder).parents[0])</span>
+    <span class="c1">#     # TODO: integrate get scraper into _get_scraper method since now no checks are performed if target folders exist</span>
+    <span class="c1">#     cached_corporate = Extractor([id, domain, level, url, date, path])</span>
+    <span class="c1">#     metadata = cached_corporate.extracting()</span>
+    <span class="c1">#     end_time_file = time.perf_counter()</span>
+        
+    <span class="c1">#     return ({path: end_time_file - start_time_file }, metadata)</span>
+
+
+    <span class="c1"># async def __extract_all(self, target_folder_path, results):</span>
+    <span class="c1">#     &quot;&quot;&quot;</span>
+    <span class="c1">#     Fetch all urls in records up to a level max_level. Save html to file.</span>
+
+    <span class="c1">#     :param records: List of all level 0 urls to visit</span>
+    <span class="c1">#     &quot;&quot;&quot;</span>
+
+    <span class="c1">#     file_res = target_folder_path  /  (&#39;scraped_data_&#39; + str(datelib.today()) + &#39;.ndjson&#39;)</span>
+    <span class="c1">#     pdf_file = target_folder_path  /  (&#39;pdf_links_&#39; + str(datelib.today()) + &#39;.ndjson&#39;)</span>
+    <span class="c1">#     pdf_list = []</span>
+        
+    <span class="c1">#     Path(file_res).parent.mkdir(parents=True, exist_ok=True)</span>
+
+    <span class="c1">#     # Parallelize loop </span>
+    <span class="c1">#     with Pool() as pool, open(file_res, &quot;w+&quot;, encoding=&#39;UTF-8&#39;) as f_res:</span>
+    <span class="c1">#         writer_res = ndjson.writer(f_res, ensure_ascii=False)</span>
+
+    <span class="c1">#         with tqdm.tqdm(total=len(results), leave = True, miniters=1) as pbar:</span>
+    <span class="c1">#             for result in pool.imap_unordered(_create_results, results):</span>
+    <span class="c1">#                 time_dict, json_dict = result</span>
+    <span class="c1">#                 writer_res.writerow(json_dict)</span>
+    <span class="c1">#                 pbar.update()</span>
+    <span class="c1">#                 if json_dict[&quot;pdf_links&quot;] != []:</span>
+    <span class="c1">#                     print(json_dict[&#39;pdf_links&#39;])</span>
+    <span class="c1">#                     pdf_list.append(json_dict[&quot;pdf_links&quot;])</span>
+
+    <span class="c1">#     #TODO: change that pdf files are saved in same way as the JSON files in the extractor</span>
+    <span class="c1">#     with open(pdf_file, &quot;w+&quot;, encoding=&#39;UTF-8&#39;) as pdf_res:</span>
+    <span class="c1">#         pdf_writer = ndjson.writer(pdf_res, ensure_ascii=False)</span>
+    <span class="c1">#         pdf_writer.writerow(pdf_list)</span>
+
+    <span class="c1">#     # tasks = []</span>
+
+    <span class="c1">#     # # for each url, create asynchronous task to fetch company and append to tasks list</span>
+    <span class="c1">#     # for result in results:</span>
+    <span class="c1">#     #     task = asyncio.ensure_future(self.__extract_one_company(result))</span>
+    <span class="c1">#     #     tasks.append(task) </span>
+    <span class="c1">#     # # create future and group tasks</span>
+        
+
+    <span class="c1">#     # progress = [</span>
+    <span class="c1">#     #     await f</span>
+    <span class="c1">#     #     for f in tqdm.tqdm(asyncio.as_completed(tasks), total=len(tasks), leave = True, miniters=1)</span>
+    <span class="c1">#     # ]</span>
+
+    <span class="c1">#     # return progress</span>
+
+
+    <span class="c1"># def extract_companies(self, target_folder_path, delete_raw_files):</span>
+    <span class="c1">#     &quot;&quot;&quot;</span>
+    <span class="c1">#     Create initial asynchronous task to fetch all urls</span>
+
+    <span class="c1">#     :param urls: List of all level 0 urls to visit</span>
+    <span class="c1">#     &quot;&quot;&quot;</span>
+
+    <span class="c1">#     start = time()</span>
+
+    <span class="c1">#     #TODO: TEMPORARY, CHECK IF USE SQL &gt; Reset this to use the config data</span>
+    <span class="c1">#     use_sqlite = False # this needs to be a parameter</span>
+    <span class="c1">#     date_start = &quot;2000-01-01&quot;</span>
+    <span class="c1">#     date_end = &quot;3000-01-01&quot;</span>
+    <span class="c1">#     if use_sqlite:</span>
+    <span class="c1">#         connection = sql.connect(os.path.join(target_folder_path,  &quot;overview_urls.db&quot;))</span>
+    <span class="c1">#         cursor = connection.cursor()</span>
+    <span class="c1">#         results = cursor.execute(f&#39;&#39;&#39;SELECT id, domain, level, url, date, path FROM Overview </span>
+    <span class="c1">#                         WHERE (date &gt;= &#39;{date_start}&#39;) </span>
+    <span class="c1">#                         AND (date &lt;= &#39;{date_end}&#39;) </span>
+    <span class="c1">#                         AND (status == &quot;200&quot;)&#39;&#39;&#39;).fetchall()</span>
+    <span class="c1">#         connection.close()</span>
+    <span class="c1">#     else:</span>
+    <span class="c1">#         with open(os.path.join(target_folder_path, &quot;overview_urls.tsv&quot;)) as f:</span>
+    <span class="c1">#             f.readline() #header</span>
+    <span class="c1">#             results = []</span>
+    <span class="c1">#             for line in f:</span>
+    <span class="c1">#                 id, domain, level, url, status, date, path = line.split(&quot;\t&quot;)</span>
+    <span class="c1">#                 if (date &gt;= date_start) and (date &lt;= date_end) and (status == &quot;200&quot;):</span>
+    <span class="c1">#                     results.append([id, domain, level, url, date, path.strip()])</span>
+
+    <span class="c1">#     with ThreadPoolExecutor(max_workers=self.threads_bs4) as self.cpu_executor, ThreadPoolExecutor(max_workers=1) as self.io_executor:</span>
+    <span class="c1">#         self.loop = asyncio.get_event_loop() </span>
+    <span class="c1">#         future = asyncio.ensure_future(self.__extract_all(target_folder_path, results)) </span>
+    <span class="c1">#         self.loop.run_until_complete(future) </span>
+
+    <span class="c1">#     if delete_raw_files:</span>
+    <span class="c1">#         data_folder = os.path.join(target_folder_path, &quot;data&quot;)</span>
+    <span class="c1">#         for folder in os.listdir(data_folder):</span>
+    <span class="c1">#             if os.path.isdir(folder):</span>
+    <span class="c1">#                 rmtree(os.path.join(data_folder, folder))</span>
+
+    <span class="c1">#     print(f&quot;Extracted data from {len(results)} pages in {time.time() - start:2.1f} seconds.&quot;)</span>
+
+</pre></div>
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2023, FIRMBACKBONE.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
