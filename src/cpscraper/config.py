@@ -198,7 +198,10 @@ def _save_extractor_delete(extractor_delete_files: bool) -> int:
 def get_extractor_delete(
     config_file: Path = (current_scraper() / "settings.ini"),
 ) -> bool:
-    """Return whether to delete processed raw files"""
+    """
+    Return whether to delete processed raw files
+    
+    """
     config_parser = configparser.ConfigParser()
     config_parser.read(config_file)
     return eval(config_parser["Extractor"]["extractor_delete_files"])
@@ -217,3 +220,14 @@ def _save_use_database(use_database: bool) -> int:
         return FILE_ERROR
     return SUCCESS
 
+
+def get_use_database(
+    config_file: Path = (current_scraper() / "settings.ini"),
+) -> bool:
+    """
+    Return whether to use an SQL database raw files
+
+    """
+    config_parser = configparser.ConfigParser()
+    config_parser.read(config_file)
+    return eval(config_parser["Database"]["use_database"])

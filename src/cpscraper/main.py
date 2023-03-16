@@ -77,221 +77,6 @@ def operate():
     return deco_operate
 
 
-
-# Opens the current cpscraper working folder that is stored in the system's application config.ini file
-# Does not work in headless operation mode as it involves GUI commands
-@app.command(name="instance")
-@operate()
-def scraper_address() -> None:
-    """
-    Open configured scraper instance folder
-    """
-    try:
-        webbrowser.open("file:////{}".format(config.current_scraper()))
-    except:
-        typer.secho("Could not open scraper instance folder\n", fg=typer.colors.RED)
-
-
-
-# Allows for the modification of the settings.ini file in the active working cpscraper instance folder
-# Allows modification of the source file and target folder locations + whether extracted documents are deleted
-@app.command(name="config")
-def cli_config(
-    delete_processed_files: bool = typer.Option(
-        None, help="Delete / Not-Delete extractor processed raw files"
-    ),
-    target_folder_path: str = typer.Option(
-        None, "--target-folder-path", help="Set new path for scraped data output"
-    ),
-    source_file_path: str = typer.Option(
-        None, "--source-file-path", help="Set new path for csv source file"
-    ),
-) -> None:
-
-    """
-    Alter scraper configuration settings
-    """
-
-    if (
-        delete_processed_files is None
-        and target_folder_path is None
-        and source_file_path is None
-    ):
-        typer.secho(f"Scraper is configured:", fg=typer.colors.YELLOW)
-        typer.secho(
-            f"- scraper config location: {config.CONFIG_FILE_PATH}",
-            fg=typer.colors.YELLOW,
-        )
-        typer.secho(
-            f"- scraper instance location: {config.get_target_folder_path()}",
-            fg=typer.colors.YELLOW,
-        )
-        typer.secho(
-            f"- source file location: {config.get_source_file_path()}",
-            fg=typer.colors.YELLOW,
-        )
-        typer.secho(
-            f"- delete extracted files: {config.get_extractor_delete()}\n",
-            fg=typer.colors.YELLOW,
-        )
-    else:
-        if delete_processed_files is not None:
-            if delete_processed_files:
-                config._save_extractor_delete(True)
-            else:
-                config._save_extractor_delete(False)
-        # TODO: Verify what happens when the target folder location is changed, the folder should be moved as well
-        if target_folder_path is not None:
-            config._save_target_folder(target_folder_path)
-        if source_file_path is not None:
-            config._save_source_file(source_file_path)
-
-        typer.secho(f"Config settings saved", fg=typer.colors.GREEN)
-
-
-# Starts the scraping of targets from the set source file in the settings.ini file in the active working cpscraper instance settings folder
-# Calls a Scraper instance which handles the scraping procedure
-# Scraped documents are stored in the active working cpscraper instance folder under 'data'
-# Can only be run when the application has been initialised
-@app.command(name="scrape")
-@operate()
-def scrape() -> None:
-    """
-    Start caching websites
-    """
-
-    typer.secho(f"Scraper is started with instructions:", fg=typer.colors.YELLOW)
-
-    typer.secho(
-        f"- source file: {config.get_source_file_path()}", fg=typer.colors.YELLOW
-    )
-    typer.secho(
-        f"- target folder: {config.get_target_folder_path()}\n", fg=typer.colors.YELLOW
-    )
-
-
-    with open(config.get_source_file_path(), "r") as f:
-        f.readline()  # header
-        urls = [line.split(",") for line in f.readlines()]
-        urls = sorted([(kvk.strip(), f"https://www.{url}/") for url, kvk in urls])
-
-    worker = Scraper(
-        target_folder_path=config.get_target_folder_path(), classifier=classify_url
-    )
-    worker.scrape_companies(urls)
-
-
-# Starts the extracting of files in the active working cpscraper instance folder
-# Calls an Extractor instance which handles the extracting procedure
-# Extracted data is stored in the active working cpscraper instance folder under 'scraped_data'
-# Can only be run when the application has been initialised
-# Can only be run when the scrape function has been called before and there are extractable documents in the 'data' folder
-@app.command()
-@operate()
-def extract(
-    start_date: str = typer.Option(
-        None,
-        help="Date on which the files are retreieved and extracted should start extracting",
-    ),
-    end_date: str = typer.Option(
-        None,
-        help="Date on which the files are retreieved and extractor should stop extracting",
-    ),
-) -> None:
-    """
-    Start extracting data from the fetched files
-    """
-
-    typer.secho(f"Extractor is started with instructions:", fg=typer.colors.YELLOW)
-    typer.secho(
-        f"- source folder: {config.get_target_folder_path()}", fg=typer.colors.YELLOW
-    )
-    typer.secho(
-        f"- delete extracted files: {config.get_extractor_delete()}\n",
-        fg=typer.colors.YELLOW,
-    )
-
-    # TODO: Build check whether the provided dates are conform the format and if not indicate that
-    if start_date is None and end_date is None:
-        worker = Extractor(
-            target_folder_path=config.get_target_folder_path(),
-            use_sqlite=False,
-            extractor_delete_files=True,
-        )
-        worker.extract_companies()
-    else:
-        typer.secho(
-            f"Given start and/or end date do not conform to the YYYY-MM-DD format, extractor was terminated",
-            fg=typer.colors.RED,
-        )
-
-
-# Restores an existing cpscraper instance as the active instance which can be worked on
-# Creates system application cpscraper folder and creates config.ini file therein
-# Stores the existing cpscraper instance location in the system's application config.ini file and overwrites any previous ones
-# Verifies whether the expected values are within the settings.ini file
-# Can be run at any time and does not need the operation verification
-@app.command(name="restore")
-def init(headless: bool = typer.Option(False, help="Run without GUI elements")) -> None:
-    """
-    Restore configuration of existing scraper instance.
-    The exisiting location is stored in the application config file and the exisiting settings in the settings file are validated.
-    """
-
-    if headless == False:
-        try:
-            if sys.stdin.isatty():
-                headless = False
-        except:
-            headless = True
-
-    typer.secho(
-        "\nWELCOME to the corporate scraper.\nFollow the instructions to restore an existing scraper instance.\n",
-        fg=typer.colors.GREEN,
-    )
-
-    if headless == True:
-        typer.secho("headless mode turned on\n", fg=typer.colors.YELLOW)
-    else:
-        typer.secho("headless mode turned off\n", fg=typer.colors.YELLOW)
-
-    time.sleep(0.5)
-
-    if headless == False:
-        ask_continue_folder = typer.confirm(
-            "SELECT a scraper instance folder \nContinue?\n"
-        )
-        if not ask_continue_folder:
-            typer.secho(f"Restoring stopped\n", fg=typer.colors.RED)
-            raise typer.Exit(1)
-        try:
-            Tk().withdraw()
-            folder = fd.askdirectory()
-        except:
-            typer.secho("\nGUI Interface failed to load", fg=typer.colors.RED)
-            folder = typer.prompt("ENTER scraper instance folder base PATH\n")
-    else:
-        folder = typer.prompt("ENTER scraper instance folder base PATH\n")
-
-    app_init_error = config.restore_app(Path(folder))
-    if app_init_error:
-        typer.secho(
-            f'Restoring scraper instance failed with "{ERRORS[app_init_error]}"',
-            fg=typer.colors.RED,
-        )
-        typer.secho(
-            "The settings file for the given instance is incomplete, does not adhere to the expected format or could not be read.",
-            fg=typer.colors.RED,
-        )
-        raise typer.Exit(1)
-    else:
-        typer.secho(
-            f"Scraper is initialised and ready to use \nUse the --help command for instructions\n ",
-            fg=typer.colors.GREEN,
-        )
-
-
-
 # Set up a new cpscraper instance
 # Creates system application cpscraper folder and creates config.ini file therein
 # Stores new cpscraper instance location in the system's application config.ini file
@@ -304,6 +89,7 @@ def init(headless: bool = typer.Option(False, help="Run without GUI elements")) 
     Initialise a new scraper instance.
     The instance location is stored in the application config file,
     a new folder location is created and a setting file is created within this folder.
+   
     """
 
     if headless == False:
@@ -420,3 +206,222 @@ def main(
     )
 ) -> None:
     return
+
+
+# Restores an existing cpscraper instance as the active instance which can be worked on
+# Creates system application cpscraper folder and creates config.ini file therein
+# Stores the existing cpscraper instance location in the system's application config.ini file and overwrites any previous ones
+# Verifies whether the expected values are within the settings.ini file
+# Can be run at any time and does not need the operation verification
+@app.command(name="restore")
+def init(headless: bool = typer.Option(False, help="Run without GUI elements")) -> None:
+    """
+    Restore configuration of existing scraper instance.
+    The exisiting location is stored in the application config file and the exisiting settings in the settings file are validated.
+    
+    """
+
+    if headless == False:
+        try:
+            if sys.stdin.isatty():
+                headless = False
+        except:
+            headless = True
+
+    typer.secho(
+        "\nWELCOME to the corporate scraper.\nFollow the instructions to restore an existing scraper instance.\n",
+        fg=typer.colors.GREEN,
+    )
+
+    if headless == True:
+        typer.secho("headless mode turned on\n", fg=typer.colors.YELLOW)
+    else:
+        typer.secho("headless mode turned off\n", fg=typer.colors.YELLOW)
+
+    time.sleep(0.5)
+
+    if headless == False:
+        ask_continue_folder = typer.confirm(
+            "SELECT a scraper instance folder \nContinue?\n"
+        )
+        if not ask_continue_folder:
+            typer.secho(f"Restoring stopped\n", fg=typer.colors.RED)
+            raise typer.Exit(1)
+        try:
+            Tk().withdraw()
+            folder = fd.askdirectory()
+        except:
+            typer.secho("\nGUI Interface failed to load", fg=typer.colors.RED)
+            folder = typer.prompt("ENTER scraper instance folder base PATH\n")
+    else:
+        folder = typer.prompt("ENTER scraper instance folder base PATH\n")
+
+    app_init_error = config.restore_app(Path(folder))
+    if app_init_error:
+        typer.secho(
+            f'Restoring scraper instance failed with "{ERRORS[app_init_error]}"',
+            fg=typer.colors.RED,
+        )
+        typer.secho(
+            "The settings file for the given instance is incomplete, does not adhere to the expected format or could not be read.",
+            fg=typer.colors.RED,
+        )
+        raise typer.Exit(1)
+    else:
+        typer.secho(
+            f"Scraper is initialised and ready to use \nUse the --help command for instructions\n ",
+            fg=typer.colors.GREEN,
+        )
+
+
+# Allows for the modification of the settings.ini file in the active working cpscraper instance folder
+# Allows modification of the source file and target folder locations + whether extracted documents are deleted
+@app.command(name="config")
+def cli_config(
+    delete_processed_files: bool = typer.Option(
+        None, help="Delete / Not-Delete extractor processed raw files"
+    ),
+    target_folder_path: str = typer.Option(
+        None, "--target-folder-path", help="Set new path for scraped data output"
+    ),
+    source_file_path: str = typer.Option(
+        None, "--source-file-path", help="Set new path for csv source file"
+    ),
+) -> None:
+
+    """
+    Alter scraper configuration settings
+    
+    """
+
+    if (
+        delete_processed_files is None
+        and target_folder_path is None
+        and source_file_path is None
+    ):
+        typer.secho(f"Scraper is configured:", fg=typer.colors.YELLOW)
+        typer.secho(
+            f"- scraper config location: {config.CONFIG_FILE_PATH}",
+            fg=typer.colors.YELLOW,
+        )
+        typer.secho(
+            f"- scraper instance location: {config.get_target_folder_path()}",
+            fg=typer.colors.YELLOW,
+        )
+        typer.secho(
+            f"- source file location: {config.get_source_file_path()}",
+            fg=typer.colors.YELLOW,
+        )
+        typer.secho(
+            f"- delete extracted files: {config.get_extractor_delete()}\n",
+            fg=typer.colors.YELLOW,
+        )
+    else:
+        if delete_processed_files is not None:
+            if delete_processed_files:
+                config._save_extractor_delete(True)
+            else:
+                config._save_extractor_delete(False)
+        # TODO: Verify what happens when the target folder location is changed, the folder should be moved as well
+        if target_folder_path is not None:
+            config._save_target_folder(target_folder_path)
+        if source_file_path is not None:
+            config._save_source_file(source_file_path)
+
+        typer.secho(f"Config settings saved", fg=typer.colors.GREEN)
+
+
+# Opens the current cpscraper working folder that is stored in the system's application config.ini file
+# Does not work in headless operation mode as it involves GUI commands
+@app.command(name="instance")
+@operate()
+def scraper_address() -> None:
+    """
+    Open configured scraper instance folder
+
+    """
+    try:
+        webbrowser.open("file:////{}".format(config.current_scraper()))
+    except:
+        typer.secho("Could not open scraper instance folder\n", fg=typer.colors.RED)
+
+
+# Starts the scraping of targets from the set source file in the settings.ini file in the active working cpscraper instance settings folder
+# Calls a Scraper instance which handles the scraping procedure
+# Scraped documents are stored in the active working cpscraper instance folder under 'data'
+# Can only be run when the application has been initialised
+@app.command(name="scrape")
+@operate()
+def scrape() -> None:
+    """
+    Start caching websites
+    
+    """
+
+    typer.secho(f"Scraper is started with instructions:", fg=typer.colors.YELLOW)
+
+    typer.secho(
+        f"- source file: {config.get_source_file_path()}", fg=typer.colors.YELLOW
+    )
+    typer.secho(
+        f"- target folder: {config.get_target_folder_path()}\n", fg=typer.colors.YELLOW
+    )
+
+
+    with open(config.get_source_file_path(), "r") as f:
+        f.readline()  # header
+        urls = [line.split(",") for line in f.readlines()]
+        urls = sorted([(kvk.strip(), f"https://www.{url}/") for url, kvk in urls])
+
+    worker = Scraper(
+        target_folder_path=config.get_target_folder_path(), 
+        classifier=classify_url, 
+        use_sqlite=config.get_use_database()
+    )
+    worker.scrape_companies(urls)
+
+
+# Starts the extracting of files in the active working cpscraper instance folder
+# Calls an Extractor instance which handles the extracting procedure
+# Extracted data is stored in the active working cpscraper instance folder under 'scraped_data'
+# Can only be run when the application has been initialised
+# Can only be run when the scrape function has been called before and there are extractable documents in the 'data' folder
+@app.command(name="extract")
+@operate()
+def extract(
+    start_date: str = typer.Option(
+        None,
+        help="Date on which the files are retreieved and extracted should start extracting",
+    ),
+    end_date: str = typer.Option(
+        None,
+        help="Date on which the files are retreieved and extractor should stop extracting",
+    ),
+) -> None:
+    """
+    Start extracting data from the fetched files
+    
+    """
+
+    typer.secho(f"Extractor is started with instructions:", fg=typer.colors.YELLOW)
+    typer.secho(
+        f"- source folder: {config.get_target_folder_path()}", fg=typer.colors.YELLOW
+    )
+    typer.secho(
+        f"- delete extracted files: {config.get_extractor_delete()}\n",
+        fg=typer.colors.YELLOW,
+    )
+
+    # TODO: Build check whether the provided dates are conform the format and if not indicate that
+    if start_date is None and end_date is None:
+        worker = Extractor(
+            target_folder_path=config.get_target_folder_path(),
+            use_sqlite=config.get_use_database(),
+            extractor_delete_files=True,
+        )
+        worker.extract_companies()
+    else:
+        typer.secho(
+            f"Given start and/or end date do not conform to the YYYY-MM-DD format, extractor was terminated",
+            fg=typer.colors.RED,
+        )
