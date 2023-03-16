@@ -136,13 +136,13 @@ class FileExtractor:
             self.metadata["date"],
             self.metadata["path"],
         ) = info
-
-    def extracting(self):
-        # Phone/emails/fax can be found in the HTML
+        
+        # Read HTML to parse
         with open(self.metadata["path"], "rb") as file:
             self.text = file.read().decode("utf-8", "ignore")
             self.soup = BeautifulSoup(self.text, "lxml")
 
+    def extracting(self):
         # Get metadata
         self.extract_metadata()
         self._clean_html()
@@ -163,7 +163,9 @@ class FileExtractor:
 
     def extract_address(self) -> None:
         """
-        Scrape the adres from the input file, and add found adres to self.adres in set form
+        Scrape the adres from the input file, and add found adres to self.adres in set form(
+        TODO: Compile patterns available to all (in utils?). Use re.DOTALL in address
+
         """
         add_found = []
   
@@ -212,27 +214,30 @@ class FileExtractor:
                         r"""
                         (btw|BTW|VAT|vat)(.+)(\bNL\s*[0-9-_.]{9,12}\s*[B 0-9\.]{0,5}|\bNL\b[0-9-_.B]+)
                         """,
-            re.VERBOSE,
+            re.VERBOSE | re.DOTALL,
         )
         result_list = set(re.findall(pattern, self.text))
         btw = {item[2] for item in result_list}
         self.metadata["btw"] = list(btw)
 
-    def extract_kvk(self.text) -> None:
+    def extract_kvk(self) -> None:
         """
         Scrape the KVK number from the input file, and add found KVK number to self.kvk in set form
         """
         pattern = re.compile(
                 r"""
-                k\.?v\.?k.{0,10}?((?:\b|[A-Z]{2})\d{8}\b)    | 
-                ((?:\b|[A-Z]{2})\d{8}\b).{0,5}?k\.?v\.?k     | 
-                (?<=kamer van koophandel).{0,0}((?:\b|[A-Z]{2})\d{8}\b)
+                k\.?v\.?k.{0,40}?(\b\d{8}) | 
+                (\b\d{8}).{0,5}?k\.?v\.?k | 
+                (?<=kamer van koophandel).{0,50}(\d{8})
+                #k\.?v\.?k.{0,20}?(?:\b|[A-Z]{2})(\d{8}\b)    | 
+                #(?:\b|[A-Z]{2})(\d{8}\b).{0,5}?k\.?v\.?k     | 
+                #(?<=kamer van koophandel).{0,20}(?:\b|[A-Z]{2})(\d{8}\b)
                 """,
-            re.VERBOSE | re.IGNORECASE,
+                
+            re.VERBOSE | re.IGNORECASE | re.DOTALL,
         )
         result_list = re.findall(pattern, self.text)
 
-        
         kvk = set([subitem for item in result_list for subitem in item if len(subitem) > 0])
         self.metadata["kvk"] = list(kvk)
 
@@ -253,7 +258,7 @@ class FileExtractor:
                                 (&nbsp;|/{0,2})?
                                 ((\+?|\"?)(\d|\s|\(|\)|-){9,22}\d)
                                 """,
-            re.VERBOSE,
+            re.VERBOSE | re.DOTALL,
         )
         # Phone numbers can be indicated by a variety of different ways, this regex tries to incorporate all of those as a possibillity
         result_list = set(re.findall(pattern, self.text))
@@ -274,7 +279,7 @@ class FileExtractor:
                                 f:\s)
                                 ((\+?|\"?)(\d|\s|\(|\)|-){9,22}\d)
                                 """,
-            re.VERBOSE,
+            re.VERBOSE | re.DOTALL,
         )
         result_list = set(re.findall(pattern, self.text))
         fax = {item[1] for item in result_list}
@@ -360,18 +365,8 @@ class FileExtractor:
 
         self.metadata.update(metadata)
 
-    def _zipcode_warning(self) -> None:
-        """
-        If the extractor did find a zipcode, but not an address, there is probably a bug. This notifies the user.=
-        """
-        if (len(self.metadata["zipcode"]) > 0) and (len(self.metadata["address"]) == 0):
-            typer.secho(
-                f'Found zipcodes, but found no address for {self.metadata["website"]}, this is probably a bug',
-                fg=typer.colors.YELLOW,
-            )
-
     def _clean_html(self) -> None:
-        text = self.soup.get_text()
+        text = self.soup.get_text(separator="\n", strip=True)
         self.text = unicodedata.normalize("NFKD", text)
 
     # # Helper for extracting
