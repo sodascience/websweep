@@ -368,7 +368,6 @@ class FileExtractor:
 
         self.metadata.update(metadata)
 
-
-    def _clean_html(self) -> None:
+    def __clean_html(self) -> None:
         text = self.soup.get_text(separator="\n", strip=True)
         self.text = unicodedata.normalize("NFKD", text)
