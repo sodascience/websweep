@@ -21,7 +21,7 @@ import regex as re
 from .scraper.scraper import Scraper
 from .extractor.extractor import Extractor
 from .utils.utils import classify_url
-from cpscraper import ERRORS, __app_name__, __version__, config
+from cpscraper import ERRORS, __app_name__, __version__, __status__, config
 from functools import wraps
 
 app = typer.Typer()
@@ -75,10 +75,13 @@ def operate():
                 return f(*args, **kwargs)
 
             except:
-                typer.secho(
-                        'An unexpected error occured, please consult the documentation and usage instructions',
-                        fg=typer.colors.RED,
-                    )
+                if __status__ == "development":
+                    raise
+                else:
+                    typer.secho(
+                            'An unexpected error occured, please consult the documentation and usage instructions',
+                            fg=typer.colors.RED,
+                        )
 
         return f_operate
 
