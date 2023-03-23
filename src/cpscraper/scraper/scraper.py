@@ -1,7 +1,6 @@
 """This module provides the Scraper model-controller."""
 
 from pathlib import Path
-from cpscraper.utils.utils import Worker
 from re import S
 from typing import Any, Dict, List, NamedTuple
 
@@ -33,7 +32,7 @@ import http.cookies
 http.cookies._is_legal_key = lambda _: True
 
 
-class Scraper(Worker):
+class Scraper:
     def __init__(
         self,
         target_folder_path,

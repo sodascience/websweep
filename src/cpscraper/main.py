@@ -20,7 +20,7 @@ import regex as re
 
 from .scraper.scraper import Scraper
 from .extractor.extractor import Extractor
-from .utils.utils import classify_url, Worker
+from .utils.utils import classify_url
 from cpscraper import ERRORS, __app_name__, __version__, config
 from functools import wraps
 
@@ -35,42 +35,50 @@ def operate():
         @wraps(f)
         def f_operate(*args, **kwargs):
 
-            if not config.CONFIG_FILE_PATH.exists():
-                typer.secho(
-                    'Application config file was not found. Please run "scraper init" or use scraper --help',
-                    fg=typer.colors.RED,
-                )
-                return
-            elif (
-                config.current_scraper() == config.CONFIG_DIR_PATH
-                or not config.current_scraper().exists()
-            ):
-                typer.secho(
-                    "Application config file has no instance location pointer. Please initalise or restore an instance or use cpscraper --help",
-                    fg=typer.colors.RED,
-                )
-                return
-            elif (
-                config.get_source_file_path() is None
-                or not config.get_source_file_path().exists()
-            ):
-                typer.secho(
-                    "Settings file does not contain essential instance data. Please initalise or restore an instance or use cpscraper --help",
-                    fg=typer.colors.RED,
-                )
-                return
+            try:
 
-            if (
-                f.__name__ == "extract"
-                and not (config.get_target_folder_path() / "data").exists()
-            ):
-                typer.secho(
-                    'There are no scraped files to extract from. Please start scraping using "scrape" or use cpscraper --help',
-                    fg=typer.colors.RED,
-                )
-                return
+                if not config.CONFIG_FILE_PATH.exists():
+                    typer.secho(
+                        'Application config file was not found. Please run "scraper init" or use scraper --help',
+                        fg=typer.colors.RED,
+                    )
+                    return
+                elif (
+                    config.current_scraper() == config.CONFIG_DIR_PATH
+                    or not config.current_scraper().exists()
+                ):
+                    typer.secho(
+                        "Application config file has no instance location pointer. Please initalise or restore an instance or use cpscraper --help",
+                        fg=typer.colors.RED,
+                    )
+                    return
+                elif (
+                    config.get_source_file_path() is None
+                    or not config.get_source_file_path().exists()
+                ):
+                    typer.secho(
+                        "Settings file does not contain essential instance data. Please initalise or restore an instance or use cpscraper --help",
+                        fg=typer.colors.RED,
+                    )
+                    return
 
-            return f(*args, **kwargs)
+                if (
+                    f.__name__ == "extract"
+                    and not any((config.get_target_folder_path() / "data").iterdir())
+                ):
+                    typer.secho(
+                        'There are no scraped files to extract from. Please start scraping using "scrape" or use cpscraper --help',
+                        fg=typer.colors.RED,
+                    )
+                    return
+
+                return f(*args, **kwargs)
+
+            except:
+                typer.secho(
+                        'An unexpected error occured, please consult the documentation and usage instructions',
+                        fg=typer.colors.RED,
+                    )
 
         return f_operate
 

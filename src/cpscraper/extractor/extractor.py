@@ -1,4 +1,3 @@
-from cpscraper.utils.utils import Worker
 import re
 import typer
 from xmlrpc.client import Boolean
@@ -18,7 +17,7 @@ from shutil import rmtree
 import unicodedata
 
 
-class Extractor(Worker):
+class Extractor:
     def __init__(
         self, target_folder_path, use_sqlite=False, extractor_delete_files=False
     ):
@@ -208,8 +207,8 @@ class FileExtractor:
     def __extract_btw(self) -> None:
         """
         Scrape the BTW number from the input file, and add found BTW Numbers (usually only 1) to self.btw in list form
-        """
 
+        """
         pattern = re.compile(
                         r"""
                         (btw|BTW|VAT|vat)(.+)(\bNL\s*[0-9-_.]{9,12}\s*[B 0-9\.]{0,5}|\bNL\b[0-9-_.B]+)
@@ -223,6 +222,7 @@ class FileExtractor:
     def __extract_kvk(self) -> None:
         """
         Scrape the KVK number from the input file, and add found KVK number to self.kvk in set form
+
         """
         pattern = re.compile(
                 r"""
@@ -244,6 +244,7 @@ class FileExtractor:
     def __extract_phone(self) -> None:
         """
         Scrape the phone number from the input file, and add found phone numbers to self.phone in set form
+
         """
         pattern = re.compile(
             r"""
@@ -268,9 +269,9 @@ class FileExtractor:
     def __extract_fax(self) -> None:
         """
         Scrape the fax number from the input file, and add found fax numbers to self.fax in set form
+
         """
 
-        
         pattern = re.compile(
             r"""
                                 (Fax:\s|
@@ -288,6 +289,7 @@ class FileExtractor:
     def __extract_email(self) -> None:
         """
         Scrape the Email adress from the input file, and adds the found email adress to self.email in set form
+
         """
         pattern = re.compile(
             r"""
@@ -306,6 +308,7 @@ class FileExtractor:
     def __extract_annual_report(self) -> None:
         """
         Look for and try to scrape the annual report of a website, if found add to #TODO where to add?
+
         """
         pdf_links = set()
 
@@ -339,7 +342,7 @@ class FileExtractor:
     def __extract_metadata(self) -> None:
         """
         This function is used to extract the metadata from the file, and return it as a dictionary.
-        # Example of metadata
+
         """
         # keep only the most used tags (>10% of a random subset of pages)
         options = {'og:title', 'article:publisher', 'msapplication-TileImage', 'robots', 'og:description', 'author', 'og:image:type', 
