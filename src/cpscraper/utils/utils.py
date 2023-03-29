@@ -3,12 +3,6 @@ from urllib.parse import urlparse
 from pathlib import Path
 import sqlite3 as sql
 
-
-class Worker:
-    def __init__(self):
-        pass
-
-
 def classify_url(url, level):
     """
     Classify url based on level
