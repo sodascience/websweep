@@ -17,6 +17,7 @@ from tqdm import tqdm
 import tqdm.asyncio
 import webbrowser
 import regex as re
+import datetime
 
 from .scraper.scraper import Scraper
 from .extractor.extractor import Extractor
@@ -428,11 +429,25 @@ def extract(
         worker = Extractor(
             target_folder_path=config.get_target_folder_path(),
             use_sqlite=config.get_use_database(),
-            extractor_delete_files=True,
+            extractor_delete_files=config.get_extractor_delete(),
         )
         worker.extract_companies()
     else:
-        typer.secho(
+        try:
+            start_date = datetime.date.fromisoformat(start_date)
+            end_date = datetime.date.fromisoformat(end_date)
+        except ValueError:
+            typer.secho(
             f"Given start and/or end date do not conform to the YYYY-MM-DD format, extractor was terminated",
             fg=typer.colors.RED,
         )
+ 
+        worker = Extractor(
+            target_folder_path=config.get_target_folder_path(),
+            use_sqlite=config.get_use_database(),
+            extractor_delete_files=config.get_extractor_delete(),
+            start_date=start_date,
+            end_date=end_date
+        )
+        worker.extract_companies()
+        

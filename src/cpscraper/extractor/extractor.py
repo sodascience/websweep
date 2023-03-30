@@ -19,11 +19,13 @@ import unicodedata
 
 class Extractor:
     def __init__(
-        self, target_folder_path, use_sqlite=False, extractor_delete_files=False
+        self, target_folder_path, use_sqlite=False, extractor_delete_files=False, start_date=datelib.today(), end_date=datelib.today()
     ):
         self.target_folder_path = target_folder_path
         self.use_sqlite = use_sqlite
         self.extractor_delete_files = extractor_delete_files
+        self.start_date = start_date,
+        self.end_date = end_date
 
     def _create_results(self, path):
         [id, domain, level, url, date, path] = path
@@ -41,13 +43,6 @@ class Extractor:
     def extract_companies(self):
         start = time.time()
 
-        # TODO: Link back to config data
-        date_start = datelib.today()
-        date_end = datelib.today()
-
-        # TODO: TEMPORARY, CHECK IF USE SQL > Reset this to use the config data
-        date_start = "2000-01-01"
-        date_end = "3000-01-01"
         if self.use_sqlite:
             connection = sql.connect(
                 os.path.join(self.target_folder_path, "overview_urls.db")
@@ -55,8 +50,8 @@ class Extractor:
             cursor = connection.cursor()
             results = cursor.execute(
                 f"""SELECT id, domain, level, url, date, path FROM Overview 
-                            WHERE (date >= '{date_start}') 
-                            AND (date <= '{date_end}') 
+                            WHERE (date >= '{self.start_date}') 
+                            AND (date <= '{self.end_date}') 
                             AND (status == "200")"""
             ).fetchall()
             connection.close()
@@ -67,8 +62,8 @@ class Extractor:
                 for line in f:
                     id, domain, level, url, status, date, path = line.split("\t")
                     if (
-                        (date >= date_start)
-                        and (date <= date_end)
+                        (date >= self.start_date)
+                        and (date <= self.end_date)
                         and (status == "200")
                     ):
                         results.append([id, domain, level, url, date, path.strip()])
@@ -114,6 +109,7 @@ class Extractor:
                             pbar.update()
 
         if self.extractor_delete_files:
+            print("deleting")
             data_folder = os.path.join(self.target_folder_path, "data")
             for folder in os.listdir(data_folder):
                 if os.path.isdir(folder):
