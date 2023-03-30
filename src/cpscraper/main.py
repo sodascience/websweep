@@ -17,6 +17,7 @@ from tqdm import tqdm
 import tqdm.asyncio
 import webbrowser
 import regex as re
+import datetime
 
 from .scraper.scraper import Scraper
 from .extractor.extractor import Extractor
@@ -363,7 +364,11 @@ def scraper_address() -> None:
 # Can only be run when the application has been initialised
 @app.command(name="scrape")
 @operate()
-def scrape() -> None:
+def scrape(complement: str = typer.Option(
+        None,
+        help="Complement the folder with failed pages",
+    ),
+) -> None:
     """
     Start caching websites
     
@@ -378,18 +383,36 @@ def scrape() -> None:
         f"- target folder: {config.get_target_folder_path()}\n", fg=typer.colors.YELLOW
     )
 
+    if complement != None:
+        try:
+            complement_date = datetime.date.fromisoformat(complement)
+        except:
+            typer.secho(
+            f"Given date does not conform to the YYYY-MM-DD format, scraper was terminated",
+            fg=typer.colors.RED,
+        )
 
-    with open(config.get_source_file_path(), "r") as f:
-        f.readline()  # header
-        urls = [line.split(",") for line in f.readlines()]
-        urls = sorted([(kvk.strip(), f"https://www.{url}/") for url, kvk in urls])
+        worker = Scraper(
+                target_folder_path=config.get_target_folder_path(), 
+                classifier=classify_url, 
+                use_sqlite=config.get_use_database(),
+                max_level=1
+            )
+        worker.scrape_complement_companies(complement_date)
 
-    worker = Scraper(
-        target_folder_path=config.get_target_folder_path(), 
-        classifier=classify_url, 
-        use_sqlite=config.get_use_database()
-    )
-    worker.scrape_companies(urls)
+    else:
+        with open(config.get_source_file_path(), "r") as f:
+            f.readline()
+            urls = [line.split(",") for line in f.readlines()]
+            urls = sorted([(kvk.strip(), f"https://www.{url}/") for url, kvk in urls])
+            print(urls)
+
+        worker = Scraper(
+            target_folder_path=config.get_target_folder_path(), 
+            classifier=classify_url, 
+            use_sqlite=config.get_use_database()
+        )
+        worker.scrape_companies(urls)
 
 
 # Starts the extracting of files in the active working cpscraper instance folder

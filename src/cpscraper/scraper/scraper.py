@@ -128,9 +128,6 @@ class Scraper:
 
         return urls
 
-    def test_package():
-        return "Hello, this is a return from the main.py file in the cpscraper package"
-
     def __create_overview_file(self):
         """
         This function creates an overview file with the required headers if it doesn't exist.
@@ -463,3 +460,18 @@ class Scraper:
         print(
             f"Downloaded {self.count_downloads} pages from {len(urls)} urls to level {3} in {time() - start:2.1f} seconds."
         )
+
+    def scrape_complement_companies(self, complement_date):
+        if self.use_sqlite:
+            connection = sql.connect(self.overview_path)
+            cursor = connection.cursor()
+
+            cursor.execute("SELECT id, url FROM Overview WHERE date = ? AND status != 200;", (complement_date,))
+            urls = cursor.fetchall()
+            
+            connection.commit()
+            connection.close()
+        else:
+            pass
+
+        self.scrape_companies(urls)
