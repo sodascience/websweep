@@ -436,7 +436,7 @@ def extract(
         try:
             start_date = datetime.date.fromisoformat(start_date)
             end_date = datetime.date.fromisoformat(end_date)
-        except ValueError:
+        except:
             typer.secho(
             f"Given start and/or end date do not conform to the YYYY-MM-DD format, extractor was terminated",
             fg=typer.colors.RED,
