@@ -383,6 +383,12 @@ def scrape(complement: str = typer.Option(
         f"- target folder: {config.get_target_folder_path()}\n", fg=typer.colors.YELLOW
     )
 
+    worker = Scraper(
+        target_folder_path=config.get_target_folder_path(), 
+        classifier=classify_url, 
+        use_sqlite=config.get_use_database(),
+    )
+
     if complement != None:
         try:
             complement_date = datetime.date.fromisoformat(complement)
@@ -392,12 +398,7 @@ def scrape(complement: str = typer.Option(
             fg=typer.colors.RED,
         )
 
-        worker = Scraper(
-                target_folder_path=config.get_target_folder_path(), 
-                classifier=classify_url, 
-                use_sqlite=config.get_use_database(),
-                max_level=1
-            )
+        worker.max_level = 1
         worker.scrape_complement_companies(complement_date)
 
     else:
@@ -407,11 +408,6 @@ def scrape(complement: str = typer.Option(
             urls = sorted([(kvk.strip(), f"https://www.{url}/") for url, kvk in urls])
             print(urls)
 
-        worker = Scraper(
-            target_folder_path=config.get_target_folder_path(), 
-            classifier=classify_url, 
-            use_sqlite=config.get_use_database()
-        )
         worker.scrape_companies(urls)
 
 
