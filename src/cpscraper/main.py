@@ -430,6 +430,7 @@ def extract(
             target_folder_path=config.get_target_folder_path(),
             use_sqlite=config.get_use_database(),
             extractor_delete_files=config.get_extractor_delete(),
+
         )
         worker.extract_companies()
     else:
