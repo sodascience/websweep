@@ -19,7 +19,7 @@ import unicodedata
 
 class Extractor:
     def __init__(
-        self, target_folder_path, use_sqlite=False, extractor_delete_files=False, start_date=datelib.today(), end_date=datelib.today()
+        self, target_folder_path, use_sqlite=False, extractor_delete_files=False, start_date="2000-01-01", end_date="3000-01-01"
     ):
         self.target_folder_path = target_folder_path
         self.use_sqlite = use_sqlite
