@@ -425,9 +425,13 @@ class Extractor:
 
         if self.extractor_delete_files:
             data_folder = os.path.join(self.target_folder_path, "data")
-            for folder in os.listdir(data_folder):
+            folders = os.listdir(data_folder)
+            print(f"Removing {len(folders)} folders")
+            for folder in folders:
+                folder = os.path.join(data_folder, folder)
                 if os.path.isdir(folder):
-                    rmtree(os.path.join(data_folder, folder))
+                    rmtree(folder)
+            
 
         print(
             f"Extracted data from {len(results)} pages in {time.time() - start:2.1f} seconds."
