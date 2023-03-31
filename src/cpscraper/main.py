@@ -17,11 +17,12 @@ from tqdm import tqdm
 import tqdm.asyncio
 import webbrowser
 import regex as re
+import datetime
 
 from .scraper.scraper import Scraper
 from .extractor.extractor import Extractor
 from .utils.utils import classify_url
-from cpscraper import ERRORS, __app_name__, __version__, config
+from cpscraper import ERRORS, __app_name__, __version__, __status__, config
 from functools import wraps
 
 app = typer.Typer()
@@ -35,42 +36,53 @@ def operate():
         @wraps(f)
         def f_operate(*args, **kwargs):
 
-            if not config.CONFIG_FILE_PATH.exists():
-                typer.secho(
-                    'Application config file was not found. Please run "scraper init" or use scraper --help',
-                    fg=typer.colors.RED,
-                )
-                return
-            elif (
-                config.current_scraper() == config.CONFIG_DIR_PATH
-                or not config.current_scraper().exists()
-            ):
-                typer.secho(
-                    "Application config file has no instance location pointer. Please initalise or restore an instance or use cpscraper --help",
-                    fg=typer.colors.RED,
-                )
-                return
-            elif (
-                config.get_source_file_path() is None
-                or not config.get_source_file_path().exists()
-            ):
-                typer.secho(
-                    "Settings file does not contain essential instance data. Please initalise or restore an instance or use cpscraper --help",
-                    fg=typer.colors.RED,
-                )
-                return
+            try:
 
-            if (
-                f.__name__ == "extract"
-                and not (config.get_target_folder_path() / "data").exists()
-            ):
-                typer.secho(
-                    'There are no scraped files to extract from. Please start scraping using "scrape" or use cpscraper --help',
-                    fg=typer.colors.RED,
-                )
-                return
+                if not config.CONFIG_FILE_PATH.exists():
+                    typer.secho(
+                        'Application config file was not found. Please run "scraper init" or use scraper --help',
+                        fg=typer.colors.RED,
+                    )
+                    return
+                elif (
+                    config.current_scraper() == config.CONFIG_DIR_PATH
+                    or not config.current_scraper().exists()
+                ):
+                    typer.secho(
+                        "Application config file has no instance location pointer. Please initalise or restore an instance or use cpscraper --help",
+                        fg=typer.colors.RED,
+                    )
+                    return
+                elif (
+                    config.get_source_file_path() is None
+                    or not config.get_source_file_path().exists()
+                ):
+                    typer.secho(
+                        "Settings file does not contain essential instance data. Please initalise or restore an instance or use cpscraper --help",
+                        fg=typer.colors.RED,
+                    )
+                    return
 
-            return f(*args, **kwargs)
+                if (
+                    f.__name__ == "extract"
+                    and not any((config.get_target_folder_path() / "data").iterdir())
+                ):
+                    typer.secho(
+                        'There are no scraped files to extract from. Please start scraping using "scrape" or use cpscraper --help',
+                        fg=typer.colors.RED,
+                    )
+                    return
+
+                return f(*args, **kwargs)
+
+            except:
+                if __status__ == "development":
+                    raise
+                else:
+                    typer.secho(
+                            'An unexpected error occured, please consult the documentation and usage instructions',
+                            fg=typer.colors.RED,
+                        )
 
         return f_operate
 
@@ -417,11 +429,26 @@ def extract(
         worker = Extractor(
             target_folder_path=config.get_target_folder_path(),
             use_sqlite=config.get_use_database(),
-            extractor_delete_files=True
+            extractor_delete_files=config.get_extractor_delete(),
+
         )
         worker.extract_companies()
     else:
-        typer.secho(
+        try:
+            start_date = datetime.date.fromisoformat(start_date)
+            end_date = datetime.date.fromisoformat(end_date)
+        except:
+            typer.secho(
             f"Given start and/or end date do not conform to the YYYY-MM-DD format, extractor was terminated",
             fg=typer.colors.RED,
         )
+ 
+        worker = Extractor(
+            target_folder_path=config.get_target_folder_path(),
+            use_sqlite=config.get_use_database(),
+            extractor_delete_files=config.get_extractor_delete(),
+            start_date=start_date,
+            end_date=end_date
+        )
+        worker.extract_companies()
+        

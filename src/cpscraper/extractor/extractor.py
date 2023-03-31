@@ -17,6 +17,7 @@ from shutil import rmtree
 import unicodedata
 
 
+
 class FileExtractor:
     """
     A class for extracting data from one specific file.
@@ -37,7 +38,6 @@ class FileExtractor:
             Defines methods that include the extendable extracting functionalities in subclasses.
         
     """
-
     def __init__(self, info):
         self.metadata = dict()
         (
@@ -113,6 +113,7 @@ class FileExtractor:
                 neg_pattern, str(link.get("href"))
             ):
 
+
                 # print(re.search(pattern, str(link.get('href'))))
                 if link.get("href").startswith("/"):
                     url = urljoin(self.metadata["website"], link.get("href"))
@@ -122,9 +123,11 @@ class FileExtractor:
 
         return list(pdf_links)
 
+
     def _extract_kvk(self) -> list:
         """
         Scrape the KVK number from the input file, and add found KVK number to self.kvk in set form
+
         """
         pattern = re.compile(
                 r"""
@@ -163,6 +166,7 @@ class FileExtractor:
     def _extract_phone(self) -> list:
         """
         Scrape the phone number from the input file, and add found phone numbers to self.phone in set form
+
         """
         pattern = re.compile(
             r"""
@@ -207,9 +211,9 @@ class FileExtractor:
     def _extract_fax(self) -> list:
         """
         Scrape the fax number from the input file, and add found fax numbers to self.fax in set form
+
         """
 
-        
         pattern = re.compile(
             r"""
                                 (Fax:\s|
@@ -239,6 +243,7 @@ class FileExtractor:
         zipcodes = list(set(re.findall(pattern, self.text)))
 
         return zipcodes
+
 
     def _extract_address(self) -> list:
         """
@@ -272,7 +277,7 @@ class FileExtractor:
     def _extract_metadata(self) -> dict:
         """
         This function is used to extract the metadata from the file, and return it as a dictionary.
-        # Example of metadata
+
         """
         # keep only the most used tags (>10% of a random subset of pages)
         options = {'og:title', 'article:publisher', 'msapplication-TileImage', 'robots', 'og:description', 'author', 'og:image:type', 
