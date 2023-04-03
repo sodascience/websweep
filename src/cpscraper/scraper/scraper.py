@@ -144,8 +144,10 @@ class Scraper:
             connection = sql.connect(self.overview_path)
             cursor = connection.cursor()
             cursor.execute(
-                """CREATE TABLE IF NOT EXISTS Overview
-                (id TEXT, domain TEXT, level INT, url TEXT, status TEXT, date TEXT, path TEXT);"""
+                """
+                CREATE TABLE IF NOT EXISTS Overview
+                (id TEXT, domain TEXT, level INT, url TEXT, status TEXT, date TEXT, path TEXT);
+                """
             )
             cursor.execute("CREATE INDEX IF NOT EXISTS index_date ON Overview (date);")
             cursor.execute(
@@ -280,7 +282,7 @@ class Scraper:
                 return urls
 
         except Exception as e:
-            status = str(type(e)) + str(e)
+            status = ""
             path = ""
             self.__update_overview_file(kvk, level, url, status, path)
             self.errors_website[kvk] += 1
@@ -331,7 +333,7 @@ class Scraper:
                     if (datetime.date.today() - max(crawl_dates)).days < 30:
                         return
 
-                # Read the robots (if robots.txt does not exist all requets are accepted)
+                # Read the robots (if robots.txt does not exist all requests are accepted)
                 async with self.session.get(f"{url}/robots.txt") as response:
                     await asyncio.sleep(0.001)
                     r = await response.read()
@@ -389,17 +391,21 @@ class Scraper:
                     self.waits[kvk] = 0
 
             except Exception as e:
-                status = str(type(e)) + str(e)                    
+                status = ""                  
                 path = ""
 
                 # save problem with the request for robots.txt (usually page doesn't exist)
                 self.__update_overview_file(kvk, 0, f"{url}/robots.txt", status, path)
 
-            self.waits.pop(kvk)
-            self.errors_website.pop(kvk)
+            # TODO: Sometimes there is a keyerror and it cannot pop the kvk from the list as it is already not in there anymore
+            try:
+                self.waits.pop(kvk)
+                self.errors_website.pop(kvk)
+            except:
+                pass
 
 
-    async def __fetch_all(self, records):
+    async def __fetch_all_companies(self, records):
         """
         Fetch all urls in records up to a level max_level. Save html to file.
 
@@ -454,19 +460,20 @@ class Scraper:
             max_workers=self.threads_bs4
         ) as self.cpu_executor, ThreadPoolExecutor(max_workers=1) as self.io_executor:
             self.loop = asyncio.get_event_loop()
-            future = asyncio.ensure_future(self.__fetch_all(urls))
+            future = asyncio.ensure_future(self.__fetch_all_companies(urls))
             self.loop.run_until_complete(future)
 
         print(
             f"Downloaded {self.count_downloads} pages from {len(urls)} urls to level {3} in {time() - start:2.1f} seconds."
         )
 
+
     def scrape_complement_companies(self, complement_date):
         if self.use_sqlite:
             connection = sql.connect(self.overview_path)
             cursor = connection.cursor()
 
-            cursor.execute("SELECT id, url FROM Overview WHERE date = ? AND status != 200;", (complement_date,))
+            cursor.execute("SELECT id, url FROM Overview WHERE date = ? AND status != 200 AND status != '';", (complement_date,))
             urls = cursor.fetchall()
             
             connection.commit()

@@ -406,7 +406,6 @@ def scrape(complement: str = typer.Option(
             f.readline()
             urls = [line.split(",") for line in f.readlines()]
             urls = sorted([(kvk.strip(), f"https://www.{url}/") for url, kvk in urls])
-            print(urls)
 
         worker.scrape_companies(urls)
 
