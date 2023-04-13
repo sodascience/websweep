@@ -382,7 +382,7 @@ def scrape() -> None:
 
     with open(config.get_source_file_path(), "r") as f:
         f.readline()  # header
-        urls = [line.split(",") for line in f.readlines()]
+        urls = [line.split(",") for line in f.readlines().strip()]
         urls = sorted([(kvk.strip(), f"https://www.{url}/") for url, kvk in urls])
 
     worker = Scraper(
