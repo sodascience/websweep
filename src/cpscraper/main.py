@@ -20,7 +20,7 @@ import regex as re
 import datetime
 
 from .scraper.scraper import Scraper
-from .extractor.extractor import Extractor
+from .extractor.extractor import Extractor, FirmBackBoneFileExtractor
 from .utils.utils import classify_url
 from cpscraper import ERRORS, __app_name__, __version__, __status__, config
 from functools import wraps
@@ -430,6 +430,7 @@ def extract(
             target_folder_path=config.get_target_folder_path(),
             use_sqlite=config.get_use_database(),
             extractor_delete_files=config.get_extractor_delete(),
+            file_extractor=FirmBackBoneFileExtractor
 
         )
         worker.extract_companies()

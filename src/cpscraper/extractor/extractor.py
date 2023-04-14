@@ -17,7 +17,6 @@ from shutil import rmtree
 import unicodedata
 
 
-
 class FileExtractor:
     """
     A class for extracting data from one specific file.
@@ -49,7 +48,10 @@ class FileExtractor:
             self.metadata["path"],
         ) = info
 
-        # self.methods = [method for method in dir(self) if method.startswith('_extract_')]
+        # Filter and include only those methods from self's attributes (dir(self))
+        # that are callable (functions) and start with "_extract_", but exclude methods
+        # defined in the FileExtractor class (dir(FileExtractor)), meaning that only the custom child methods are included
+        self.child_methods = [method for method in dir(self) if callable(getattr(self, method)) and method.startswith('_extract_') and method not in [method for method in dir(FileExtractor) if callable(getattr(FileExtractor, method)) and method.startswith('_extract_')]]
         
         # Read HTML to parse
         with open(self.metadata["path"], "rb") as file:
@@ -65,8 +67,8 @@ class FileExtractor:
 
         # Call the method which defines which actions should be taken to extract data
         self.extract_default_metadata()
-        # Call the method that can be overwritten by a subclass to define which custom methods are called to extract additional data and add that to the metadata file
-        self.extract_extended_metadata()
+        # Call all methods that are customly created in any child classes of this basic File Extractor class
+        self.extract_custom_metadata()
 
         # Add the raw text to the metadata at last
         self.metadata["text"] = self.text
@@ -75,93 +77,19 @@ class FileExtractor:
 
     def extract_default_metadata(self):
         # Extract the default data, these are all the modular extract methods
-        self.metadata["annual_report"] = self._extract_annual_report()
-        self.metadata["kvk"] = self._extract_kvk()
-        self.metadata["btw"] = self._extract_btw()
+
         self.metadata["phone"] = self._extract_phone()
         self.metadata["email"] = self._extract_email()
         self.metadata["fax"] = self._extract_fax()
         self.metadata["zipcode"] = self._extract_zipcode()
         self.metadata["address"] = self._extract_address()
 
-    def extract_extended_metadata(self):
-        # Extract the extended data, these are all the modular extract methods
-        #method_list = [method for method in dir(self) if method.startswith('_extract')]
-        pass
+    def extract_custom_metadata(self):
+        # Execute all the methods that start with "_extract_" in the name in the child class
 
-    def _extract_annual_report(self) -> list:
-        """
-        Look for and try to scrape the annual report of a website, if found add to #TODO where to add?
-        """
-        pdf_links = set()
+        for method in self.child_methods:
+            self.metadata[method.split("_extract_")[1]] = getattr(self, method)()
 
-        pattern = re.compile(
-            r"""
-                            financiele.?rapportage|annual.?report|jaarrekening|jaar.?verslag|jaarrapport|jaarrekening|boekhouding.?rapportage|boekhouding.?rapport|financial.?performance|investor|investeerder|financial.?results
-                            """,
-            re.VERBOSE | re.IGNORECASE,
-        )
-        neg_pattern = re.compile(
-            r"""
-                            medewerker|studeren|slim|algemene.?voorwaarden|privacy|test|asbestos|website|mailto|CO2|webshopp|app|experience|opstellen|zoek|coronavirus|diensten|nieuwsbrief|ZZP|freelancers|wat.?is|vertalen
-                            """,
-            re.VERBOSE | re.IGNORECASE,
-        )
-
-        for link in self.soup.find_all("a"):
-            if re.search(pattern, str(link.get("href"))) and not re.search(
-                neg_pattern, str(link.get("href"))
-            ):
-
-
-                # print(re.search(pattern, str(link.get('href'))))
-                if link.get("href").startswith("/"):
-                    url = urljoin(self.metadata["website"], link.get("href"))
-                else:
-                    url = link.get("href")
-                pdf_links.add(str(url))
-
-        return list(pdf_links)
-
-
-    def _extract_kvk(self) -> list:
-        """
-        Scrape the KVK number from the input file, and add found KVK number to self.kvk in set form
-
-        """
-        pattern = re.compile(
-                r"""
-                k\.?v\.?k.{0,40}?(\b\d{8}) | 
-                (\b\d{8}).{0,5}?k\.?v\.?k | 
-                (?<=kamer van koophandel).{0,50}(\d{8})
-                #k\.?v\.?k.{0,20}?(?:\b|[A-Z]{2})(\d{8}\b)    | 
-                #(?:\b|[A-Z]{2})(\d{8}\b).{0,5}?k\.?v\.?k     | 
-                #(?<=kamer van koophandel).{0,20}(?:\b|[A-Z]{2})(\d{8}\b)
-                """,
-                
-            re.VERBOSE | re.IGNORECASE | re.DOTALL,
-        )
-        result_list = re.findall(pattern, self.text)
-
-        kvk = set([subitem for item in result_list for subitem in item if len(subitem) > 0])
-
-        return list(kvk)
-
-    def _extract_btw(self) -> list:
-        """
-        Scrape the BTW number from the input file, and add found BTW Numbers (usually only 1) to self.btw in list form
-        """
-
-        pattern = re.compile(
-                        r"""
-                        (btw|BTW|VAT|vat)(.+)(\bNL\s*[0-9-_.]{9,12}\s*[B 0-9\.]{0,5}|\bNL\b[0-9-_.B]+)
-                        """,
-            re.VERBOSE | re.DOTALL,
-        )
-        result_list = set(re.findall(pattern, self.text))
-        btw = {item[2] for item in result_list}
-
-        return list(btw)
 
     def _extract_phone(self) -> list:
         """
@@ -306,6 +234,84 @@ class FileExtractor:
     def _clean_html(self) -> str:
         text = self.soup.get_text(separator="\n", strip=True)
         return unicodedata.normalize("NFKD", text)
+
+
+class FirmBackBoneFileExtractor(FileExtractor):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    def _extract_annual_report(self) -> list:
+        """
+        Look for and try to scrape the annual report of a website, if found add to #TODO where to add?
+        """
+        pdf_links = set()
+
+        pattern = re.compile(
+            r"""
+                            financiele.?rapportage|annual.?report|jaarrekening|jaar.?verslag|jaarrapport|jaarrekening|boekhouding.?rapportage|boekhouding.?rapport|financial.?performance|investor|investeerder|financial.?results
+                            """,
+            re.VERBOSE | re.IGNORECASE,
+        )
+        neg_pattern = re.compile(
+            r"""
+                            medewerker|studeren|slim|algemene.?voorwaarden|privacy|test|asbestos|website|mailto|CO2|webshopp|app|experience|opstellen|zoek|coronavirus|diensten|nieuwsbrief|ZZP|freelancers|wat.?is|vertalen
+                            """,
+            re.VERBOSE | re.IGNORECASE,
+        )
+
+        for link in self.soup.find_all("a"):
+            if re.search(pattern, str(link.get("href"))) and not re.search(
+                neg_pattern, str(link.get("href"))
+            ):
+
+
+                # print(re.search(pattern, str(link.get('href'))))
+                if link.get("href").startswith("/"):
+                    url = urljoin(self.metadata["website"], link.get("href"))
+                else:
+                    url = link.get("href")
+                pdf_links.add(str(url))
+
+        return list(pdf_links)
+
+    def _extract_kvk(self) -> list:
+        """
+        Scrape the KVK number from the input file, and add found KVK number to self.kvk in set form
+
+        """
+        pattern = re.compile(
+                r"""
+                k\.?v\.?k.{0,40}?(\b\d{8}) | 
+                (\b\d{8}).{0,5}?k\.?v\.?k | 
+                (?<=kamer van koophandel).{0,50}(\d{8})
+                #k\.?v\.?k.{0,20}?(?:\b|[A-Z]{2})(\d{8}\b)    | 
+                #(?:\b|[A-Z]{2})(\d{8}\b).{0,5}?k\.?v\.?k     | 
+                #(?<=kamer van koophandel).{0,20}(?:\b|[A-Z]{2})(\d{8}\b)
+                """,
+                
+            re.VERBOSE | re.IGNORECASE | re.DOTALL,
+        )
+        result_list = re.findall(pattern, self.text)
+
+        kvk = set([subitem for item in result_list for subitem in item if len(subitem) > 0])
+
+        return list(kvk)
+
+    def _extract_btw(self) -> list:
+        """
+        Scrape the BTW number from the input file, and add found BTW Numbers (usually only 1) to self.btw in list form
+        """
+
+        pattern = re.compile(
+                        r"""
+                        (btw|BTW|VAT|vat)(.+)(\bNL\s*[0-9-_.]{9,12}\s*[B 0-9\.]{0,5}|\bNL\b[0-9-_.B]+)
+                        """,
+            re.VERBOSE | re.DOTALL,
+        )
+        result_list = set(re.findall(pattern, self.text))
+        btw = {item[2] for item in result_list}
+
+        return list(btw)
 
 
 class Extractor:
