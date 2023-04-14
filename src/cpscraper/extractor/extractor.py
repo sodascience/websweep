@@ -15,6 +15,7 @@ import ndjson
 import tqdm
 from shutil import rmtree
 import unicodedata
+import shutil
 
 
 class FileExtractor:
@@ -430,14 +431,13 @@ class Extractor:
                             pbar.update()
 
         if self.extractor_delete_files:
-            data_folder = os.path.join(self.target_folder_path, "data")
-            folders = os.listdir(data_folder)
-            print(f"Removing {len(folders)} folders")
-            for folder in folders:
-                folder = os.path.join(data_folder, folder)
-                if os.path.isdir(folder):
-                    rmtree(folder)
-            
+            # Loop through all subdirectories in the given folder
+            for root, dirs, files in os.walk(self.target_folder_path / "data"):
+                # Delete all files in the current subdirectory
+                for dir in dirs:
+                    if re.match(r"\d{4}-\d{2}-\d{2}", dir) and dir >= date_start and dir <= date_end:
+                        print(dir)
+                        shutil.rmtree(os.path.join(root, dir))
 
         print(
             f"Extracted data from {len(results)} pages in {time.time() - start:2.1f} seconds."
