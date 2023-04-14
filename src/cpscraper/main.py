@@ -160,8 +160,7 @@ def init(headless: bool = typer.Option(False, help="Run without GUI elements")) 
     else:
         file = typer.prompt("ENTER source file location base PATH\n")
 
-
-    typer.secho("Source file {file} selected\n", fg=typer.colors.YELLOW)
+    typer.secho("Source file {} selected\n".format(file), fg=typer.colors.YELLOW)
     time.sleep(0.5)
 
     ask_delete_files = typer.confirm(
