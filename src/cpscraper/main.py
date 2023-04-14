@@ -364,9 +364,14 @@ def scraper_address() -> None:
 # Can only be run when the application has been initialised
 @app.command(name="scrape")
 @operate()
-def scrape(complement: str = typer.Option(
+def scrape(
+    complement: str = typer.Option(
         None,
         help="Complement the folder with failed pages",
+    ),
+    sock_connect: int = typer.Option(
+        None,
+        help="Timeout value (ms) for establishing a connection to remote server",
     ),
 ) -> None:
     """
@@ -387,6 +392,7 @@ def scrape(complement: str = typer.Option(
         target_folder_path=config.get_target_folder_path(), 
         classifier=classify_url, 
         use_sqlite=config.get_use_database(),
+        sock_connect=sock_connect
     )
 
     if complement != None:
@@ -398,7 +404,6 @@ def scrape(complement: str = typer.Option(
             fg=typer.colors.RED,
         )
 
-        worker.max_level = 1
         worker.scrape_complement_companies(complement_date)
 
     else:

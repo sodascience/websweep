@@ -3,6 +3,7 @@
 from pathlib import Path
 from re import S
 from typing import Any, Dict, List, NamedTuple
+import csv
 
 # TODO: Temporary, remove!
 import warnings
@@ -44,6 +45,7 @@ class Scraper:
         threads_bs4=10,
         threads_download=1000,
         use_sqlite=False,
+        sock_connect=120
     ):
         self.target_folder_path = target_folder_path
         self.base_path = self.target_folder_path / "data"
@@ -69,6 +71,7 @@ class Scraper:
         self.sem_num_comps = asyncio.Semaphore(concurrency_companies)
         self.threads_bs4 = threads_bs4
         self.threads_download = threads_download
+        self.sock_connect = sock_connect
 
         self.waits = dict()
         self.errors_website = dict()
@@ -85,6 +88,7 @@ class Scraper:
 
 
         # self.start = time()
+        self.scraper_session_date = self.__get_current_date()
         self.count_downloads = 0
 
         # print("Execution type:", exc_type)
@@ -146,10 +150,11 @@ class Scraper:
             cursor.execute(
                 """
                 CREATE TABLE IF NOT EXISTS Overview
-                (id TEXT, domain TEXT, level INT, url TEXT, status TEXT, date TEXT, path TEXT);
+                (id TEXT, domain TEXT, level INT, url TEXT, status TEXT, session_date TEXT, scrape_date TEXT, path TEXT, 
+                UNIQUE (id, domain, url, status));
                 """
             )
-            cursor.execute("CREATE INDEX IF NOT EXISTS index_date ON Overview (date);")
+            cursor.execute("CREATE INDEX IF NOT EXISTS index_date ON Overview (scrape_date);")
             cursor.execute(
                 "CREATE INDEX IF NOT EXISTS index_status ON Overview (status);"
             )
@@ -160,7 +165,7 @@ class Scraper:
             # Check if overview file exists, if not create it
             if not Path(self.overview_path).is_file():
                 with open(self.overview_path, "w") as f:
-                    f.write("id\tdomain\tlevel\turl\tstatus\tdate\tpath\n")
+                    f.write("id\tdomain\tlevel\turl\tstatus\tsession_date\tscrape_date\tpath\n")
 
     def __update_overview_file(self, id, level, url, status, path):
 
@@ -175,14 +180,14 @@ class Scraper:
             connection = sql.connect(self.overview_path)
             cursor = connection.cursor()
             
-            cursor.execute("INSERT INTO Overview VALUES (?, ?, ?, ?, ?, ?, ?)", (id, domain, level, url, status, date, path))
+            cursor.execute("INSERT OR IGNORE INTO Overview VALUES (?, ?, ?, ?, ?, ?, ?, ?)", (id, domain, level, url, status, self.scraper_session_date, date, path))
 
             connection.commit()
             connection.close()
 
         else:
             with open(self.overview_path, "a+") as f:
-                f.write(f"{id}\t{domain}\t{level}\t{url}\t{status}\t{date}\t{path}\n")
+                f.write(f"{id}\t{domain}\t{level}\t{url}\t{status}\t{self.scraper_session_date}\t{date}\t{path}\n")
 
     def __save_to_disk(self, path, contents):
         """
@@ -197,11 +202,11 @@ class Scraper:
         with open(path, "wb") as f:
             f.write(contents)
 
+
     def __get_current_date(self):
         # return current day in format "YYYY-MM-DD"
         return datetime.datetime.now().strftime("%Y-%m-%d")
 
-    
             
     async def __fetch_one_url(self, url, kvk, level):
         # be nice and wait a bit per url (non blocking)
@@ -305,7 +310,6 @@ class Scraper:
                 self.waits[kvk] = 0
                 self.errors_website[kvk] = 0
 
-
                 level = 0
                 all_records = [url]
                 records = [url]
@@ -390,19 +394,15 @@ class Scraper:
                     # reset waits for next level
                     self.waits[kvk] = 0
 
+                self.waits.pop(kvk)
+                self.errors_website.pop(kvk)
+
             except Exception as e:
-                status = ""                  
+                status = "Website not found"                  
                 path = ""
 
                 # save problem with the request for robots.txt (usually page doesn't exist)
                 self.__update_overview_file(kvk, 0, f"{url}/robots.txt", status, path)
-
-            # TODO: Sometimes there is a keyerror and it cannot pop the kvk from the list as it is already not in there anymore
-            try:
-                self.waits.pop(kvk)
-                self.errors_website.pop(kvk)
-            except:
-                pass
 
 
     async def __fetch_all_companies(self, records):
@@ -418,7 +418,7 @@ class Scraper:
         async with ClientSession(
             headers=self.headers,
             trust_env=True,
-            timeout=ClientTimeout(total=None, sock_connect=120, sock_read=120),
+            timeout=ClientTimeout(total=None, sock_connect=self.sock_connect, sock_read=self.sock_connect),
             connector=TCPConnector(
                 limit=self.threads_download, #number of websites/request in parallel
                 ssl=self.verify_ssl, 
@@ -473,12 +473,30 @@ class Scraper:
             connection = sql.connect(self.overview_path)
             cursor = connection.cursor()
 
-            cursor.execute("SELECT id, url FROM Overview WHERE date = ? AND status != 200 AND status != '';", (complement_date,))
+            # TODO: Implement for overview_urls.tsv instead of db
+            cursor.execute("SELECT id, url FROM Overview WHERE session_date = ? AND status != 200 AND status != '' AND status != 'Website not found';", (complement_date,))
             urls = cursor.fetchall()
             
             connection.commit()
             connection.close()
         else:
-            pass
+            with open(self.overview_path, "r", newline='') as f:
+                reader = csv.reader(f, delimiter='\t')
+                next(reader)
 
+                urls = []
+
+                # Iterate through rows in .tsv file
+                for row in reader:
+                    # Extract values from the row
+                    id = row[0]
+                    url = row[3]
+                    status = row[4]
+                    session_date = row[5]
+
+                    # Check if session_date matches the complement_date and status is not 200, '', or 'Website not found'
+                    if session_date == str(complement_date) and status != "200" and status != "" and status != "Website not found":
+                        urls.append((id, url))
+
+                print(urls)
         self.scrape_companies(urls)
