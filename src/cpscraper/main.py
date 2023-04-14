@@ -20,7 +20,7 @@ import regex as re
 import datetime
 
 from .scraper.scraper import Scraper
-from .extractor.extractor import Extractor
+from .extractor.extractor import Extractor, FirmBackBoneFileExtractor
 from .utils.utils import classify_url
 from cpscraper import ERRORS, __app_name__, __version__, __status__, config
 from functools import wraps
@@ -139,7 +139,7 @@ def init(headless: bool = typer.Option(False, help="Run without GUI elements")) 
     else:
         folder = typer.prompt("ENTER target folder base PATH\n")
 
-    typer.secho("Folder {} selected\n".format(folder), fg=typer.colors.YELLOW)
+    typer.secho(f"Folder {folder} selected\n", fg=typer.colors.YELLOW)
     time.sleep(0.5)
 
     if headless == False:
@@ -160,8 +160,7 @@ def init(headless: bool = typer.Option(False, help="Run without GUI elements")) 
     else:
         file = typer.prompt("ENTER source file location base PATH\n")
 
-
-    typer.secho("Source file {file} selected\n", fg=typer.colors.YELLOW)
+    typer.secho(f"Source file {file} selected\n", fg=typer.colors.YELLOW)
     time.sleep(0.5)
 
     ask_delete_files = typer.confirm(
@@ -353,7 +352,7 @@ def scraper_address() -> None:
 
     """
     try:
-        webbrowser.open("file:////{}".format(config.current_scraper()))
+        webbrowser.open(f"file:////{config.current_scraper()}")
     except:
         typer.secho("Could not open scraper instance folder\n", fg=typer.colors.RED)
 
@@ -430,6 +429,7 @@ def extract(
             target_folder_path=config.get_target_folder_path(),
             use_sqlite=config.get_use_database(),
             extractor_delete_files=config.get_extractor_delete(),
+            file_extractor=FirmBackBoneFileExtractor
 
         )
         worker.extract_companies()
