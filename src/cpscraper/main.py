@@ -363,7 +363,16 @@ def scraper_address() -> None:
 # Can only be run when the application has been initialised
 @app.command(name="scrape")
 @operate()
-def scrape() -> None:
+def scrape(
+    complement: str = typer.Option(
+        None,
+        help="Complement the folder with failed pages",
+    ),
+    sock_connect: int = typer.Option(
+        None,
+        help="Timeout value (ms) for establishing a connection to remote server",
+    ),
+) -> None:
     """
     Start caching websites
     
@@ -379,17 +388,31 @@ def scrape() -> None:
     )
 
 
-    with open(config.get_source_file_path(), "r") as f:
-        f.readline()  # header
-        urls = [line.split(",") for line in f.readlines() if len(line)>1]
-        urls = sorted([(kvk.strip(), f"https://www.{url}/") for url, kvk in urls])
-
     worker = Scraper(
         target_folder_path=config.get_target_folder_path(), 
         classifier=classify_url, 
-        use_sqlite=config.get_use_database()
+        use_sqlite=config.get_use_database(),
+        sock_connect=sock_connect
     )
-    worker.scrape_companies(urls)
+
+    if complement != None:
+        try:
+            complement_date = datetime.date.fromisoformat(complement)
+        except:
+            typer.secho(
+            f"Given date does not conform to the YYYY-MM-DD format, scraper was terminated",
+            fg=typer.colors.RED,
+        )
+
+        worker.scrape_complement_companies(complement_date)
+
+    else:
+        with open(config.get_source_file_path(), "r") as f:
+            f.readline()
+            urls = [line.split(",") for line in f.readlines()  if len(line)>1]
+            urls = sorted([(kvk.strip(), f"https://www.{url}/") for url, kvk in urls])
+
+        worker.scrape_companies(urls)
 
 
 # Starts the extracting of files in the active working cpscraper instance folder
