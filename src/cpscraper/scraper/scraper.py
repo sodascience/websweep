@@ -36,7 +36,7 @@ http.cookies._is_legal_key = lambda _: True
 class Scraper:
     def __init__(
         self,
-        target_folder_path,
+        target_folder_path: Path,
         save_html=True,
         max_level=3,
         classifier=lambda url, level: True,

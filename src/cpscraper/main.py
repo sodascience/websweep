@@ -388,6 +388,7 @@ def scrape(
         f"- target folder: {config.get_target_folder_path()}\n", fg=typer.colors.YELLOW
     )
 
+
     worker = Scraper(
         target_folder_path=config.get_target_folder_path(), 
         classifier=classify_url, 
@@ -409,7 +410,7 @@ def scrape(
     else:
         with open(config.get_source_file_path(), "r") as f:
             f.readline()
-            urls = [line.split(",") for line in f.readlines()]
+            urls = [line.split(",") for line in f.readlines()  if len(line)>1]
             urls = sorted([(kvk.strip(), f"https://www.{url}/") for url, kvk in urls])
 
         worker.scrape_companies(urls)
@@ -451,11 +452,26 @@ def extract(
         worker = Extractor(
             target_folder_path=config.get_target_folder_path(),
             use_sqlite=config.get_use_database(),
-            extractor_delete_files=True,
+            extractor_delete_files=config.get_extractor_delete(),
+
         )
         worker.extract_companies()
     else:
-        typer.secho(
+        try:
+            start_date = datetime.date.fromisoformat(start_date)
+            end_date = datetime.date.fromisoformat(end_date)
+        except:
+            typer.secho(
             f"Given start and/or end date do not conform to the YYYY-MM-DD format, extractor was terminated",
             fg=typer.colors.RED,
         )
+ 
+        worker = Extractor(
+            target_folder_path=config.get_target_folder_path(),
+            use_sqlite=config.get_use_database(),
+            extractor_delete_files=config.get_extractor_delete(),
+            start_date=start_date,
+            end_date=end_date
+        )
+        worker.extract_companies()
+        
