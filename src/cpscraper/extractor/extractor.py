@@ -382,7 +382,7 @@ class Extractor:
                 f.readline()  # header
                 results = []
                 for line in f:
-                    id, domain, level, url, status, date, path = line.split("\t")
+                    id, domain, level, url, status, date, _, path = line.split("\t")
                     if (
                         (date >= date_start)
                         and (date <= date_end)
