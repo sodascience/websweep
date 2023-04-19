@@ -94,7 +94,6 @@ def operate():
 # Stores new cpscraper instance location in the system's application config.ini file
 # Stores a newly created settings.ini file in the cpscraper folder
 # Can be run at any time and does not need the operation verification
-
 @app.command(name="init")
 def init(headless: bool = typer.Option(False, help="Run without GUI elements")) -> None:
     """
@@ -128,7 +127,7 @@ def init(headless: bool = typer.Option(False, help="Run without GUI elements")) 
             "SELECT a configuration and scraper output storage folder \nContinue?\n"
         )
         if not ask_continue_folder:
-            typer.secho(f"Initalisation stopped\n", fg=typer.colors.RED)
+            typer.secho("Initalisation stopped\n", fg=typer.colors.RED)
             raise typer.Exit(1)
         try:
             Tk().withdraw()
@@ -147,7 +146,7 @@ def init(headless: bool = typer.Option(False, help="Run without GUI elements")) 
             "SELECT a source file (.csv) with kvk and url columns \nContinue?\n"
         )
         if not ask_continue_folder:
-            typer.secho(f"Initalisation stopped\n", fg=typer.colors.RED)
+            typer.secho("Initalisation stopped\n", fg=typer.colors.RED)
             raise typer.Exit(1)
         try:
             Tk().withdraw()
@@ -192,7 +191,7 @@ def init(headless: bool = typer.Option(False, help="Run without GUI elements")) 
         raise typer.Exit(1)
     else:
         typer.secho(
-            f"Scraper is initialised and ready to use \nUse the --help command for instructions\n ",
+            "Scraper is initialised and ready to use \nUse the --help command for instructions\n ",
             fg=typer.colors.GREEN,
         )
 
@@ -256,7 +255,7 @@ def init(headless: bool = typer.Option(False, help="Run without GUI elements")) 
             "SELECT a scraper instance folder \nContinue?\n"
         )
         if not ask_continue_folder:
-            typer.secho(f"Restoring stopped\n", fg=typer.colors.RED)
+            typer.secho("Restoring stopped\n", fg=typer.colors.RED)
             raise typer.Exit(1)
         try:
             Tk().withdraw()
@@ -280,7 +279,7 @@ def init(headless: bool = typer.Option(False, help="Run without GUI elements")) 
         raise typer.Exit(1)
     else:
         typer.secho(
-            f"Scraper is initialised and ready to use \nUse the --help command for instructions\n ",
+            "Scraper is initialised and ready to use \nUse the --help command for instructions\n ",
             fg=typer.colors.GREEN,
         )
 
@@ -310,7 +309,7 @@ def cli_config(
         and target_folder_path is None
         and source_file_path is None
     ):
-        typer.secho(f"Scraper is configured:", fg=typer.colors.YELLOW)
+        typer.secho("Scraper is configured:", fg=typer.colors.YELLOW)
         typer.secho(
             f"- scraper config location: {config.CONFIG_FILE_PATH}",
             fg=typer.colors.YELLOW,
@@ -339,7 +338,7 @@ def cli_config(
         if source_file_path is not None:
             config._save_source_file(source_file_path)
 
-        typer.secho(f"Config settings saved", fg=typer.colors.GREEN)
+        typer.secho("Config settings saved", fg=typer.colors.GREEN)
 
 
 # Opens the current cpscraper working folder that is stored in the system's application config.ini file
@@ -378,7 +377,7 @@ def scrape(
     
     """
 
-    typer.secho(f"Scraper is started with instructions:", fg=typer.colors.YELLOW)
+    typer.secho("Scraper is started with instructions:", fg=typer.colors.YELLOW)
 
     typer.secho(
         f"- source file: {config.get_source_file_path()}", fg=typer.colors.YELLOW
@@ -462,7 +461,7 @@ def extract(
             end_date = datetime.date.fromisoformat(end_date)
         except:
             typer.secho(
-            f"Given start and/or end date do not conform to the YYYY-MM-DD format, extractor was terminated",
+            "Given start and/or end date do(es) not conform to the YYYY-MM-DD format, extractor was terminated",
             fg=typer.colors.RED,
         )
  
