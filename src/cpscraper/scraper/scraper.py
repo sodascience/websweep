@@ -44,7 +44,7 @@ class Scraper:
         concurrency_companies=1000,
         threads_bs4=10,
         threads_download=1000,
-        use_sqlite=False,
+        use_sqlite=True,
         sock_connect=120
     ):
         self.target_folder_path = target_folder_path

@@ -338,7 +338,7 @@ class Extractor:
     """
 
     def __init__(
-        self, target_folder_path, use_sqlite=False, extractor_delete_files=False, file_extractor: FileExtractor=None
+        self, target_folder_path, use_sqlite=True, extractor_delete_files=False, file_extractor: FileExtractor=None
     ):
         self.target_folder_path = target_folder_path
         self.use_sqlite = use_sqlite
@@ -427,8 +427,11 @@ class Extractor:
                         ):
 
                             writer_res.writerow(json_dict)
-                            if json_dict["annual_report"] != []:
-                                writer_rep.writerow(json_dict["annual_report"])
+                            try:
+                                if json_dict["annual_report"] != []:
+                                    writer_rep.writerow(json_dict["annual_report"])
+                            except:
+                                pass
 
                             pbar.update()
 
