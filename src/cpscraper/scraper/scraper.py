@@ -169,7 +169,7 @@ class Scraper:
 
     def __update_overview_file(self, domain, id, level, url, status, path):
 
-        date = self.__get_current_date()
+        date = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         if (":" in url[:6]) and (url[:4] != "http"):  # tel: or mailto:
             domain = url
         else:
@@ -464,7 +464,7 @@ class Scraper:
             self.loop.run_until_complete(future)
 
         print(
-            f"Downloaded {self.count_downloads} pages from {len(urls)} urls to level {3} in {time() - start:2.1f} seconds."
+            f"Scraped {self.count_downloads} pages from {len(urls)} urls to level {3} in {time() - start:2.1f} seconds."
         )
 
 
@@ -474,7 +474,7 @@ class Scraper:
             cursor = connection.cursor()
 
             # TODO: Implement for overview_urls.tsv instead of db
-            cursor.execute("SELECT id, url FROM Overview WHERE session_date = ? AND status != 200 AND status != '' AND status != 'Website not found';", (complement_date,))
+            cursor.execute("SELECT domain, id, url FROM Overview WHERE session_date = ? AND status != 200 AND status != '' AND status != 'Website not found';", (complement_date,))
             urls = cursor.fetchall()
             
             connection.commit()
@@ -489,14 +489,15 @@ class Scraper:
                 # Iterate through rows in .tsv file
                 for row in reader:
                     # Extract values from the row
-                    id = row[0]
+                    domain = row[0]
+                    id = row[1]
                     url = row[3]
                     status = row[4]
                     session_date = row[5]
 
                     # Check if session_date matches the complement_date and status is not 200, '', or 'Website not found'
                     if session_date == str(complement_date) and status != "200" and status != "" and status != "Website not found":
-                        urls.append((id, url))
+                        urls.append((domain, id, url))
 
                 print(urls)
         self.scrape_companies(urls)

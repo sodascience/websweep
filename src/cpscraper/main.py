@@ -367,7 +367,7 @@ def scraper_address() -> None:
 def scrape(
     complement: str = typer.Option(
         None,
-        help="Complement the folder with failed pages",
+        help="Complement the folder with failed pages, takes the scrape date as argument",
     ),
     sock_connect: int = typer.Option(
         None,
@@ -379,7 +379,7 @@ def scrape(
     
     """
 
-    typer.secho(f"Scraper is started with instructions:", fg=typer.colors.YELLOW)
+    typer.secho(f"Scraper is started with instructions:", fg=typer.colors.GREEN)
 
     typer.secho(
         f"- source file: {config.get_source_file_path()}", fg=typer.colors.YELLOW
@@ -413,10 +413,9 @@ def scrape(
             urls = [line.split(",") for line in f.readlines() if len(line) > 1]
             urls = sorted([(url.strip(), kvk.strip(), f"https://www.{url.strip()}/") for url, kvk in urls])
 
-        print(urls)
-
         worker.scrape_companies(urls)
 
+    typer.secho(f"Scraper finished successfully\n", fg=typer.colors.GREEN)
 
 # Starts the extracting of files in the active working cpscraper instance folder
 # Calls an Extractor instance which handles the extracting procedure
@@ -440,7 +439,7 @@ def extract(
     
     """
 
-    typer.secho(f"Extractor is started with instructions:", fg=typer.colors.YELLOW)
+    typer.secho(f"Extractor is started with instructions:", fg=typer.colors.GREEN)
     typer.secho(
         f"- source folder: {config.get_target_folder_path()}", fg=typer.colors.YELLOW
     )
@@ -477,4 +476,6 @@ def extract(
             end_date=end_date
         )
         worker.extract_companies()
+    
+    typer.secho(f"Extractor finished successfully\n", fg=typer.colors.GREEN)
         
