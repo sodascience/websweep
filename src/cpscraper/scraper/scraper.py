@@ -150,7 +150,7 @@ class Scraper:
             cursor.execute(
                 """
                 CREATE TABLE IF NOT EXISTS Overview
-                (id TEXT, domain TEXT, level INT, url TEXT, status TEXT, session_date TEXT, scrape_date TEXT, path TEXT, 
+                (id TEXT, kvk TEXT, domain TEXT, level INT, url TEXT, status TEXT, session_date TEXT, scrape_date TEXT, path TEXT, 
                 UNIQUE (id, domain, url, status));
                 """
             )
@@ -165,9 +165,9 @@ class Scraper:
             # Check if overview file exists, if not create it
             if not Path(self.overview_path).is_file():
                 with open(self.overview_path, "w") as f:
-                    f.write("id\tdomain\tlevel\turl\tstatus\tsession_date\tscrape_date\tpath\n")
+                    f.write("id\tkvk\tdomain\tlevel\turl\tstatus\tsession_date\tscrape_date\tpath\n")
 
-    def __update_overview_file(self, id, level, url, status, path):
+    def __update_overview_file(self, id, kvk, level, url, status, path):
 
         date = self.__get_current_date()
         if (":" in url[:6]) and (url[:4] != "http"):  # tel: or mailto:
@@ -180,14 +180,14 @@ class Scraper:
             connection = sql.connect(self.overview_path)
             cursor = connection.cursor()
             
-            cursor.execute("INSERT OR IGNORE INTO Overview VALUES (?, ?, ?, ?, ?, ?, ?, ?)", (id, domain, level, url, status, self.scraper_session_date, date, path))
+            cursor.execute("INSERT OR IGNORE INTO Overview VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)", (id, kvk, domain, level, url, status, self.scraper_session_date, date, path))
 
             connection.commit()
             connection.close()
 
         else:
             with open(self.overview_path, "a+") as f:
-                f.write(f"{id}\t{domain}\t{level}\t{url}\t{status}\t{self.scraper_session_date}\t{date}\t{path}\n")
+                f.write(f"{id}\t{kvk}\t{domain}\t{level}\t{url}\t{status}\t{self.scraper_session_date}\t{date}\t{path}\n")
 
     def __save_to_disk(self, path, contents):
         """
@@ -208,15 +208,15 @@ class Scraper:
         return datetime.datetime.now().strftime("%Y-%m-%d")
 
             
-    async def __fetch_one_url(self, url, kvk, level):
+    async def __fetch_one_url(self, id, url, kvk, level):
         # be nice and wait a bit per url (non blocking)
-        self.waits[kvk] += 0.1
-        await asyncio.sleep(self.waits[kvk])
+        self.waits[id] += 0.1
+        await asyncio.sleep(self.waits[id])
 
         try_number = 0
-        while (try_number < 3) and (self.errors_website[kvk] < 20):
+        while (try_number < 3) and (self.errors_website[id] < 20):
             if try_number == 0:
-                urls = await self.__fetch_one_url_wrapped(url, kvk, level, self.session)
+                urls = await self.__fetch_one_url_wrapped(id, url, kvk, level, self.session)
             else:
                 await asyncio.sleep(20)
 
@@ -229,7 +229,7 @@ class Scraper:
                                             ttl_dns_cache=0,
                                             force_close=True), #a bit slower but more reliable
                                             timeout=ClientTimeout(total=None, sock_connect=300, sock_read=300)) as session:
-                    urls = await self.__fetch_one_url_wrapped(url, kvk, level, session)
+                    urls = await self.__fetch_one_url_wrapped(id, url, kvk, level, session)
 
             try_number += 1
             
@@ -240,7 +240,7 @@ class Scraper:
 
          
 
-    async def __fetch_one_url_wrapped(self, url, kvk, level, session):
+    async def __fetch_one_url_wrapped(self, id, url, kvk, level, session):
         """
         Fetch one url, save the html, and return the list of urls found on the page.
         """
@@ -282,15 +282,15 @@ class Scraper:
                 else:
                     path = ""
                 
-                self.__update_overview_file(kvk, level, url, status, path)
+                self.__update_overview_file(id, kvk, level, url, status, path)
                 
                 return urls
 
         except Exception as e:
             status = ""
             path = ""
-            self.__update_overview_file(kvk, level, url, status, path)
-            self.errors_website[kvk] += 1
+            self.__update_overview_file(id, kvk, level, url, status, path)
+            self.errors_website[id] += 1
             return None
             
 
@@ -305,10 +305,10 @@ class Scraper:
             try:
 
                 # name and url
-                kvk, url = url
+                id, kvk, url = url
 
-                self.waits[kvk] = 0
-                self.errors_website[kvk] = 0
+                self.waits[id] = 0
+                self.errors_website[id] = 0
 
                 level = 0
                 all_records = [url]
@@ -353,7 +353,7 @@ class Scraper:
                         if rp.can_fetch(url, "*"):
 
                             task = asyncio.create_task(
-                                self.__fetch_one_url(url, kvk=kvk, level=level)
+                                self.__fetch_one_url(id=id, url=url, kvk=kvk, level=level)
                             )
                             tasks.append(task)
 
@@ -392,17 +392,17 @@ class Scraper:
                     level += 1
 
                     # reset waits for next level
-                    self.waits[kvk] = 0
+                    self.waits[id] = 0
 
-                self.waits.pop(kvk)
-                self.errors_website.pop(kvk)
+                self.waits.pop(id)
+                self.errors_website.pop(id)
 
             except Exception as e:
                 status = "Website not found"                  
                 path = ""
 
                 # save problem with the request for robots.txt (usually page doesn't exist)
-                self.__update_overview_file(kvk, 0, f"{url}/robots.txt", status, path)
+                self.__update_overview_file(id, kvk, 0, f"{url}/robots.txt", status, path)
 
 
     async def __fetch_all_companies(self, records):

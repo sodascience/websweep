@@ -26,7 +26,7 @@ class FileExtractor:
 
     Parameters:
         info: tuple
-            A tuple containing metadata about the file to extract data from, including the id, domain, level, website, date and path.
+            A tuple containing metadata about the file to extract data from, including the domain, id, level, website, date and path.
 
     Methods:
         extracting()
@@ -41,14 +41,15 @@ class FileExtractor:
     def __init__(self, info):
         self.metadata = dict()
         (
-            self.metadata["id"],
             self.metadata["domain"],
+            self.metadata["id"],
             self.metadata["level"],
             self.metadata["website"],
             self.metadata["date"],
             self.metadata["path"],
         ) = info
 
+        print(self.metadata["path"])
         # Filter and include only those methods from self's attributes (dir(self))
         # that are callable (functions) and start with "_extract_", but exclude methods
         # defined in the FileExtractor class (dir(FileExtractor)), meaning that only the custom child methods are included
@@ -74,6 +75,7 @@ class FileExtractor:
         # Add the raw text to the metadata at last
         self.metadata["text"] = self.text
 
+        
         return self.metadata
 
     def extract_default_metadata(self):
@@ -345,12 +347,12 @@ class Extractor:
         self.file_extractor = file_extractor
 
     def _create_results(self, path):
-        [id, domain, level, url, date, path] = path
+        [domain, id, level, url, date, path] = path
 
         if self.file_extractor != None:
-            metadata = self.file_extractor([id, domain, level, url, date, path]).extracting()
+            metadata = self.file_extractor([domain, id, level, url, date, path]).extracting()
         else:
-            metadata = FileExtractor([id, domain, level, url, date, path]).extracting()
+            metadata = FileExtractor([domain, id, level, url, date, path]).extracting()
 
         return metadata
 
@@ -371,9 +373,9 @@ class Extractor:
             )
             cursor = connection.cursor()
             results = cursor.execute(
-                f"""SELECT id, domain, level, url, date, path FROM Overview 
-                            WHERE (date >= '{date_start}') 
-                            AND (date <= '{date_end}') 
+                f"""SELECT domain, id, level, url, session_date, path FROM Overview 
+                            WHERE (session_date >= '{date_start}') 
+                            AND (session_date <= '{date_end}') 
                             AND (status == "200")"""
             ).fetchall()
             connection.close()
@@ -382,13 +384,13 @@ class Extractor:
                 f.readline()  # header
                 results = []
                 for line in f:
-                    id, domain, level, url, status, date, _, path = line.split("\t")
+                    domain, id, level, url, status, date, _, path = line.split("\t")
                     if (
                         (date >= date_start)
                         and (date <= date_end)
                         and (status == "200")
                     ):
-                        results.append([id, domain, level, url, date, path.strip()])
+                        results.append([domain, id, level, url, date, path.strip()])
         
         # chunking in 1M files
         n = 1000000
@@ -424,6 +426,7 @@ class Extractor:
                         for json_dict in pool.imap_unordered(
                             self._create_results, results[i : i + n]
                         ):
+
                             writer_res.writerow(json_dict)
                             if json_dict["annual_report"] != []:
                                 writer_rep.writerow(json_dict["annual_report"])

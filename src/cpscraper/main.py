@@ -18,6 +18,7 @@ import tqdm.asyncio
 import webbrowser
 import regex as re
 import datetime
+import uuid
 
 from .scraper.scraper import Scraper
 from .extractor.extractor import Extractor, FirmBackBoneFileExtractor
@@ -409,8 +410,10 @@ def scrape(
     else:
         with open(config.get_source_file_path(), "r") as f:
             f.readline()
-            urls = [line.split(",") for line in f.readlines()  if len(line)>1]
-            urls = sorted([(kvk.strip(), f"https://www.{url}/") for url, kvk in urls])
+            urls = [line.split(",") for line in f.readlines() if len(line) > 1]
+            urls = sorted([(url.strip(), kvk.strip(), f"https://www.{url.strip()}/") for url, kvk in urls])
+
+        print(urls)
 
         worker.scrape_companies(urls)
 
