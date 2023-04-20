@@ -240,7 +240,7 @@ class Scraper:
 
          
 
-    async def __fetch_one_url_wrapped(self, id, url, kvk, level, session):
+    async def __fetch_one_url_wrapped(self, base_url, url, kvk, level, session):
         """
         Fetch one url, save the html, and return the list of urls found on the page.
         """
@@ -305,10 +305,10 @@ class Scraper:
             try:
 
                 # name and url
-                id, kvk, url = url
+                base_url, kvk, url = url
 
-                self.waits[id] = 0
-                self.errors_website[id] = 0
+                self.waits[base_url] = 0
+                self.errors_website[base_url] = 0
 
                 level = 0
                 all_records = [url]
@@ -353,7 +353,7 @@ class Scraper:
                         if rp.can_fetch(url, "*"):
 
                             task = asyncio.create_task(
-                                self.__fetch_one_url(id=id, url=url, kvk=kvk, level=level)
+                                self.__fetch_one_url(base_url=base_url, url=url, kvk=kvk, level=level)
                             )
                             tasks.append(task)
 
@@ -392,9 +392,9 @@ class Scraper:
                     level += 1
 
                     # reset waits for next level
-                    self.waits[id] = 0
+                    self.waits[base_url] = 0
 
-                self.waits.pop(id)
+                self.waits.pop(base_url)
                 self.errors_website.pop(id)
 
             except Exception as e:
@@ -402,7 +402,7 @@ class Scraper:
                 path = ""
 
                 # save problem with the request for robots.txt (usually page doesn't exist)
-                self.__update_overview_file(id, kvk, 0, f"{url}/robots.txt", status, path)
+                self.__update_overview_file(base_url, kvk, 0, f"{url}/robots.txt", status, path)
 
 
     async def __fetch_all_companies(self, records):
