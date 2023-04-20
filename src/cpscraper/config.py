@@ -1,10 +1,12 @@
 """This module provides the Scraper config functionality."""
-import sys
 import configparser
-from pathlib import Path
 import os
-import typer
+import sys
 from datetime import datetime
+from pathlib import Path
+
+import typer
+
 from cpscraper import DIR_ERROR, FILE_ERROR, SUCCESS, __app_name__
 
 CONFIG_DIR_PATH = Path(typer.get_app_dir(__app_name__))

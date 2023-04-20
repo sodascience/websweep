@@ -1,21 +1,22 @@
-import re
-import typer
-from xmlrpc.client import Boolean
-from bs4 import BeautifulSoup
-from urllib.parse import urljoin
-import time
-from datetime import date as datelib
-from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor
 import asyncio
-from pathlib import Path
-import sqlite3 as sql
 import os
-from multiprocess import Pool
+import re
+import shutil
+import sqlite3 as sql
+import time
+import unicodedata
+from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
+from datetime import date as datelib
+from pathlib import Path
+from shutil import rmtree
+from urllib.parse import urljoin
+from xmlrpc.client import Boolean
+
 import ndjson
 import tqdm
-from shutil import rmtree
-import unicodedata
-import shutil
+import typer
+from bs4 import BeautifulSoup
+from multiprocess import Pool
 
 
 class FileExtractor:
