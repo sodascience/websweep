@@ -49,7 +49,6 @@ class FileExtractor:
             self.metadata["path"],
         ) = info
 
-        print(self.metadata["path"])
         # Filter and include only those methods from self's attributes (dir(self))
         # that are callable (functions) and start with "_extract_", but exclude methods
         # defined in the FileExtractor class (dir(FileExtractor)), meaning that only the custom child methods are included
