@@ -1,7 +1,7 @@
 import re
-from urllib.parse import urlparse
-from pathlib import Path
 import sqlite3 as sql
+from pathlib import Path
+from urllib.parse import urlparse
 
 
 def classify_url(url, level):

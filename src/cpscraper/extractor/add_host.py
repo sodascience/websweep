@@ -1,6 +1,7 @@
-import requests
-import socket
 import json
+import socket
+
+import requests
 
 key = open("ipinfokey.key").read()
 

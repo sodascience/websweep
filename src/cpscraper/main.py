@@ -1,29 +1,31 @@
-from importlib.resources import path
-import typer
-from pathlib import Path
-from typing import List, Optional
-from tkinter import filedialog as fd
-from tkinter import Tk
-import time
-import os
-import ndjson
-from datetime import date as datelib
-from multiprocess import Pool
-import sys
-from shutil import rmtree
-import sqlite3 as sql
 import asyncio
-from tqdm import tqdm
-import tqdm.asyncio
-import webbrowser
-import regex as re
 import datetime
-
-from .scraper.scraper import Scraper
-from .extractor.extractor import Extractor, FirmBackBoneFileExtractor
-from .utils.utils import classify_url
-from cpscraper import ERRORS, __app_name__, __version__, __status__, config
+import os
+import sqlite3 as sql
+import sys
+import time
+import webbrowser
+from datetime import date as datelib
 from functools import wraps
+from importlib.resources import path
+from pathlib import Path
+from shutil import rmtree
+from tkinter import Tk
+from tkinter import filedialog as fd
+from typing import List, Optional
+
+import ndjson
+import regex as re
+import tqdm.asyncio
+import typer
+from multiprocess import Pool
+from tqdm import tqdm
+
+from cpscraper import ERRORS, __app_name__, __status__, __version__, config
+
+from .extractor.extractor import Extractor, FirmBackBoneFileExtractor
+from .scraper.scraper import Scraper
+from .utils.utils import classify_url
 
 app = typer.Typer()
 

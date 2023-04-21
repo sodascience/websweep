@@ -1,35 +1,34 @@
 """This module provides the Scraper model-controller."""
 
+import csv
+# TODO: Temporary, remove!
+import warnings
 from pathlib import Path
 from re import S
 from typing import Any, Dict, List, NamedTuple
-import csv
 
-# TODO: Temporary, remove!
-import warnings
 warnings.filterwarnings("ignore")
 
 import asyncio
-import tqdm
-import tqdm.asyncio
-from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor
-from urllib.parse import urljoin, urlparse
-from protego import Protego
-import functools
-
-from aiohttp import ClientSession, TCPConnector, ClientTimeout
-from bs4 import BeautifulSoup
-from pathlib import Path
-
-# import hashlib
-from time import time
 import datetime
-import tldextract
-import os
-import sqlite3 as sql
-
+import functools
 # monkeypatch to avoid "Can not load response cookies" 
 import http.cookies
+import os
+import sqlite3 as sql
+from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
+from pathlib import Path
+# import hashlib
+from time import time
+from urllib.parse import urljoin, urlparse
+
+import tldextract
+import tqdm
+import tqdm.asyncio
+from aiohttp import ClientSession, ClientTimeout, TCPConnector
+from bs4 import BeautifulSoup
+from protego import Protego
+
 http.cookies._is_legal_key = lambda _: True
 
 
