@@ -1,8 +1,24 @@
 # FastScraper
 
-
-FastScraper is a web scraping Python package, focused on simplicity, modularity and speed. Given a list of domains, FastScraper will crawl the domains and extract relevant information. 
+FastScraper is a Python package for web scraping focused on simplicity, modularity and speed. Given a list of domains, FastScraper will crawl the domains and extract relevant information. 
  
+
+Are you looking to download lots of information from one domain --> You may want to use [Scrapy](https://github.com/scrapy/scrapy)
+Are you looking to download information from websites that require JavaScript --> You may want to use [selenium](https://pypi.org/project/selenium/)
+Are you looking to download and analyze HTML code from many pages --> FastScraper is for you
+
+
+|                                       | FastScraper                                         | Scrapy                                                        |
+|---------------------------------------|-----------------------------------------------------|---------------------------------------------------------------|
+| Main use case                         | Download full HTML of many (up to 10,000,000) sites | Download specific elements of few websites (e.g. crawl Ebay)  |
+| Intended use                          | Research                                            | Any                                                           |
+| Use as beginner                    | Simple                                              | Complicated                                                   |
+| Processing of HTML                    | After crawling                                      | Typically during crawling                                     |
+| Asynchronous                          |                                                     | Yes                                                           |
+| Speed (consumer laptop/home internet) | 50,000-100,000 pages/hour                           | ?                                                             |
+| JavaScript allowed                    | No                                                  | No (but extensions exist)                                     |
+| Consolidates results at domain level  | Yes                                                 | No                                                            |
+
 
 
 ## Installation
@@ -13,22 +29,6 @@ Use the package manager [pip]() to install cpscraper.
 $ pip install cpscraper
 ```
 
-The package can also be used as a script without installation.
-When using windows, remember to use cd \ followed by the drive letter to change drives
-
-```bash
-cd ~/home/[wherever the folder is located]/corporate_scraper/src
-$ python(3) -m cpscraper init
-```
-
-You can also install the library from source. You need to have poetry installed (``pip install poetry``), do remember to either restart your pc or add poetry to your PATH variables. If you get a warning that dependencies are not up to date, run ``poetry update`` first.
-
-```bash
-cd to the cpscraper folder
-$ poetry install
-$ poetry build
-$ pip install [PATH].whl
-```
 
 ## Usage 
 
@@ -50,27 +50,6 @@ $ cpscraper scrape
 $ cpscraper extract
 ```
 
-## Testing
-
-The system includes a variety of buildin test cases to test the extracter.
-
-```
-# cd to the tests folder
-$ cd ~home/[wherever the folder is located]/corporatescraper/tests
-
-# run the unittesting
-$ python3 -m unittest test.py
-```
-The output should look something like this:
-```
-.......
-----------------------------------------------------------------------
-Ran 7 tests in 0.006s
-
-OK
-
-```
-
 
 ## License
 
@@ -82,6 +61,10 @@ OK
 Contributions are what make the open source community an amazing place
 to learn, inspire, and create. Any contributions you make are **greatly
 appreciated**.
+
+Please refer to the
+[DEVELOPMENT](https://github.com/sodascience/corporate_scraper/blob/main/DEVELOPMENT.md)
+file for more information on how to run the library without installing and how to install it from source.
 
 Please refer to the
 [CONTRIBUTING](https://github.com/sodascience/corporate_scraper/blob/main/CONTRIBUTING.md)
