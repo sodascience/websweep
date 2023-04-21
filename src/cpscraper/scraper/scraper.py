@@ -35,7 +35,7 @@ http.cookies._is_legal_key = lambda _: True
 class Scraper:
     def __init__(
         self,
-        target_folder_path: Path,
+        target_folder_path,
         save_html=True,
         max_level=3,
         classifier=lambda url, level: True,
@@ -43,7 +43,7 @@ class Scraper:
         concurrency_companies=1000,
         threads_bs4=10,
         threads_download=1000,
-        use_sqlite=False,
+        use_sqlite=True,
         sock_connect=120
     ):
         self.target_folder_path = target_folder_path
@@ -149,7 +149,7 @@ class Scraper:
             cursor.execute(
                 """
                 CREATE TABLE IF NOT EXISTS Overview
-                (id TEXT, domain TEXT, level INT, url TEXT, status TEXT, session_date TEXT, scrape_date TEXT, path TEXT, 
+                (domain TEXT, id TEXT, level INT, url TEXT, status TEXT, session_date TEXT, scrape_date TEXT, path TEXT, 
                 UNIQUE (id, domain, url, status));
                 """
             )
@@ -164,11 +164,11 @@ class Scraper:
             # Check if overview file exists, if not create it
             if not Path(self.overview_path).is_file():
                 with open(self.overview_path, "w") as f:
-                    f.write("id\tdomain\tlevel\turl\tstatus\tsession_date\tscrape_date\tpath\n")
+                    f.write("domain\tid\tlevel\turl\tstatus\tsession_date\tscrape_date\tpath\n")
 
-    def __update_overview_file(self, id, level, url, status, path):
+    def __update_overview_file(self, domain, id, level, url, status, path):
 
-        date = self.__get_current_date()
+        date = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         if (":" in url[:6]) and (url[:4] != "http"):  # tel: or mailto:
             domain = url
         else:
@@ -179,14 +179,14 @@ class Scraper:
             connection = sql.connect(self.overview_path)
             cursor = connection.cursor()
             
-            cursor.execute("INSERT OR IGNORE INTO Overview VALUES (?, ?, ?, ?, ?, ?, ?, ?)", (id, domain, level, url, status, self.scraper_session_date, date, path))
+            cursor.execute("INSERT OR IGNORE INTO Overview VALUES (?, ?, ?, ?, ?, ?, ?, ?)", (domain, id, level, url, status, self.scraper_session_date, date, path))
 
             connection.commit()
             connection.close()
 
         else:
             with open(self.overview_path, "a+") as f:
-                f.write(f"{id}\t{domain}\t{level}\t{url}\t{status}\t{self.scraper_session_date}\t{date}\t{path}\n")
+                f.write(f"{domain}\t{id}\t{level}\t{url}\t{status}\t{self.scraper_session_date}\t{date}\t{path}\n")
 
     def __save_to_disk(self, path, contents):
         """
@@ -207,15 +207,15 @@ class Scraper:
         return datetime.datetime.now().strftime("%Y-%m-%d")
 
             
-    async def __fetch_one_url(self, url, kvk, level):
+    async def __fetch_one_url(self, domain, url, id, level):
         # be nice and wait a bit per url (non blocking)
-        self.waits[kvk] += 0.1
-        await asyncio.sleep(self.waits[kvk])
+        self.waits[domain] += 0.1
+        await asyncio.sleep(self.waits[domain])
 
         try_number = 0
-        while (try_number < 3) and (self.errors_website[kvk] < 20):
+        while (try_number < 3) and (self.errors_website[domain] < 20):
             if try_number == 0:
-                urls = await self.__fetch_one_url_wrapped(url, kvk, level, self.session)
+                urls = await self.__fetch_one_url_wrapped(domain, url, id, level, self.session)
             else:
                 await asyncio.sleep(20)
 
@@ -228,7 +228,7 @@ class Scraper:
                                             ttl_dns_cache=0,
                                             force_close=True), #a bit slower but more reliable
                                             timeout=ClientTimeout(total=None, sock_connect=300, sock_read=300)) as session:
-                    urls = await self.__fetch_one_url_wrapped(url, kvk, level, session)
+                    urls = await self.__fetch_one_url_wrapped(domain, url, id, level, session)
 
             try_number += 1
             
@@ -239,7 +239,7 @@ class Scraper:
 
          
 
-    async def __fetch_one_url_wrapped(self, url, kvk, level, session):
+    async def __fetch_one_url_wrapped(self, domain, url, id, level, session):
         """
         Fetch one url, save the html, and return the list of urls found on the page.
         """
@@ -253,15 +253,15 @@ class Scraper:
         # classify url to see if it should be crawled
         if not flag_download:  # self.classifier(url, level):
             # add to file, without path
-            #self.__update_overview_file(kvk, level, url, -9, "")
+            #self.__update_overview_file(id, level, url, -9, "")
             return []
 
         urls = []
         # create path www.google.com/something/ --> something
         if url[-1] == "/":
-            path = f"{self.base_path}/{kvk}/{urlparse(url).netloc.replace('www.','')}/{self.__get_current_date()}/{url[:-1].split('/')[-1]}"
+            path = f"{self.base_path}/{domain}/{urlparse(url).netloc.replace('www.','')}/{self.__get_current_date()}/{url[:-1].split('/')[-1]}"
         else:  # Create path www.google.com/something --> something
-            path = f"{self.base_path}/{kvk}/{urlparse(url).netloc.replace('www.','')}/{self.__get_current_date()}/{url.split('/')[-1]}"
+            path = f"{self.base_path}/{domain}/{urlparse(url).netloc.replace('www.','')}/{self.__get_current_date()}/{url.split('/')[-1]}"
         path = path.replace(" ", "_")
     
         try:
@@ -281,15 +281,15 @@ class Scraper:
                 else:
                     path = ""
                 
-                self.__update_overview_file(kvk, level, url, status, path)
+                self.__update_overview_file(domain, id, level, url, status, path)
                 
                 return urls
 
         except Exception as e:
             status = ""
             path = ""
-            self.__update_overview_file(kvk, level, url, status, path)
-            self.errors_website[kvk] += 1
+            self.__update_overview_file(domain, id, level, url, status, path)
+            self.errors_website[domain] += 1
             return None
             
 
@@ -297,17 +297,17 @@ class Scraper:
         """
         Crawl the website of a company up max_level. Save html to file.
 
-        :param url: Kvk number and url string to visit for company
+        :param url: id number and url string to visit for company
         """
 
         async with self.sem_num_comps:
             try:
 
                 # name and url
-                kvk, url = url
+                domain, id, url = url
 
-                self.waits[kvk] = 0
-                self.errors_website[kvk] = 0
+                self.waits[domain] = 0
+                self.errors_website[domain] = 0
 
                 level = 0
                 all_records = [url]
@@ -319,7 +319,7 @@ class Scraper:
                 # TODO: make this a called method
 
                 sourcepath = "data/scraped_data/{}/{}".format(
-                    kvk,
+                    id,
                     url.replace("www.", "")
                     .replace("http://", "")
                     .replace("https://", ""),
@@ -352,7 +352,7 @@ class Scraper:
                         if rp.can_fetch(url, "*"):
 
                             task = asyncio.create_task(
-                                self.__fetch_one_url(url, kvk=kvk, level=level)
+                                self.__fetch_one_url(domain, url, id=id, level=level)
                             )
                             tasks.append(task)
 
@@ -391,17 +391,17 @@ class Scraper:
                     level += 1
 
                     # reset waits for next level
-                    self.waits[kvk] = 0
+                    self.waits[domain] = 0
 
-                self.waits.pop(kvk)
-                self.errors_website.pop(kvk)
+                self.waits.pop(domain)
+                self.errors_website.pop(domain)
 
             except Exception as e:
                 status = "Website not found"                  
                 path = ""
 
                 # save problem with the request for robots.txt (usually page doesn't exist)
-                self.__update_overview_file(kvk, 0, f"{url}/robots.txt", status, path)
+                self.__update_overview_file(domain, id, 0, f"{url}/robots.txt", status, path)
 
 
     async def __fetch_all_companies(self, records):
@@ -463,7 +463,7 @@ class Scraper:
             self.loop.run_until_complete(future)
 
         print(
-            f"Downloaded {self.count_downloads} pages from {len(urls)} urls to level {3} in {time() - start:2.1f} seconds."
+            f"Scraped {self.count_downloads} pages from {len(urls)} urls to level {3} in {time() - start:2.1f} seconds."
         )
 
 
@@ -473,7 +473,7 @@ class Scraper:
             cursor = connection.cursor()
 
             # TODO: Implement for overview_urls.tsv instead of db
-            cursor.execute("SELECT id, url FROM Overview WHERE session_date = ? AND status != 200 AND status != '' AND status != 'Website not found';", (complement_date,))
+            cursor.execute("SELECT domain, id, url FROM Overview WHERE session_date = ? AND status != 200 AND status != '' AND status != 'Website not found';", (complement_date,))
             urls = cursor.fetchall()
             
             connection.commit()
@@ -488,14 +488,15 @@ class Scraper:
                 # Iterate through rows in .tsv file
                 for row in reader:
                     # Extract values from the row
-                    id = row[0]
+                    domain = row[0]
+                    id = row[1]
                     url = row[3]
                     status = row[4]
                     session_date = row[5]
 
                     # Check if session_date matches the complement_date and status is not 200, '', or 'Website not found'
                     if session_date == str(complement_date) and status != "200" and status != "" and status != "Website not found":
-                        urls.append((id, url))
+                        urls.append((domain, id, url))
 
                 print(urls)
         self.scrape_companies(urls)
