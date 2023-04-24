@@ -79,7 +79,7 @@ def zip_pass(text) -> boolean:
     else:
         return False
 
-def adress_pass(text) -> boolean:
+def address_pass(text) -> boolean:
     aList = ["id", "domain", "level", "url", "date", "path"]
     tester = E(aList)
     tester.text = text
