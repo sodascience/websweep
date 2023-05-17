@@ -1,20 +1,26 @@
-# FastScraper
+# WebSweep: A User-Friendly and High-Speed Web Scraping Library 
 
-FastScraper is a Python package for web scraping focused on simplicity, modularity and speed. Given a list of domains, FastScraper will crawl the domains and extract relevant information. 
+WebSweep is a powerful Python library crafted for web scraping projects that prioritize simplicity, modularity, and impressive speed. 
+
+Real-World Use Cases
+- Tracking Corporate Climate Responsibility: With a list of corporate websites, you can use WebSweep to efficiently analyze how frequently and positively they mention green energies, helping you gauge their commitment to climate responsibility.
+- Analyzing Academic Collaboration Networks: WebSweep can be utilized to extract data from university websites and research databases, allowing you to identify patterns in academic collaboration, map research networks, and discover emerging interdisciplinary research fields.
+- Tracking Public Health Information: By scraping data from government websites, health organizations, and medical journals, WebSweep can help you monitor the spread of diseases, evaluate the effectiveness of public health campaigns, and analyze the impact of healthcare policies on population health.
+
+## Side-by-side comparison of WebSweep and Scrapy
  
+- Are you looking to download lots of information from one domain --> You may want to use [Scrapy](https://github.com/scrapy/scrapy)
+- Are you looking to download information from websites that require JavaScript --> You may want to use [selenium](https://pypi.org/project/selenium/)
+- Are you looking to download and analyze HTML code from many pages --> FastScraper is for you
 
-Are you looking to download lots of information from one domain --> You may want to use [Scrapy](https://github.com/scrapy/scrapy)
-Are you looking to download information from websites that require JavaScript --> You may want to use [selenium](https://pypi.org/project/selenium/)
-Are you looking to download and analyze HTML code from many pages --> FastScraper is for you
 
-
-|                                       | FastScraper                                         | Scrapy                                                        |
+|                                       | WebSweep                                         | Scrapy                                                        |
 |---------------------------------------|-----------------------------------------------------|---------------------------------------------------------------|
 | Main use case                         | Download full HTML of many (up to 10,000,000) sites | Download specific elements of few websites (e.g. crawl Ebay)  |
 | Intended use                          | Research                                            | Any                                                           |
 | Use as beginner                    | Simple                                              | Complicated                                                   |
 | Processing of HTML                    | After crawling                                      | Typically during crawling                                     |
-| Asynchronous                          |                                                     | Yes                                                           |
+| Asynchronous                          |  Yes                                                | Yes                                                           |
 | Speed (consumer laptop/home internet) | 50,000-100,000 pages/hour                           | ?                                                             |
 | JavaScript allowed                    | No                                                  | No (but extensions exist)                                     |
 | Consolidates results at domain level  | Yes                                                 | No                                                            |
