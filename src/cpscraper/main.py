@@ -4,6 +4,7 @@ import os
 import sqlite3 as sql
 import sys
 import time
+import typer
 import webbrowser
 from datetime import date as datelib
 from functools import wraps
@@ -18,6 +19,7 @@ from cpscraper import ERRORS, __app_name__, __status__, __version__, config
 from .extractor.extractor import Extractor, FirmBackBoneFileExtractor
 from .scraper.scraper import Scraper
 from .utils.utils import classify_url
+
 
 app = typer.Typer()
 
