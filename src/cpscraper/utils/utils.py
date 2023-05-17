@@ -56,3 +56,6 @@ def classify_url(url, level):
             return False
     else:
         return False
+
+def clean_url(url):
+    return re.sub(r"(https?://)?(www\.)?", "", url)
