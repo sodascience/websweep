@@ -62,7 +62,7 @@ class FileExtractor:
 
     def extracting(self):
         # Get metadata
-        self.metadata |= self._extract_metadata()
+        self.metadata.update(self._extract_metadata())
 
         # Clean the HTML to raw text
         self.text = self._clean_html()
