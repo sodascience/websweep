@@ -31,6 +31,7 @@ from protego import Protego
 
 http.cookies._is_legal_key = lambda _: True
 
+from ..extractor.extractor import Extractor
 
 class Scraper:
     def __init__(
@@ -44,7 +45,10 @@ class Scraper:
         threads_bs4=10,
         threads_download=1000,
         use_sqlite=True,
-        sock_connect=120
+        sock_connect=120,
+        extract=False,
+        headers=None,
+        file_extractor=None
     ):
         self.target_folder_path = target_folder_path
         self.base_path = self.target_folder_path / "data"
@@ -75,15 +79,28 @@ class Scraper:
         self.waits = dict()
         self.errors_website = dict()
         
-        self.headers = {
-            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:109.0) Gecko/20100101 Firefox/110.0',
-            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
-            "Cookie": "cookielawinfo-checkbox-necessary=yes; cookielawinfo-checkbox-functional=no; cookielawinfo-checkbox-performance=no; cookielawinfo-checkbox-analytics=no; cookielawinfo-checkbox-advertisement=no; cookielawinfo-checkbox-others=no; CookieLawInfoConsent=eyJuZWNlc3NhcnkiOnRydWUsImZ1bmN0aW9uYWwiOmZhbHNlLCJwZXJmb3JtYW5jZSI6ZmFsc2UsImFuYWx5dGljcyI6ZmFsc2UsImFkdmVydGlzZW1lbnQiOmZhbHNlLCJvdGhlcnMiOmZhbHNlfQ==; viewed_cookie_policy=yes; optiMonkClientId=f299334f-0413-e0e3-489b-d0ae48a7beb5",
-            'DNT': '1',
-            'Connection': 'keep-alive',
-            'Upgrade-Insecure-Requests': '1',
-            'Sec-GPC': '1',
-        }
+        if headers is None:
+            self.headers = {
+                'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:109.0) Gecko/20100101 Firefox/110.0',
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+                "Cookie": "cookielawinfo-checkbox-necessary=yes; cookielawinfo-checkbox-functional=no; cookielawinfo-checkbox-performance=no; cookielawinfo-checkbox-analytics=no; cookielawinfo-checkbox-advertisement=no; cookielawinfo-checkbox-others=no; CookieLawInfoConsent=eyJuZWNlc3NhcnkiOnRydWUsImZ1bmN0aW9uYWwiOmZhbHNlLCJwZXJmb3JtYW5jZSI6ZmFsc2UsImFuYWx5dGljcyI6ZmFsc2UsImFkdmVydGlzZW1lbnQiOmZhbHNlLCJvdGhlcnMiOmZhbHNlfQ==; viewed_cookie_policy=yes; optiMonkClientId=f299334f-0413-e0e3-489b-d0ae48a7beb5",
+                'DNT': '1',
+                'Connection': 'keep-alive',
+                'Upgrade-Insecure-Requests': '1',
+                'Sec-GPC': '1',
+            }
+        else:
+            self.headers = headers
+            
+        # extract data at the same time (no saving raw data)
+        if extract is None:
+            self.extractor_unit = extract
+        else:
+            self.extractor_unit = Extractor(
+                target_folder_path = Path(target_folder_path),
+                file_extractor=file_extractor)
+            
+         json_dict = self.extractor_unit._create_results([domain, id, level, url, date, path.strip()])
 
 
         # self.start = time()
@@ -127,7 +144,7 @@ class Scraper:
         ]
 
         # remove query string # bol.com/nl/producten/product/...?p=1
-        urls = [urlparse(url_found)._replace(query="").geturl() for url_found in urls]
+        urls = [urlparse(url_found)._replace(query="", fragment="").geturl() for url_found in urls]
 
         return urls
 
@@ -455,9 +472,8 @@ class Scraper:
 
         start = time()
 
-        with ThreadPoolExecutor(
-            max_workers=self.threads_bs4
-        ) as self.cpu_executor, ThreadPoolExecutor(max_workers=1) as self.io_executor:
+        with ThreadPoolExecutor(max_workers=self.threads_bs4) as self.cpu_executor, \
+             ThreadPoolExecutor(max_workers=1) as self.io_executor:
             self.loop = asyncio.get_event_loop()
             future = asyncio.ensure_future(self.__fetch_all_companies(urls))
             self.loop.run_until_complete(future)
