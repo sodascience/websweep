@@ -16,6 +16,7 @@ import ndjson
 # monkeypatch to avoid "Can not load response cookies" 
 import http.cookies
 import os
+import re
 import sqlite3 as sql
 from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
 from pathlib import Path
@@ -32,7 +33,12 @@ from protego import Protego
 
 http.cookies._is_legal_key = lambda _: True
 
-from extractor import Extractor
+try:
+    from extractor import Extractor
+    from utils import clean_url
+except:
+    from ..extractor.extractor import Extractor
+    from ..utils.utils import clean_url
 
 class Scraper:
     def __init__(
@@ -51,7 +57,7 @@ class Scraper:
         headers=None,
         file_extractor=None
     ):
-        self.target_folder_path = target_folder_path
+        self.target_folder_path = Path(target_folder_path)
         self.use_sqlite = use_sqlite
         self.base_path = self.target_folder_path / "data"
         if save_html:
@@ -156,7 +162,10 @@ class Scraper:
 
         if self.extractor_unit is not None:
             date = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            json_dict = self.extractor_unit._create_results([base_url, base_url, level, url, date, soup])
+            try:
+                json_dict = self.extractor_unit._create_results([base_url, level, url, date, soup])
+            except Exception as e:
+                json_dict = {"domain": base_url, "website": url, "date": date, "path": "Error extracting"}
 
             with open(self.file_res, "a+", encoding="UTF-8") as f_res:
                 writer_res = ndjson.writer(f_res, ensure_ascii=False)
@@ -282,7 +291,7 @@ class Scraper:
 
 
         flag_download = self.classifier(url, level)
-        # print(url, flag_download)
+        
         # classify url to see if it should be crawled
         if not flag_download:  # self.classifier(url, level):
             # add to file, without path
@@ -302,7 +311,6 @@ class Scraper:
                     # parse the contents and extract URLS
                     urls = await self.loop.run_in_executor(
                         self.cpu_executor, functools.partial(self.get_urls, r, url, level))
-                    
                     
 
                     if self.save_html:
@@ -324,7 +332,7 @@ class Scraper:
                 return urls
 
         except Exception as e:
-            status = ""
+            status = "Website not found"
             path = ""
             self.__update_overview_file(domain, level, url, status, path)
             self.errors_website[domain] += 1
@@ -337,12 +345,12 @@ class Scraper:
 
         :param url: domain and url string to visit for company
         """
-
+        
         async with self.sem_num_comps:
             try:
                 self.waits[domain] = 0
                 self.errors_website[domain] = 0
-
+                
                 level = 0
                 all_records = [url]
                 records = [url]
@@ -351,13 +359,9 @@ class Scraper:
                 # TODO: threshold variable
                 # TODO: enhance removing www and http leaders
                 # TODO: make this a called method
+                
+                sourcepath = f'data/scraped_data/{domain}/{clean_url(url)}'
 
-                sourcepath = "data/scraped_data/{}/{}".format(
-                    domain,
-                    url.replace("www.", "")
-                    .replace("http://", "")
-                    .replace("https://", ""),
-                )
                 if Path(sourcepath).exists():
                     crawl_dates = [
                         datetime.datetime.strptime(
@@ -369,22 +373,20 @@ class Scraper:
                     # check if most recent crawldate is within threshold and if so, log finding and stop crawling for this company
                     if (datetime.date.today() - max(crawl_dates)).days < 30:
                         return
-
+                
                 # Read the robots (if robots.txt does not exist all requests are accepted)
                 async with self.session.get(f"{url}/robots.txt") as response:
                     await asyncio.sleep(0.001)
                     r = await response.read()
                     rp = Protego.parse(r.decode("utf-8", "ignore")) 
-
+                    
                 # Breath first search algorithm from urls
                 while (len(records) > 0) and (level < self.max_level):
                     tasks = []
-
                     # fetch urls asynchroneously
                     for url in records:
                         # check if we can actually download it in the robots
                         if rp.can_fetch(url, "*"):
-
                             task = asyncio.create_task(
                                 self.__fetch_one_url(domain, url, level=level)
                             )
@@ -399,12 +401,13 @@ class Scraper:
                         if sublist is not None
                         for item in sublist
                     ]
+                    
 
                     # speed up search using a set (and remove www to avoid downloading twice the same url)
                     temp_all_records = set(
-                        [url.replace("www.", "") for url in all_records]
+                        [clean_url(url) for url in all_records]
                     )
-
+                    
                     # make sure the scraper doesn't run forever (TODO: make sure it's 100 downloaded, not 100 found)
                     if len(temp_all_records) > 100:
                         break
@@ -415,11 +418,11 @@ class Scraper:
                             [
                                 url
                                 for url in records
-                                if url.replace("www.", "") not in temp_all_records
+                                if clean_url(url) not in temp_all_records
                             ]
                         )
                     )
-
+                    
                     # add new urls to list
                     all_records += records
                     level += 1
@@ -435,7 +438,7 @@ class Scraper:
                 path = ""
 
                 # save problem with the request for robots.txt (usually page doesn't exist)
-                self.__update_overview_file(domain, 0, f"{url}/robots.txt", status, path)
+                self.__update_overview_file(domain, 0, url, status, path)
 
 
     async def __fetch_all_companies(self, records):
@@ -463,6 +466,10 @@ class Scraper:
         ) as self.session:
             # for each url, create asynchronous task to fetch company and append to tasks list
             for url in records:
+                # clean url
+                if not url.startswith('http://') and not url.startswith('https://'):
+                    url = f'https://{url.strip()}'
+        
                 domain = urlparse(url).netloc.replace("www.", "")
                 task = asyncio.create_task(self.__fetch_one_company(domain, url))
                 tasks.append(task)
@@ -473,7 +480,6 @@ class Scraper:
                 for f in tqdm.tqdm(
                     asyncio.as_completed(tasks),
                     total=len(tasks),
-                    leave=True,
                     miniters=1,
                 )
             ]
@@ -531,5 +537,5 @@ class Scraper:
                     if session_date == str(complement_date) and status != "200" and status != "" and status != "Website not found":
                         urls.append((domain, url))
 
-                print(urls)
+                
         self.scrape_companies(urls)
