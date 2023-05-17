@@ -79,7 +79,7 @@ def init_app(
 
 def _init_application_config_file(location: Path) -> int:
     try:
-        CONFIG_DIR_PATH.mkdir(exist_ok=True)
+        CONFIG_DIR_PATH.mkdir(exist_ok=True, parents=True)
     except OSError:
         return DIR_ERROR
     try:
@@ -101,7 +101,7 @@ def _init_application_config_file(location: Path) -> int:
 
 def _init_target_folder(target_folder_path: Path) -> int:
     try:
-        (target_folder_path / "data").mkdir(exist_ok=True)
+        (target_folder_path / "data").mkdir(exist_ok=True, parents=True)
     except OSError:
         return DIR_ERROR
 
