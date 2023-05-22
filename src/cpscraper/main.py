@@ -11,14 +11,19 @@ from functools import wraps
 from importlib.resources import path
 from pathlib import Path
 from shutil import rmtree
-from tkinter import Tk
-from tkinter import filedialog as fd
 from typing import List, Optional
 
 from cpscraper import ERRORS, __app_name__, __status__, __version__, config
 from .extractor.extractor import Extractor, FirmBackBoneFileExtractor
 from .scraper.scraper import Scraper
 from .utils.utils import classify_url
+
+HEADLESS = False
+try:
+    from tkinter import Tk
+    from tkinter import filedialog as fd
+except:
+    HEADLESS = True
 
 app = typer.Typer()
 
@@ -90,7 +95,7 @@ def operate():
 # Stores a newly created settings.ini file in the cpscraper folder
 # Can be run at any time and does not need the operation verification
 @app.command(name="init")
-def init(headless: bool = typer.Option(False, help="Run without GUI elements")) -> None:
+def init(headless: bool = typer.Option(HEADLESS, help="Run without GUI elements")) -> None:
     """
     Initialise a new scraper instance.
     The instance location is stored in the application config file,
@@ -219,7 +224,7 @@ def main(
 # Verifies whether the expected values are within the settings.ini file
 # Can be run at any time and does not need the operation verification
 @app.command(name="restore")
-def init(headless: bool = typer.Option(False, help="Run without GUI elements")) -> None:
+def init(headless: bool = typer.Option(HEADLESS, help="Run without GUI elements")) -> None:
     """
     Restore configuration of existing scraper instance.
     The exisiting location is stored in the application config file and the exisiting settings in the settings file are validated.
