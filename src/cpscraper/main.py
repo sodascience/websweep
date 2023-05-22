@@ -5,6 +5,7 @@ import sqlite3 as sql
 import sys
 import time
 import webbrowser
+import typer
 from datetime import date as datelib
 from functools import wraps
 from importlib.resources import path
