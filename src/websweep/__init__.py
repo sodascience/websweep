@@ -1,5 +1,5 @@
 __version__ = '0.2.0'
-__app_name__ = "cpscraper"
+__app_name__ = "websweep"
 __status__ = "development"
 
 (

@@ -15,7 +15,7 @@ from tkinter import Tk
 from tkinter import filedialog as fd
 from typing import List, Optional
 
-from cpscraper import ERRORS, __app_name__, __status__, __version__, config
+from websweep import ERRORS, __app_name__, __status__, __version__, config
 from .extractor.extractor import Extractor, FirmBackBoneFileExtractor
 from .scraper.scraper import Scraper
 from .utils.utils import classify_url
@@ -44,7 +44,7 @@ def operate():
                     or not config.current_scraper().exists()
                 ):
                     typer.secho(
-                        "Application config file has no instance location pointer. Please initalise or restore an instance or use cpscraper --help",
+                        "Application config file has no instance location pointer. Please initalise or restore an instance or use websweep --help",
                         fg=typer.colors.RED,
                     )
                     return
@@ -53,7 +53,7 @@ def operate():
                     or not config.get_source_file_path().exists()
                 ):
                     typer.secho(
-                        "Settings file does not contain essential instance data. Please initalise or restore an instance or use cpscraper --help",
+                        "Settings file does not contain essential instance data. Please initalise or restore an instance or use websweep --help",
                         fg=typer.colors.RED,
                     )
                     return
@@ -63,7 +63,7 @@ def operate():
                     and not any((config.get_target_folder_path() / "data").iterdir())
                 ):
                     typer.secho(
-                        'There are no scraped files to extract from. Please start scraping using "scrape" or use cpscraper --help',
+                        'There are no scraped files to extract from. Please start scraping using "scrape" or use websweep --help',
                         fg=typer.colors.RED,
                     )
                     return
@@ -84,10 +84,10 @@ def operate():
     return deco_operate
 
 
-# Set up a new cpscraper instance
-# Creates system application cpscraper folder and creates config.ini file therein
-# Stores new cpscraper instance location in the system's application config.ini file
-# Stores a newly created settings.ini file in the cpscraper folder
+# Set up a new websweep instance
+# Creates system application websweep folder and creates config.ini file therein
+# Stores new websweep instance location in the system's application config.ini file
+# Stores a newly created settings.ini file in the websweep folder
 # Can be run at any time and does not need the operation verification
 @app.command(name="init")
 def init(headless: bool = typer.Option(False, help="Run without GUI elements")) -> None:
@@ -106,7 +106,7 @@ def init(headless: bool = typer.Option(False, help="Run without GUI elements")) 
             headless = True
 
     typer.secho(
-        "\nWELCOME to the corporate scraper.\nFollow the instructions to set up a new scraper instance and start scraping.\n",
+        "\nWELCOME to WebSweep.\nFollow the instructions to set up a new scraper instance and start scraping.\n",
         fg=typer.colors.GREEN,
     )
 
@@ -213,9 +213,9 @@ def main(
     return
 
 
-# Restores an existing cpscraper instance as the active instance which can be worked on
-# Creates system application cpscraper folder and creates config.ini file therein
-# Stores the existing cpscraper instance location in the system's application config.ini file and overwrites any previous ones
+# Restores an existing websweep instance as the active instance which can be worked on
+# Creates system application websweep folder and creates config.ini file therein
+# Stores the existing websweep instance location in the system's application config.ini file and overwrites any previous ones
 # Verifies whether the expected values are within the settings.ini file
 # Can be run at any time and does not need the operation verification
 @app.command(name="restore")
@@ -234,7 +234,7 @@ def init(headless: bool = typer.Option(False, help="Run without GUI elements")) 
             headless = True
 
     typer.secho(
-        "\nWELCOME to the corporate scraper.\nFollow the instructions to restore an existing scraper instance.\n",
+        "\nWELCOME back to WebSweep.\nFollow the instructions to restore an existing scraper instance.\n",
         fg=typer.colors.GREEN,
     )
 
@@ -279,7 +279,7 @@ def init(headless: bool = typer.Option(False, help="Run without GUI elements")) 
         )
 
 
-# Allows for the modification of the settings.ini file in the active working cpscraper instance folder
+# Allows for the modification of the settings.ini file in the active working websweep instance folder
 # Allows modification of the source file and target folder locations + whether extracted documents are deleted
 @app.command(name="config")
 def cli_config(
@@ -336,7 +336,7 @@ def cli_config(
         typer.secho("Config settings saved", fg=typer.colors.GREEN)
 
 
-# Opens the current cpscraper working folder that is stored in the system's application config.ini file
+# Opens the current websweep working folder that is stored in the system's application config.ini file
 # Does not work in headless operation mode as it involves GUI commands
 @app.command(name="instance")
 @operate()
@@ -351,9 +351,9 @@ def scraper_address() -> None:
         typer.secho("Could not open scraper instance folder\n", fg=typer.colors.RED)
 
 
-# Starts the scraping of targets from the set source file in the settings.ini file in the active working cpscraper instance settings folder
+# Starts the scraping of targets from the set source file in the settings.ini file in the active working websweep instance settings folder
 # Calls a Scraper instance which handles the scraping procedure
-# Scraped documents are stored in the active working cpscraper instance folder under 'data'
+# Scraped documents are stored in the active working websweep instance folder under 'data'
 # Can only be run when the application has been initialised
 @app.command(name="scrape")
 @operate()
@@ -409,9 +409,9 @@ def scrape(
 
     typer.secho(f"Scraper finished successfully\n", fg=typer.colors.GREEN)
 
-# Starts the extracting of files in the active working cpscraper instance folder
+# Starts the extracting of files in the active working websweep instance folder
 # Calls an Extractor instance which handles the extracting procedure
-# Extracted data is stored in the active working cpscraper instance folder under 'scraped_data'
+# Extracted data is stored in the active working websweep instance folder under 'scraped_data'
 # Can only be run when the application has been initialised
 # Can only be run when the scrape function has been called before and there are extractable documents in the 'data' folder
 @app.command(name="extract")

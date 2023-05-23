@@ -1,4 +1,4 @@
-from cpscraper import __version__
+from websweep import __version__
 
 
 def test_version():

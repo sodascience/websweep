@@ -1,12 +1,12 @@
 [tool.poetry]
-name = "cpscraper"
+name = "websweep"
 version = "0.1.0"
 description = ""
 authors = []
 readme = "README.md"
 
 [tool.poetry.scripts]
-cpscraper = "cpscraper.main:app"
+websweep = "websweep.main:app"
 
 [tool.poetry.dependencies]
 python = "^3.9"
