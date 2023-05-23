@@ -175,6 +175,14 @@ def init(headless: bool = typer.Option(False, help="Run without GUI elements")) 
         f"A SQL database will be used: {ask_use_sql}\n", fg=typer.colors.YELLOW
     )
 
+    ask_use_classify = typer.confirm(
+        "SELECT do you want to use a custom classification file?\n"
+    )
+    
+    typer.secho(
+        f"A custom classification file will be used: {ask_use_classify}\n", fg=typer.colors.YELLOW
+    )
+
     time.sleep(0.5)
 
     app_init_error = config.init_app(str(folder), str(file), ask_delete_files, ask_use_sql)
