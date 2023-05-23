@@ -96,7 +96,7 @@ class FileExtractor:
 
     def _extract_phone(self) -> list:
         """
-        Scrape the phone number from the input file, and add found phone numbers to self.phone in set form
+        Extract the phone number from the input file, and add found phone numbers to self.phone in set form
 
         """
         pattern = re.compile(
@@ -122,7 +122,7 @@ class FileExtractor:
 
     def _extract_email(self) -> list:
         """
-        Scrape the Email adress from the input file, and adds the found email adress to self.email in set form
+        Extract the Email adress from the input file, and adds the found email adress to self.email in set form
         """
         pattern = re.compile(
             r"""
@@ -141,7 +141,7 @@ class FileExtractor:
 
     def _extract_fax(self) -> list:
         """
-        Scrape the fax number from the input file, and add found fax numbers to self.fax in set form
+        Extract the fax number from the input file, and add found fax numbers to self.fax in set form
 
         """
 
@@ -162,7 +162,7 @@ class FileExtractor:
 
     def _extract_zipcode(self) -> list:
         """
-        Scrape the zipcode from the input file, and add found zipcodes to self.zipcode in set form
+        Extract the zipcode from the input file, and add found zipcodes to self.zipcode in set form
         """
 
         pattern = re.compile(
@@ -178,7 +178,7 @@ class FileExtractor:
 
     def _extract_address(self) -> list:
         """
-        Scrape the adres from the input file, and add found adres to self.adres in set form(
+        Extract the adres from the input file, and add found adres to self.adres in set form(
         TODO: Compile patterns available to all (in utils?). Use re.DOTALL in address
 
         """
@@ -245,7 +245,7 @@ class FirmBackBoneFileExtractor(FileExtractor):
 
     def _extract_annual_report(self) -> list:
         """
-        Look for and try to scrape the annual report of a website, if found add to #TODO where to add?
+        Look for and try to extract the annual report of a website, if found add to #TODO where to add?
         """
         pdf_links = set()
 
@@ -279,7 +279,7 @@ class FirmBackBoneFileExtractor(FileExtractor):
 
     def _extract_kvk(self) -> list:
         """
-        Scrape the KVK number from the input file, and add found KVK number to self.kvk in set form
+        Extract the KVK number from the input file, and add found KVK number to self.kvk in set form
 
         """
         pattern = re.compile(
@@ -302,7 +302,7 @@ class FirmBackBoneFileExtractor(FileExtractor):
 
     def _extract_btw(self) -> list:
         """
-        Scrape the BTW number from the input file, and add found BTW Numbers (usually only 1) to self.btw in list form
+        Extract the BTW number from the input file, and add found BTW Numbers (usually only 1) to self.btw in list form
         """
 
         pattern = re.compile(
@@ -334,7 +334,7 @@ class Extractor:
     Methods:
         _create_results(path)
             Extracts the data from one specific file
-        extract_companies()
+        extract_urls()
             Start the extracting of all data from the files
     """
 
@@ -357,7 +357,7 @@ class Extractor:
         return metadata
 
     
-    def extract_companies(self):
+    def extract_urls(self):
         start = time.time()
 
         # TODO: Link back to config data
@@ -402,9 +402,9 @@ class Extractor:
                 for i in range(0, len(results), n):
                     file_res = (
                         self.target_folder_path
-                        / "scraped_data"
+                        / "extracted_data"
                         / (
-                            "scraped_data_"
+                            "extracted_data_"
                             + str(datelib.today())
                             + f"_{i}-{i+n}.ndjson"
                         )
@@ -412,7 +412,7 @@ class Extractor:
                     Path(file_res).parent.mkdir(parents=True, exist_ok=True)
                     file_rep = (
                         self.target_folder_path
-                        / "scraped_data"
+                        / "extracted_data"
                         / ("annual_report_" + str(datelib.today()) + ".ndjson")
                     )
                     Path(file_rep).parent.mkdir(parents=True, exist_ok=True)
@@ -438,7 +438,7 @@ class Extractor:
 
         if self.extractor_delete_files:
             # Loop through all subdirectories in the given folder
-            for root, dirs, files in os.walk(self.target_folder_path / "data"):
+            for root, dirs, files in os.walk(self.target_folder_path / "crawled_data"):
                 # Delete all files in the current subdirectory
                 for dir in dirs:
                     if re.match(r"\d{4}-\d{2}-\d{2}", dir) and dir >= date_start and dir <= date_end:
