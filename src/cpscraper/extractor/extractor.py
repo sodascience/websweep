@@ -202,9 +202,14 @@ class FileExtractor:
                 r"\b([ a-zA-ZÀ-ÿ]+\s+[\s0-9-_a-zA-Z]{1,9})" + #address part
                 r"[\s\-,\|]{0,5}"
                 )
-            f = re.findall(pattern, add.strip())
-            if len(f) > 0:
-                add_found.append(f[-1])
+
+            matches = re.findall(pattern, add.strip())
+            if len(matches) > 0:
+                # Remove unwanted words from matches
+                filtered_matches = [re.sub(r"\b(?:gevestigd|aan|te)\b", "", match, flags=re.IGNORECASE) for match in matches]
+                filtered_matches = [match.strip() for match in filtered_matches if match.strip()]
+                if filtered_matches:
+                    add_found.append(filtered_matches[-1])
 
         return add_found
 
