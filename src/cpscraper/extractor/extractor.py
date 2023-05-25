@@ -347,12 +347,14 @@ class Extractor:
     """
 
     def __init__(
-        self, target_folder_path, use_sqlite=True, extractor_delete_files=False, file_extractor: FileExtractor=None
+        self, target_folder_path, use_sqlite=True, extractor_delete_files=False, start_date="0000-01-01", end_date="9999-01-01", file_extractor: FileExtractor=None
     ):
         self.target_folder_path = target_folder_path
         self.use_sqlite = use_sqlite
         self.extractor_delete_files = extractor_delete_files
         self.file_extractor = file_extractor
+        self.start_date = start_date
+        self.end_date = end_date
 
     def _create_results(self, path):
         [domain, level, url, date, path] = path
@@ -368,13 +370,6 @@ class Extractor:
     def extract_companies(self):
         start = time.time()
 
-        # TODO: Link back to config data
-        date_start = datelib.today()
-        date_end = datelib.today()
-
-        # TODO: TEMPORARY, CHECK IF USE SQL > Reset this to use the config data
-        date_start = "2000-01-01"
-        date_end = "3000-01-01"
         if self.use_sqlite:
             connection = sql.connect(
                 os.path.join(self.target_folder_path, "overview_urls.db")
@@ -382,8 +377,8 @@ class Extractor:
             cursor = connection.cursor()
             results = cursor.execute(
                 f"""SELECT domain, level, url, session_date, path FROM Overview 
-                            WHERE (session_date >= '{date_start}') 
-                            AND (session_date <= '{date_end}') 
+                            WHERE (session_date >= '{self.start_date}') 
+                            AND (session_date <= '{self.end_date}') 
                             AND (status == "200")"""
             ).fetchall()
             connection.close()
@@ -394,8 +389,8 @@ class Extractor:
                 for line in f:
                     domain, level, url, status, date, _, path = line.split("\t")
                     if (
-                        (date >= date_start)
-                        and (date <= date_end)
+                        (date >= self.start_date)
+                        and (date <= self.end_date)
                         and (status == "200")
                     ):
                         results.append([domain, level, url, date, path.strip()])
@@ -449,7 +444,7 @@ class Extractor:
             for root, dirs, files in os.walk(self.target_folder_path / "data"):
                 # Delete all files in the current subdirectory
                 for dir in dirs:
-                    if re.match(r"\d{4}-\d{2}-\d{2}", dir) and dir >= date_start and dir <= date_end:
+                    if re.match(r"\d{4}-\d{2}-\d{2}", dir) and dir >= self.start_date and dir <= self.end_date:
                         print(dir)
                         shutil.rmtree(os.path.join(root, dir))
 
