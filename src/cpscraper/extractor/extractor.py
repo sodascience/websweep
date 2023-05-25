@@ -436,7 +436,7 @@ class Extractor:
             for root, dirs, files in os.walk(self.target_folder_path / "data"):
                 # Delete all files in the current subdirectory
                 for dir in dirs:
-                    if re.match(r"\d{4}-\d{2}-\d{2}", dir) and dir >= start_date and dir <= end_date:
+                    if re.match(r"\d{4}-\d{2}-\d{2}", dir) and dir >= self.start_date and dir <= self.end_date:
                         print(dir)
                         shutil.rmtree(os.path.join(root, dir))
 
