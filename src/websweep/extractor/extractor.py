@@ -27,7 +27,7 @@ class FileExtractor:
 
     Parameters:
         info: tuple
-            A tuple containing metadata about the file to extract data from, including the domain, id, level, website, date and path.
+            A tuple containing metadata about the file to extract data from, including the domain, level, website, date and path.
 
     Methods:
         extracting()
@@ -43,7 +43,6 @@ class FileExtractor:
         self.metadata = dict()
         (
             self.metadata["domain"],
-            self.metadata["id"],
             self.metadata["level"],
             self.metadata["website"],
             self.metadata["date"],
@@ -55,14 +54,18 @@ class FileExtractor:
         # defined in the FileExtractor class (dir(FileExtractor)), meaning that only the custom child methods are included
         self.child_methods = [method for method in dir(self) if callable(getattr(self, method)) and method.startswith('_extract_') and method not in [method for method in dir(FileExtractor) if callable(getattr(FileExtractor, method)) and method.startswith('_extract_')]]
         
-        # Read HTML to parse
-        with open(self.metadata["path"], "rb") as file:
-            self.text = file.read().decode("utf-8", "ignore")
-            self.soup = BeautifulSoup(self.text, "lxml")
+        if isinstance(info[-1], BeautifulSoup):
+            self.soup = info[-1]
+            self.metadata["path"] = ""
+        else:
+            # Read HTML to parse
+            with open(self.metadata["path"], "rb") as file:
+                self.text = file.read().decode("utf-8", "ignore")
+                self.soup = BeautifulSoup(self.text, "lxml")
 
     def extracting(self):
         # Get metadata
-        self.metadata |= self._extract_metadata()
+        self.metadata.update(self._extract_metadata()) #future self.metadata |= self._extract_metadata()
 
         # Clean the HTML to raw text
         self.text = self._clean_html()
@@ -199,9 +202,14 @@ class FileExtractor:
                 r"\b([ a-zA-ZÀ-ÿ]+\s+[\s0-9-_a-zA-Z]{1,9})" + #address part
                 r"[\s\-,\|]{0,5}"
                 )
-            f = re.findall(pattern, add.strip())
-            if len(f) > 0:
-                add_found.append(f[-1])
+
+            matches = re.findall(pattern, add.strip())
+            if len(matches) > 0:
+                # Remove unwanted words from matches
+                filtered_matches = [re.sub(r"\b(?:gevestigd|aan|te)\b", "", match, flags=re.IGNORECASE) for match in matches]
+                filtered_matches = [match.strip() for match in filtered_matches if match.strip()]
+                if filtered_matches:
+                    add_found.append(filtered_matches[-1])
 
         return add_found
 
@@ -339,20 +347,22 @@ class Extractor:
     """
 
     def __init__(
-        self, target_folder_path, use_sqlite=True, extractor_delete_files=False, file_extractor: FileExtractor=None
+        self, target_folder_path, use_sqlite=True, extractor_delete_files=False, start_date="0000-01-01", end_date="9999-01-01", file_extractor: FileExtractor=None
     ):
         self.target_folder_path = target_folder_path
         self.use_sqlite = use_sqlite
         self.extractor_delete_files = extractor_delete_files
         self.file_extractor = file_extractor
+        self.start_date = start_date
+        self.end_date = end_date
 
     def _create_results(self, path):
-        [domain, id, level, url, date, path] = path
+        [domain, level, url, date, path] = path
 
         if self.file_extractor != None:
-            metadata = self.file_extractor([domain, id, level, url, date, path]).extracting()
+            metadata = self.file_extractor([domain, level, url, date, path]).extracting()
         else:
-            metadata = FileExtractor([domain, id, level, url, date, path]).extracting()
+            metadata = FileExtractor([domain, level, url, date, path]).extracting()
 
         return metadata
 
@@ -360,22 +370,15 @@ class Extractor:
     def extract_urls(self):
         start = time.time()
 
-        # TODO: Link back to config data
-        date_start = datelib.today()
-        date_end = datelib.today()
-
-        # TODO: TEMPORARY, CHECK IF USE SQL > Reset this to use the config data
-        date_start = "2000-01-01"
-        date_end = "3000-01-01"
         if self.use_sqlite:
             connection = sql.connect(
                 os.path.join(self.target_folder_path, "overview_urls.db")
             )
             cursor = connection.cursor()
             results = cursor.execute(
-                f"""SELECT domain, id, level, url, session_date, path FROM Overview 
-                            WHERE (session_date >= '{date_start}') 
-                            AND (session_date <= '{date_end}') 
+                f"""SELECT domain, level, url, session_date, path FROM Overview 
+                            WHERE (session_date >= '{self.start_date}') 
+                            AND (session_date <= '{self.end_date}') 
                             AND (status == "200")"""
             ).fetchall()
             connection.close()
@@ -384,13 +387,13 @@ class Extractor:
                 f.readline()  # header
                 results = []
                 for line in f:
-                    domain, id, level, url, status, date, _, path = line.split("\t")
+                    domain, level, url, status, date, _, path = line.split("\t")
                     if (
-                        (date >= date_start)
-                        and (date <= date_end)
+                        (date >= self.start_date)
+                        and (date <= self.end_date)
                         and (status == "200")
                     ):
-                        results.append([domain, id, level, url, date, path.strip()])
+                        results.append([domain, level, url, date, path.strip()])
         
         # chunking in 1M files
         n = 1000000
@@ -441,7 +444,8 @@ class Extractor:
             for root, dirs, files in os.walk(self.target_folder_path / "crawled_data"):
                 # Delete all files in the current subdirectory
                 for dir in dirs:
-                    if re.match(r"\d{4}-\d{2}-\d{2}", dir) and dir >= date_start and dir <= date_end:
+                    if re.match(r"\d{4}-\d{2}-\d{2}", dir) and dir >= self.start_date and dir <= self.end_date:
+
                         shutil.rmtree(os.path.join(root, dir))
 
         print(

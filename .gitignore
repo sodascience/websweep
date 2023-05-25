@@ -13,4 +13,4 @@ init files/*
 examples/data/*
 *.ndjson
 scraper_data_actually/*
-src/websweep/extractor/ehh.py
+examples/test*
