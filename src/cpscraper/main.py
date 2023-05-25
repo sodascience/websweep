@@ -175,14 +175,6 @@ def init(headless: bool = typer.Option(False, help="Run without GUI elements")) 
         f"A SQL database will be used: {ask_use_sql}\n", fg=typer.colors.YELLOW
     )
 
-    ask_use_classify = typer.confirm(
-        "SELECT do you want to use a custom classification file?\n"
-    )
-    
-    typer.secho(
-        f"A custom classification file will be used: {ask_use_classify}\n", fg=typer.colors.YELLOW
-    )
-
     time.sleep(0.5)
 
     app_init_error = config.init_app(str(folder), str(file), ask_delete_files, ask_use_sql)
@@ -374,6 +366,10 @@ def scrape(
         None,
         help="Timeout value (ms) for establishing a connection to remote server",
     ),
+    classification_file: Path = typer.Option(
+        None,
+        help="Use a custom classification file with page title terms (plain .txt with ';' delimitation)",
+    ),
 ) -> None:
     """
     Start caching websites
@@ -391,7 +387,7 @@ def scrape(
 
     worker = Scraper(
         target_folder_path=config.get_target_folder_path(), 
-        classifier=classify_url, 
+        classifier=lambda url, level: classify_url(url, level, classification_file_path=classification_file),
         use_sqlite=config.get_use_database(),
         sock_connect=sock_connect
     )
