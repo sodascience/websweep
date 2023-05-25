@@ -29,10 +29,10 @@ Real-World Use Cases
 
 ## Installation
 
-Use the package manager [pip]() to install cpscraper.
+Use the package manager [pip]() to install websweep.
 
 ```bash
-$ pip install cpscraper
+$ pip install websweep
 ```
 
 
@@ -46,14 +46,14 @@ example here
 ### Command line interface
 ```bash
 # see all commands
-$ cpscraper --help
+$ websweep --help
 
 # initialise the scraper (scraper will not run without configuration)
-$ cpscraper init [--headless]
+$ websweep init [--headless]
 
 # after initialization, the scraper can both scrape websites, and extract information from files
-$ cpscraper scrape
-$ cpscraper extract
+$ websweep scrape
+$ websweep extract
 ```
 
 
@@ -78,7 +78,7 @@ file for more information on issues and pull requests.
 
 ## License and citation
 
-The package `cpscraper` is published under an MIT license. When using `cpscraper` for academic work, please cite:
+The package `websweep` is published under an MIT license. When using `websweep` for academic work, please cite:
 
     XXX
 

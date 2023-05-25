@@ -3,7 +3,7 @@ import sys
 from tomlkit import boolean
 
 #This mumbo jumbo is required to properly import the Extractor class, I don't quite understand how it works, but it does
-sys.path.append( os.path.join( os.path.dirname( __file__ ), '..', 'src', 'cpscraper', 'extractor' ))
+sys.path.append( os.path.join( os.path.dirname( __file__ ), '..', 'src', 'websweep', 'extractor' ))
 from extractor import Extractor as E
 
 def phones_pass(text) -> boolean: 

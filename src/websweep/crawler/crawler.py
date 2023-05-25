@@ -1,4 +1,4 @@
-"""This module provides the Scraper model-controller."""
+"""This module provides the Crawler model-controller."""
 
 import csv
 # TODO: Temporary, remove!
@@ -40,7 +40,7 @@ except:
     from ..extractor.extractor import Extractor
     from ..utils.utils import clean_url
 
-class Scraper:
+class Crawler:
     def __init__(
         self,
         target_folder_path,
@@ -48,7 +48,7 @@ class Scraper:
         max_level=3,
         classifier=lambda url, level: True,
         verify_ssl=False,
-        concurrency_companies=1000,
+        concurrency_base_urls=1000,
         threads_bs4=10,
         threads_download=1000,
         use_sqlite=True,
@@ -59,7 +59,7 @@ class Scraper:
     ):
         self.target_folder_path = Path(target_folder_path)
         self.use_sqlite = use_sqlite
-        self.base_path = self.target_folder_path / "data"
+        self.base_path = self.target_folder_path / "crawled_data"
         if save_html:
             Path(self.base_path).parent.mkdir(parents=True, exist_ok=True)
 
@@ -78,8 +78,8 @@ class Scraper:
         self.verify_ssl = verify_ssl
         self.classifier = classifier
 
-        # Companies processed in parallel
-        self.sem_num_comps = asyncio.Semaphore(concurrency_companies)
+        # Base urls processed in parallel
+        self.sem_num_comps = asyncio.Semaphore(concurrency_base_urls)
         self.threads_bs4 = threads_bs4
         self.threads_download = threads_download
         self.sock_connect = sock_connect
@@ -101,7 +101,7 @@ class Scraper:
             self.headers = headers
         
         # self.start = time()
-        self.scraper_session_date = self.__get_current_date()
+        self.crawler_session_date = self.__get_current_date()
         self.count_downloads = 0
 
 
@@ -197,7 +197,7 @@ class Scraper:
                 UNIQUE (domain, url, status));
                 """
             )
-            cursor.execute("CREATE INDEX IF NOT EXISTS index_date ON Overview (scrape_date);")
+            cursor.execute("CREATE INDEX IF NOT EXISTS index_date ON Overview (crawl_date);")
             cursor.execute(
                 "CREATE INDEX IF NOT EXISTS index_status ON Overview (status);"
             )
@@ -339,11 +339,12 @@ class Scraper:
             return None
             
 
-    async def __fetch_one_company(self, domain, url):
+    async def __fetch_one_base_url(self, domain, url):
         """
-        Crawl the website of a company up max_level. Save html to file.
+        Crawl the base url up max_level. Save html to file.
 
-        :param url: domain and url string to visit for company
+        :param domain: domain (id in the disk)
+        :param url: url string to visit for base url
         """
         
         async with self.sem_num_comps:
@@ -357,11 +358,7 @@ class Scraper:
 
                 # get list of dates when url was crawled
                 # TODO: threshold variable
-                # TODO: enhance removing www and http leaders
-                # TODO: make this a called method
-                
-                sourcepath = f'data/scraped_data/{domain}/{clean_url(url)}'
-
+                sourcepath = f'data/crawled_data/{domain}/{clean_url(url)}'
                 if Path(sourcepath).exists():
                     crawl_dates = [
                         datetime.datetime.strptime(
@@ -370,7 +367,7 @@ class Scraper:
                         for path in Path(sourcepath).iterdir()
                         if path.is_dir()
                     ]
-                    # check if most recent crawldate is within threshold and if so, log finding and stop crawling for this company
+                    # check if most recent crawldate is within threshold and if so, log finding and stop crawling for this base url
                     if (datetime.date.today() - max(crawl_dates)).days < 30:
                         return
                 
@@ -407,7 +404,7 @@ class Scraper:
                     temp_all_records = set(
                         [clean_url(url) for url in all_records]
                     )
-                    
+
                     # make sure the scraper doesn't run forever (TODO: make sure it's 100 downloaded, not 100 found)
                     if len(temp_all_records) > 100:
                         break
@@ -441,7 +438,7 @@ class Scraper:
                 self.__update_overview_file(domain, 0, url, status, path)
 
 
-    async def __fetch_all_companies(self, records):
+    async def __fetch_all_base_urls(self, records):
         """
         Fetch all urls in records up to a level max_level. Save html to file.
 
@@ -464,14 +461,14 @@ class Scraper:
             )
 
         ) as self.session:
-            # for each url, create asynchronous task to fetch company and append to tasks list
+            # for each url, create asynchronous task to fetch base url and append to tasks list
             for url in records:
                 # clean url
                 if not url.startswith('http://') and not url.startswith('https://'):
                     url = f'https://{url.strip()}'
         
                 domain = urlparse(url).netloc.replace("www.", "")
-                task = asyncio.create_task(self.__fetch_one_company(domain, url))
+                task = asyncio.create_task(self.__fetch_one_base_url(domain, url))
                 tasks.append(task)
 
             # create future and group tasks
@@ -487,7 +484,7 @@ class Scraper:
             return progress
 
   
-    def scrape_companies(self, urls):
+    def crawl_base_urls(self, urls):
         """
         Create initial asynchronous task to fetch all urls
 
@@ -499,15 +496,15 @@ class Scraper:
         with ThreadPoolExecutor(max_workers=self.threads_bs4) as self.cpu_executor, \
              ThreadPoolExecutor(max_workers=1) as self.io_executor:
             self.loop = asyncio.get_event_loop()
-            future = asyncio.ensure_future(self.__fetch_all_companies(urls))
+            future = asyncio.ensure_future(self.__fetch_all_base_urls(urls))
             self.loop.run_until_complete(future)
 
         print(
-            f"Scraped {self.count_downloads} pages from {len(urls)} urls to level {3} in {time() - start:2.1f} seconds."
+            f"Crawled {self.count_downloads} pages from {len(urls)} urls to level {3} in {time() - start:2.1f} seconds."
         )
 
 
-    def scrape_complement_companies(self, complement_date):
+    def crawl_complement_base_urls(self, complement_date):
         if self.use_sqlite:
             connection = sql.connect(self.overview_path)
             cursor = connection.cursor()
@@ -537,5 +534,5 @@ class Scraper:
                     if session_date == str(complement_date) and status != "200" and status != "" and status != "Website not found":
                         urls.append((domain, url))
 
-                
-        self.scrape_companies(urls)
+                #print(urls)
+        self.crawl_base_urls(urls)

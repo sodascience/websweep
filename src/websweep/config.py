@@ -1,4 +1,4 @@
-"""This module provides the Scraper config functionality."""
+"""This module provides the WebSweep config functionality."""
 import configparser
 import os
 import sys
@@ -7,7 +7,7 @@ from pathlib import Path
 
 import typer
 
-from cpscraper import DIR_ERROR, FILE_ERROR, SUCCESS, __app_name__
+from websweep import DIR_ERROR, FILE_ERROR, SUCCESS, __app_name__
 
 CONFIG_DIR_PATH = Path(typer.get_app_dir(__app_name__))
 CONFIG_FILE_PATH = CONFIG_DIR_PATH / "config.ini"
@@ -30,12 +30,12 @@ def _truncate_section(config_file: Path, section: str) -> None:
         pass
 
 
-def current_scraper() -> Path:
-    """Return the current scraper location"""
+def current_websweep_instance() -> Path:
+    """Return the current websweep location"""
     try:
         config_parser = configparser.ConfigParser()
         config_parser.read(CONFIG_FILE_PATH)
-        return Path(config_parser["Scraper"]["location"])
+        return Path(config_parser["Instance"]["location"])
     except:
         return CONFIG_DIR_PATH
 
@@ -46,17 +46,17 @@ def init_app(
 ) -> int:
     """Initialize the application."""
 
-    # create the application config file location, config file and add the location of the scraper
+    # create the application config file location, config file and add the location of the WebSweep instance
     config_code = _init_application_config_file(Path(target_folder_path))
     if config_code != SUCCESS:
         return config_code
 
-    # create the scraper folder and create the settings file
+    # create the WebSweep instance folder and create the settings file
     settings_code = _create_settings_file()
     if settings_code != SUCCESS:
         return settings_code
 
-    # create data folder and add the location of the scraper to the settings file
+    # create data folder and add the location of the WebSweep instance to the settings file
     target_folder_code = _init_target_folder(Path(target_folder_path))
     if target_folder_code != SUCCESS:
         return target_folder_code
@@ -87,10 +87,10 @@ def _init_application_config_file(location: Path) -> int:
     except OSError:
         return FILE_ERROR
 
-    _truncate_section(CONFIG_FILE_PATH, "Scraper")
+    _truncate_section(CONFIG_FILE_PATH, "Instance")
     config_parser = configparser.ConfigParser()
-    config_parser.add_section("Scraper")
-    config_parser.set("Scraper", "location", str(location))
+    config_parser.add_section("Instance")
+    config_parser.set("Instance", "location", str(location))
     try:
         with CONFIG_FILE_PATH.open("a") as file:
             config_parser.write(file)
@@ -101,14 +101,14 @@ def _init_application_config_file(location: Path) -> int:
 
 def _init_target_folder(target_folder_path: Path) -> int:
     try:
-        (target_folder_path / "data").mkdir(exist_ok=True, parents=True)
+        (target_folder_path / "crawled_data").mkdir(exist_ok=True, parents=True)
     except OSError:
         return DIR_ERROR
 
-    _truncate_section(target_folder_path / "settings.ini", "Target")
+    _truncate_section(target_folder_path / "settings.ini", "Instance")
     config_parser = configparser.ConfigParser()
-    config_parser.add_section("Scraper")
-    config_parser.set("Scraper", "location", str(target_folder_path))
+    config_parser.add_section("Instance")
+    config_parser.set("Instance", "location", str(target_folder_path))
     try:
         with (target_folder_path / "settings.ini").open("a") as file:
             config_parser.write(file)
@@ -119,7 +119,7 @@ def _init_target_folder(target_folder_path: Path) -> int:
 
 def _create_settings_file() -> int:
     try:
-        Path(current_scraper() / "settings.ini").touch(exist_ok=True)
+        Path(current_websweep_instance() / "settings.ini").touch(exist_ok=True)
     except OSError:
         return FILE_ERROR
     return SUCCESS
@@ -133,7 +133,7 @@ def restore_app(target_folder_path: Path) -> int:
     if not Path.is_file(target_folder_path / "settings.ini"):
         return FILE_ERROR
 
-    # create the application config file location, config file and add the location of the scraper
+    # create the application config file location, config file and add the location of the WebSweep instance
     config_code = _init_application_config_file(target_folder_path)
     if config_code != SUCCESS:
         return config_code
@@ -149,21 +149,21 @@ def restore_app(target_folder_path: Path) -> int:
 
 
 def get_target_folder_path(
-    config_file: Path = (current_scraper() / "settings.ini"),
+    config_file: Path = (current_websweep_instance() / "settings.ini"),
 ) -> Path:
-    """Return the current scraper location path"""
+    """Return the current WebSweep instance location path"""
     config_parser = configparser.ConfigParser()
     config_parser.read(config_file)
-    return Path(config_parser["Scraper"]["location"])
+    return Path(config_parser["Instance"]["location"])
 
 
 def _save_source_file(source_file_path: Path) -> int:
-    _truncate_section(current_scraper() / "settings.ini", "Source")
+    _truncate_section(current_websweep_instance() / "settings.ini", "Source")
     config_parser = configparser.ConfigParser()
     config_parser.add_section("Source")
     config_parser.set("Source", "source_file", str(source_file_path))
     try:
-        with (current_scraper() / "settings.ini").open("a") as file:
+        with (current_websweep_instance() / "settings.ini").open("a") as file:
             config_parser.write(file)
     except OSError:
         return FILE_ERROR
@@ -171,7 +171,7 @@ def _save_source_file(source_file_path: Path) -> int:
 
 
 def get_source_file_path(
-    config_file: Path = (current_scraper() / "settings.ini"),
+    config_file: Path = (current_websweep_instance() / "settings.ini"),
 ) -> Path:
     """Return the current source file path"""
     try:
@@ -183,14 +183,14 @@ def get_source_file_path(
 
 
 def _save_extractor_delete(extractor_delete_files: bool) -> int:
-    _truncate_section(current_scraper() / "settings.ini", "Extractor")
+    _truncate_section(current_websweep_instance() / "settings.ini", "Extractor")
     config_parser = configparser.ConfigParser()
     config_parser.add_section("Extractor")
     config_parser.set(
         "Extractor", "extractor_delete_files", str(extractor_delete_files)
     )
     try:
-        with (current_scraper() / "settings.ini").open("a") as file:
+        with (current_websweep_instance() / "settings.ini").open("a") as file:
             config_parser.write(file)
     except OSError:
         return FILE_ERROR
@@ -198,7 +198,7 @@ def _save_extractor_delete(extractor_delete_files: bool) -> int:
 
 
 def get_extractor_delete(
-    config_file: Path = (current_scraper() / "settings.ini"),
+    config_file: Path = (current_websweep_instance() / "settings.ini"),
 ) -> bool:
     """
     Return whether to delete processed raw files
@@ -211,12 +211,12 @@ def get_extractor_delete(
 
 #TODO: @Bjorn, this 3 function was removed in the last merge, but I think they are needed
 def _save_use_database(use_database: bool) -> int:
-    _truncate_section(current_scraper() / "settings.ini", "Database")
+    _truncate_section(current_websweep_instance() / "settings.ini", "Database")
     config_parser = configparser.ConfigParser()
     config_parser.add_section('Database')
     config_parser.set('Database', 'use_database', str(use_database))
     try:
-        with (current_scraper() / "settings.ini").open("a") as file:
+        with (current_websweep_instance() / "settings.ini").open("a") as file:
             config_parser.write(file)
     except OSError:
         return FILE_ERROR
@@ -224,7 +224,7 @@ def _save_use_database(use_database: bool) -> int:
 
 
 def get_use_database(
-    config_file: Path = (current_scraper() / "settings.ini"),
+    config_file: Path = (current_websweep_instance() / "settings.ini"),
 ) -> bool:
     """
     Return whether to use an SQL database raw files

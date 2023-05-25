@@ -13,5 +13,4 @@ init files/*
 examples/data/*
 *.ndjson
 scraper_data_actually/*
-src/cpscraper/extractor/ehh.py
 examples/test*
