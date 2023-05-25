@@ -27,7 +27,7 @@ class FileExtractor:
 
     Parameters:
         info: tuple
-            A tuple containing metadata about the file to extract data from, including the domain, id, level, website, date and path.
+            A tuple containing metadata about the file to extract data from, including the domain, level, website, date and path.
 
     Methods:
         extracting()
@@ -43,7 +43,6 @@ class FileExtractor:
         self.metadata = dict()
         (
             self.metadata["domain"],
-            self.metadata["id"],
             self.metadata["level"],
             self.metadata["website"],
             self.metadata["date"],
@@ -55,14 +54,18 @@ class FileExtractor:
         # defined in the FileExtractor class (dir(FileExtractor)), meaning that only the custom child methods are included
         self.child_methods = [method for method in dir(self) if callable(getattr(self, method)) and method.startswith('_extract_') and method not in [method for method in dir(FileExtractor) if callable(getattr(FileExtractor, method)) and method.startswith('_extract_')]]
         
-        # Read HTML to parse
-        with open(self.metadata["path"], "rb") as file:
-            self.text = file.read().decode("utf-8", "ignore")
-            self.soup = BeautifulSoup(self.text, "lxml")
+        if isinstance(info[-1], BeautifulSoup):
+            self.soup = info[-1]
+            self.metadata["path"] = ""
+        else:
+            # Read HTML to parse
+            with open(self.metadata["path"], "rb") as file:
+                self.text = file.read().decode("utf-8", "ignore")
+                self.soup = BeautifulSoup(self.text, "lxml")
 
     def extracting(self):
         # Get metadata
-        self.metadata |= self._extract_metadata()
+        self.metadata.update(self._extract_metadata()) #future self.metadata |= self._extract_metadata()
 
         # Clean the HTML to raw text
         self.text = self._clean_html()
@@ -347,12 +350,12 @@ class Extractor:
         self.file_extractor = file_extractor
 
     def _create_results(self, path):
-        [domain, id, level, url, date, path] = path
+        [domain, level, url, date, path] = path
 
         if self.file_extractor != None:
-            metadata = self.file_extractor([domain, id, level, url, date, path]).extracting()
+            metadata = self.file_extractor([domain, level, url, date, path]).extracting()
         else:
-            metadata = FileExtractor([domain, id, level, url, date, path]).extracting()
+            metadata = FileExtractor([domain, level, url, date, path]).extracting()
 
         return metadata
 
@@ -373,7 +376,7 @@ class Extractor:
             )
             cursor = connection.cursor()
             results = cursor.execute(
-                f"""SELECT domain, id, level, url, session_date, path FROM Overview 
+                f"""SELECT domain, level, url, session_date, path FROM Overview 
                             WHERE (session_date >= '{date_start}') 
                             AND (session_date <= '{date_end}') 
                             AND (status == "200")"""
@@ -384,13 +387,13 @@ class Extractor:
                 f.readline()  # header
                 results = []
                 for line in f:
-                    domain, id, level, url, status, date, _, path = line.split("\t")
+                    domain, level, url, status, date, _, path = line.split("\t")
                     if (
                         (date >= date_start)
                         and (date <= date_end)
                         and (status == "200")
                     ):
-                        results.append([domain, id, level, url, date, path.strip()])
+                        results.append([domain, level, url, date, path.strip()])
         
         # chunking in 1M files
         n = 1000000

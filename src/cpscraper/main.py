@@ -4,6 +4,7 @@ import os
 import sqlite3 as sql
 import sys
 import time
+import typer #TODO: can we just import Typer?
 import webbrowser
 import typer
 from datetime import date as datelib
@@ -18,8 +19,10 @@ from .extractor.extractor import Extractor, FirmBackBoneFileExtractor
 from .scraper.scraper import Scraper
 from .utils.utils import classify_url
 
-HEADLESS = False
+
+
 try:
+    HEADLESS = False
     from tkinter import Tk
     from tkinter import filedialog as fd
 except:
@@ -143,7 +146,7 @@ def init(headless: bool = typer.Option(HEADLESS, help="Run without GUI elements"
 
     if headless == False:
         ask_continue_folder = typer.confirm(
-            "SELECT a source file (.csv) with kvk and url columns \nContinue?\n"
+            "SELECT a source file urls (one url per file, with a header)\nContinue?\n"
         )
         if not ask_continue_folder:
             typer.secho("Initalisation stopped\n", fg=typer.colors.RED)
@@ -371,6 +374,10 @@ def scrape(
         None,
         help="Timeout value (ms) for establishing a connection to remote server",
     ),
+    extract: bool = typer.Option(
+        False,
+        help="Extract files instead of saving HTML",
+    ),
 ) -> None:
     """
     Start caching websites
@@ -390,7 +397,9 @@ def scrape(
         target_folder_path=config.get_target_folder_path(), 
         classifier=classify_url, 
         use_sqlite=config.get_use_database(),
-        sock_connect=sock_connect
+        sock_connect=sock_connect,
+        extract=extract,
+        save_html=not extract,
     )
 
     if complement != None:
@@ -407,8 +416,8 @@ def scrape(
     else:
         with open(config.get_source_file_path(), "r") as f:
             f.readline()
-            urls = [line.split(",") for line in f.readlines() if len(line) > 1]
-            urls = sorted([(url.strip(), kvk.strip(), f"https://www.{url.strip()}/") for url, kvk in urls])
+            
+            urls = [line.strip() for line in f.readlines() if len(line) > 1]
 
         worker.scrape_companies(urls)
 
