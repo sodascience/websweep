@@ -115,8 +115,8 @@ class Crawler:
             # save json to file (right now one big file)
             self.file_res = (
                 self.target_folder_path
-                / "scraped_data"
-                / f"scraped_data_{self.scraper_session_date}.ndjson"
+                / "crawled_data"
+                / f"crawled_data_{self.crawler_session_date}.ndjson"
             )
             Path(self.file_res).parent.mkdir(parents=True, exist_ok=True)
             
@@ -223,14 +223,14 @@ class Crawler:
             connection = sql.connect(self.overview_path)
             cursor = connection.cursor()
             
-            cursor.execute("INSERT OR IGNORE INTO Overview VALUES (?,  ?, ?, ?, ?, ?, ?)", (domain, level, url, status, self.scraper_session_date, date, path))
+            cursor.execute("INSERT OR IGNORE INTO Overview VALUES (?,  ?, ?, ?, ?, ?, ?)", (domain, level, url, status, self.crawler_session_date, date, path))
 
             connection.commit()
             connection.close()
 
         else:
             with open(self.overview_path, "a+") as f:
-                f.write(f"{domain}\t{level}\t{url}\t{status}\t{self.scraper_session_date}\t{date}\t{path}\n")
+                f.write(f"{domain}\t{level}\t{url}\t{status}\t{self.crawler_session_date}\t{date}\t{path}\n")
 
     def __save_to_disk(self, path, contents):
         """
