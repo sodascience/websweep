@@ -19,7 +19,7 @@ Real-World Use Cases
 | Main use case                         | Download full HTML of many (up to 10,000,000) sites | Download specific elements of few websites (e.g. crawl Ebay)  |
 | Intended use                          | Research                                            | Any                                                           |
 | Use as beginner                    | Simple                                              | Complicated                                                   |
-| Processing of HTML                    | After crawling                                      | Typically during crawling                                     |
+| Processing of HTML                    | During or after crawling                            | Typically during crawling                                     |
 | Asynchronous                          |  Yes                                                | Yes                                                           |
 | Speed (consumer laptop/home internet) | 50,000-100,000 pages/hour                           | ?                                                             |
 | JavaScript allowed                    | No                                                  | No (but extensions exist)                                     |
