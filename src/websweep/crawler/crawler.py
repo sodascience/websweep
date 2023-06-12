@@ -193,7 +193,7 @@ class Crawler:
             cursor.execute(
                 """
                 CREATE TABLE IF NOT EXISTS Overview
-                (domain TEXT, level INT, url TEXT, status TEXT, session_date TEXT, scrape_date TEXT, path TEXT, 
+                (domain TEXT, level INT, url TEXT, status TEXT, session_date TEXT, crawl_date TEXT, path TEXT, 
                 UNIQUE (domain, url, status));
                 """
             )
