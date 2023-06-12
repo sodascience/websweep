@@ -52,11 +52,7 @@ jobs:
       if: steps.cached-poetry-dependencies.outputs.cache-hit != 'true'
 
     - name: Run tests
-      run: |
-        poetry run pytest
-        if [ $? -eq 1 ]; then
-          echo "One or more unit tests have failed"
-        fi
+      run: poetry run pytest
 
     # - name: Install dependencies
     #   run: |
