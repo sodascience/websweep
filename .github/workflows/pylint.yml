@@ -21,17 +21,26 @@ jobs:
       with:
         python-version: ${{ matrix.python-version }}
 
-    - name: Install Poetry
-      run: |
-        curl -sSL https://install.python-poetry.org | python3 -
-        export PATH="$HOME/.local/bin:$PATH"
-
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
+        pip install poetry
         pip install flake8
         pip install pytest
-        poetry install --no-root --no-dev
+
+    - name: Configure poetry
+      run: |
+        poetry config virtualenvs.in-project true
+
+    - name: Cache the virtualenv
+      uses: actions/cache@v2
+      with:
+        path: ./.venv
+        key: ${{ runner.os }}-venv-${{ hashFiles('**/poetry.lock') }}
+
+    - name: Install dependencies
+      run: |
+        poetry install
 
     - name: Lint with flake8
       run: |
