@@ -193,7 +193,7 @@ class Crawler:
             cursor.execute(
                 """
                 CREATE TABLE IF NOT EXISTS Overview
-                (domain TEXT, level INT, url TEXT, status TEXT, session_date TEXT, scrape_date TEXT, path TEXT, 
+                (domain TEXT, identifier TEXT, level INT, url TEXT, status TEXT, session_date TEXT, crawl_date TEXT, path TEXT, 
                 UNIQUE (domain, url, status));
                 """
             )
@@ -208,9 +208,9 @@ class Crawler:
             # Check if overview file exists, if not create it
             if not Path(self.overview_path).is_file():
                 with open(self.overview_path, "w") as f:
-                    f.write("domain\tlevel\turl\tstatus\tsession_date\tscrape_date\tpath\n")
+                    f.write("domain\tidentifier\tlevel\turl\tstatus\tsession_date\tscrape_date\tpath\n")
 
-    def __update_overview_file(self, domain, level, url, status, path):
+    def __update_overview_file(self, domain, level, url, identifier, status, path):
 
         date = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         if (":" in url[:6]) and (url[:4] != "http"):  # tel: or mailto:
@@ -223,14 +223,14 @@ class Crawler:
             connection = sql.connect(self.overview_path)
             cursor = connection.cursor()
             
-            cursor.execute("INSERT OR IGNORE INTO Overview VALUES (?,  ?, ?, ?, ?, ?, ?)", (domain, level, url, status, self.crawler_session_date, date, path))
+            cursor.execute("INSERT OR IGNORE INTO Overview VALUES (?, ?, ?, ?, ?, ?, ?, ?)", (domain, identifier, level, url, status, self.crawler_session_date, date, path))
 
             connection.commit()
             connection.close()
 
         else:
             with open(self.overview_path, "a+") as f:
-                f.write(f"{domain}\t{level}\t{url}\t{status}\t{self.crawler_session_date}\t{date}\t{path}\n")
+                f.write(f"{domain}\t{identifier}\t{level}\t{url}\t{status}\t{self.crawler_session_date}\t{date}\t{path}\n")
 
     def __save_to_disk(self, path, contents):
         """
@@ -249,7 +249,7 @@ class Crawler:
         return datetime.datetime.now().strftime("%Y-%m-%d")
 
             
-    async def __fetch_one_url(self, domain, url, level):
+    async def __fetch_one_url(self, domain, url, identifier, level):
         # be nice and wait a bit per url (non blocking)
         self.waits[domain] += 0.1
         await asyncio.sleep(self.waits[domain])
@@ -257,7 +257,7 @@ class Crawler:
         try_number = 0
         while (try_number < 3) and (self.errors_website[domain] < 20):
             if try_number == 0:
-                urls = await self.__fetch_one_url_wrapped(domain, url, level, self.session)
+                urls = await self.__fetch_one_url_wrapped(domain, url, identifier, level, self.session)
             else:
                 await asyncio.sleep(20)
 
@@ -270,7 +270,7 @@ class Crawler:
                                             ttl_dns_cache=0,
                                             force_close=True), #a bit slower but more reliable
                                             timeout=ClientTimeout(total=None, sock_connect=300, sock_read=300)) as session:
-                    urls = await self.__fetch_one_url_wrapped(domain, url, level, session)
+                    urls = await self.__fetch_one_url_wrapped(domain, url, identifier, level, session)
 
             try_number += 1
             
@@ -281,7 +281,7 @@ class Crawler:
 
          
 
-    async def __fetch_one_url_wrapped(self, domain, url, level, session):
+    async def __fetch_one_url_wrapped(self, domain, url, identifier, level, session):
         """
         Fetch one url, save the html, and return the list of urls found on the page.
         """
@@ -326,20 +326,19 @@ class Crawler:
                     else:
                         path = ""
 
-                
-                self.__update_overview_file(domain, level, url, status, path)
+                self.__update_overview_file(domain, level, url, identifier, status, path)
                 
                 return urls
 
         except Exception as e:
             status = "Website not found"
             path = ""
-            self.__update_overview_file(domain, level, url, status, path)
+            self.__update_overview_file(domain, level, url, identifier, status, path)
             self.errors_website[domain] += 1
             return None
             
 
-    async def __fetch_one_base_url(self, domain, url):
+    async def __fetch_one_base_url(self, domain, url, identifier):
         """
         Crawl the base url up max_level. Save html to file.
 
@@ -385,7 +384,7 @@ class Crawler:
                         # check if we can actually download it in the robots
                         if rp.can_fetch(url, "*"):
                             task = asyncio.create_task(
-                                self.__fetch_one_url(domain, url, level=level)
+                                self.__fetch_one_url(domain, url, identifier, level=level)
                             )
                             tasks.append(task)
 
@@ -435,7 +434,7 @@ class Crawler:
                 path = ""
 
                 # save problem with the request for robots.txt (usually page doesn't exist)
-                self.__update_overview_file(domain, 0, url, status, path)
+                self.__update_overview_file(domain, 0, url, identifier, status, path)
 
 
     async def __fetch_all_base_urls(self, records):
@@ -463,12 +462,15 @@ class Crawler:
         ) as self.session:
             # for each url, create asynchronous task to fetch base url and append to tasks list
             for url in records:
+                identifier = url[1]
                 # clean url
-                if not url.startswith('http://') and not url.startswith('https://'):
-                    url = f'https://{url.strip()}'
+                if not url[0].startswith('http://') and not url[0].startswith('https://'):
+                    url = f'https://{url[0].strip()}'
+                else:
+                    url = url[0]
         
                 domain = urlparse(url).netloc.replace("www.", "")
-                task = asyncio.create_task(self.__fetch_one_base_url(domain, url))
+                task = asyncio.create_task(self.__fetch_one_base_url(domain, url, identifier))
                 tasks.append(task)
 
             # create future and group tasks
