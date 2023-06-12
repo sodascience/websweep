@@ -150,10 +150,13 @@ class FileExtractor:
 
         pattern = re.compile(
             r"""
-                                (Fax:\s|
-                                fax:\s|
-                                F:\s|
-                                f:\s)
+                                (Fax:\s{0,4}|
+                                fax:\s{0,4}|
+                                FaxNumber:\s{0,4}|
+                                Faxnummer:\s{0,4}|
+                                f:\s{0,4}|
+                                F:\s{0,4}|)
+                                (&nbsp;|/{0,2})?
                                 ((\+?|\"?)(\d|\s|\(|\)|-){9,22}\d)
                                 """,
             re.VERBOSE | re.DOTALL,

@@ -17,10 +17,12 @@ def test__extract_email():
     assert unit._etxract_email() == ["info@aaschroefpalen.nl"]
 
 def test__extract_fax(): 
-    assert unit._extract_fax() == ["024 - 378 28 98"]
+    assert unit._extract_fax() == ["024 - 378 07 77"]
 
 def test__extract_zipcode(): 
     assert unit._extract_zipcode() == ["6581 KZ"]
 
 def test__extract_address(): 
     assert unit._extract_address() == ["Steiger 10"]
+
+print(test__extract_fax())
