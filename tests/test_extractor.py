@@ -108,4 +108,4 @@ from extractor import Extractor as E
 #         return False
 
 def test_addition():
-    assert 2 + 2 == 4
+    assert 2 + 2 == 5
