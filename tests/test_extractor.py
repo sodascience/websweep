@@ -1,10 +1,12 @@
-# import os
-# import sys
-# from tomlkit import boolean
+import sys
+sys.path.append('../src/websweep/crawler/')
+sys.path.append('../src/websweep/extractor')
+sys.path.append('../src/websweep/utils')
 
-# #This mumbo jumbo is required to properly import the Extractor class, I don't quite understand how it works, but it does
-# sys.path.append( os.path.join( os.path.dirname( __file__ ), '..', 'src', 'websweep', 'extractor' ))
-# from extractor import Extractor as E
+# Import our library
+import crawler
+import extractor
+import utils
 
 # def phones_pass(text) -> boolean: 
 #     aList = ["id", "domain", "level", "url", "date", "path"]
@@ -99,5 +101,5 @@
 #     else:
 #         return False
 
-def test_addition():
-    assert 2 + 2 == 4
+# def test_addition():
+#     assert 2 + 2 == 4
