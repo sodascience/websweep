@@ -34,10 +34,13 @@ jobs:
       with:
         path: .venv
         key: venv-${{ runner.os }}-${{ steps.full-python-version.outputs.version }}-${{ hashFiles('**/poetry.lock') }}
-        
+
     - name: Install dependencies
       run: poetry install
       if: steps.cached-poetry-dependencies.outputs.cache-hit != 'true'
+
+    - name: Run tests
+      run: poetry run pytest
 
     # - name: Install dependencies
     #   run: |
