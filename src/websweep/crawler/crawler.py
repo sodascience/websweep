@@ -115,8 +115,8 @@ class Crawler:
             # save json to file (right now one big file)
             self.file_res = (
                 self.target_folder_path
-                / "crawled_data"
-                / f"crawled_data_{self.crawler_session_date}.ndjson"
+                / "extracted_data"
+                / f"extracted_data_{self.crawler_session_date}.ndjson"
             )
             Path(self.file_res).parent.mkdir(parents=True, exist_ok=True)
             
