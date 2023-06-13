@@ -378,6 +378,10 @@ def crawl(
         False,
         help="Extract files instead of saving HTML",
     ),
+    classification_file: Path = typer.Option(
+        None,
+        help="Use a custom classification file with page title terms (plain .txt with ';' delimitation)",
+    ),
 ) -> None:
     """
     Start caching websites
@@ -395,7 +399,7 @@ def crawl(
 
     worker = Crawler(
         target_folder_path=config.get_target_folder_path(), 
-        classifier=classify_url, 
+        classifier=lambda url, level: classify_url(url, level, classification_file_path=classification_file),
         use_sqlite=config.get_use_database(),
         sock_connect=sock_connect,
         extract=extract,
