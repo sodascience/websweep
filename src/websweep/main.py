@@ -418,10 +418,16 @@ def crawl(
         worker.crawl_complement_base_urls(complement_date)
 
     else:
+        # with open(config.get_source_file_path(), "r") as f:
+        #     f.readline()
+        #     urls = [line.split(",") for line in f.readlines() if len(line) > 1]
+        #     urls = sorted([(url.strip(), custom_id.strip()) for url, custom_id in urls])
+
         with open(config.get_source_file_path(), "r") as f:
             f.readline()
-            
-            urls = [line.strip() for line in f.readlines() if len(line) > 1]
+            lines = [line.split(",") for line in f.readlines() if len(line) > 1]
+            urls = sorted([(line[0].strip(), line[1].strip() if len(line) > 1 else None) for line in lines])
+
 
         worker.crawl_base_urls(urls)
 
