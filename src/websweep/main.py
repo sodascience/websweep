@@ -378,6 +378,10 @@ def crawl(
         False,
         help="Extract files instead of saving HTML",
     ),
+    classification_file: Path = typer.Option(
+        None,
+        help="Use a custom classification file with page title terms (plain .txt with ';' delimitation)",
+    ),
 ) -> None:
     """
     Start caching websites
@@ -395,7 +399,7 @@ def crawl(
 
     worker = Crawler(
         target_folder_path=config.get_target_folder_path(), 
-        classifier=classify_url, 
+        classifier=lambda url, level: classify_url(url, level, classification_file_path=classification_file),
         use_sqlite=config.get_use_database(),
         sock_connect=sock_connect,
         extract=extract,
@@ -414,10 +418,16 @@ def crawl(
         worker.crawl_complement_base_urls(complement_date)
 
     else:
+        # with open(config.get_source_file_path(), "r") as f:
+        #     f.readline()
+        #     urls = [line.split(",") for line in f.readlines() if len(line) > 1]
+        #     urls = sorted([(url.strip(), custom_id.strip()) for url, custom_id in urls])
+
         with open(config.get_source_file_path(), "r") as f:
             f.readline()
-            
-            urls = [line.strip() for line in f.readlines() if len(line) > 1]
+            lines = [line.split(",") for line in f.readlines() if len(line) > 1]
+            urls = sorted([(line[0].strip(), line[1].strip() if len(line) > 1 else None) for line in lines])
+
 
         worker.crawl_base_urls(urls)
 

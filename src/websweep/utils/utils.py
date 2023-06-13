@@ -4,10 +4,11 @@ from pathlib import Path
 from urllib.parse import urlparse
 
 
-def classify_url(url, level):
+def classify_url(url, level, classification_file_path = None):
     """
     Classify url based on level
     """
+
     if level == 0:
         return True
 
@@ -42,10 +43,26 @@ def classify_url(url, level):
     if level == 2:
         # Keep only if it seems important
 
-        regex = re.compile(
-            r"over\-ons|contact|duurzaamheid|index\.php|algemene\-voorwaarden|vacatures|disclaimer|klantenservice|privacy\-policy|cookie\-policy|cookies|cookie|cookie\-beleid|over|overons|blogs|privacyverklaring|about|about\-us",
-            re.IGNORECASE,
-        )
+        if classification_file_path != None:
+            # Open the text file
+            with open(classification_file_path, 'r') as file:
+                # Read the file contents
+                content = file.read()
+
+            # Split the content into delimited items
+            items = content.split(';')
+            items = [item.replace(' ', r'.*').lower() for item in items]
+
+            # Escape special characters and join items into a regex string
+            regex_string = '|'.join(items)
+
+        else:
+            regex_string = r"over\-ons|contact|duurzaamheid|index\.php|algemene\-voorwaarden|vacatures|disclaimer|klantenservice|privacy\-policy|cookie\-policy|cookies|cookie|cookie\-beleid|over|overons|blogs|privacyverklaring|about|about\-us"
+
+        print(regex_string)
+
+
+        regex = re.compile(regex_string, re.IGNORECASE,)
         report_regex = re.compile(r"""
                             financiele.?rapportage|annual.?report|jaarrekening|jaar.?verslag|jaarrapport|boekhouding.?rapportage|boekhouding.?rapport|financial.?performance|investor.?relations|investeerder.?relaties|financial.?results|financial.?statement
                             """, re.VERBOSE | re.IGNORECASE)
