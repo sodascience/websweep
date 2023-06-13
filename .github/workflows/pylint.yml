@@ -7,24 +7,80 @@ on: [push]
 
 jobs:
   build:
-  build:
     runs-on: ubuntu-latest
     strategy:
       matrix:
         python-version: ["3.9"]
+
     steps:
-    - uses: actions/checkout@v3
+    - name: Checkout code
+      uses: actions/checkout@v3
+
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v3
       with:
         python-version: ${{ matrix.python-version }}
-    - name: Install dependencies
+
+    - name: Install pip dependencies
       run: |
         python -m pip install --upgrade pip
         pip install flake8
+
     - name: Lint with flake8
       run: |
         # stop the build if there are Python syntax errors or undefined names
         flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
         # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
         flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+
+    - name: Install and configure Poetry
+      uses: snok/install-poetry@v1
+      with:
+        version: 1.1.13
+        virtualenvs-create: true
+        virtualenvs-in-project: true
+
+    - name: Set up cache
+      uses: actions/cache@v2
+      id: cached-poetry-dependencies
+      with:
+        path: .venv
+        key: venv-${{ runner.os }}-${{ steps.full-python-version.outputs.version }}-${{ hashFiles('**/poetry.lock') }}
+
+    - name: Install Poetry dependencies
+      run: poetry install
+      if: steps.cached-poetry-dependencies.outputs.cache-hit != 'true'
+
+    - name: Run tests
+      run: poetry run pytest
+
+    # - name: Install dependencies
+    #   run: |
+    #     python -m pip install --upgrade pip
+    #     pip install poetry
+    #     pip install flake8
+    #     pip install pytest
+
+    # - name: Configure poetry
+    #   run: |
+    #     poetry config virtualenvs.in-project true
+
+    # - name: Cache the virtualenv
+    #   uses: actions/cache@v2
+    #   with:
+    #     path: ./.venv
+    #     key: ${{ runner.os }}-venv-${{ hashFiles('**/poetry.lock') }}
+
+    # - name: Install dependencies
+    #   run: |
+    #     poetry install
+
+    # - name: Lint with flake8
+    #   run: |
+    #     # stop the build if there are Python syntax errors or undefined names
+    #     flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+    #     # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
+    #     flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+
+    # - name: Run tests
+    #   run: pytest tests/
