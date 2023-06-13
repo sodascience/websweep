@@ -157,14 +157,15 @@ class FileExtractor:
                                 f:\s{0,4}|
                                 F:\s{0,4}|)
                                 (&nbsp;|/{0,2})?
+                                (?<!\S)
                                 ((\+?|\"?)(\d|\s|\(|\)|-){9,22}\d)
+                                (?!\d)
                                 """,
             re.VERBOSE | re.DOTALL,
         )
         result_list = set(re.findall(pattern, self.text))
-        fax = {item[1] for item in result_list}
-
-        return list(fax)
+        faxs = [item[2] for item in result_list]
+        return faxs
 
     def _extract_zipcode(self) -> list:
         """
