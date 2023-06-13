@@ -14,7 +14,7 @@ def test__extract_phone():
     assert unit._extract_phone() == ["024 - 378 28 88"]
     
 def test__extract_email(): 
-    assert unit._etxract_email() == ["info@aaschroefpalen.nl"]
+    assert unit._extract_email() == ["info@aaschroefpalen.nl"]
 
 def test__extract_fax(): 
     assert unit._extract_fax() == ['024 - 378 28 88', '024 - 378 07 77'] or ['024 - 378 07 77', '024 - 378 28 88']
