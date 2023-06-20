@@ -24,5 +24,3 @@ def test__extract_zipcode():
 
 def test__extract_address(): 
     assert unit._extract_address() == ["Steiger 10"]
-
-print(test__extract_fax())
