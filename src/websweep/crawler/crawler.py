@@ -17,6 +17,8 @@ import ndjson
 import http.cookies
 import os
 import re
+import shutil
+import zipfile
 import sqlite3 as sql
 from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
 from pathlib import Path
@@ -172,8 +174,6 @@ class Crawler:
                 writer_res.writerow(json_dict)
 
         return urls
-
-        
 
     def __create_overview_file(self):
         """
@@ -357,7 +357,7 @@ class Crawler:
 
                 # get list of dates when url was crawled
                 # TODO: threshold variable
-                sourcepath = f'data/crawled_data/{domain}/{clean_url(url)}'
+                sourcepath = f'crawled_data/{domain}/{clean_url(url)}'
                 if Path(sourcepath).exists():
                     crawl_dates = [
                         datetime.datetime.strptime(
@@ -425,6 +425,19 @@ class Crawler:
 
                     # reset waits for next level
                     self.waits[domain] = 0
+
+                # zip the folder
+                base_url_folder = self.target_folder_path / "crawled_data" / f'{domain}'
+                zip_url_folder = self.target_folder_path / "crawled_data" / f'{domain}.zip'
+
+                zf = zipfile.ZipFile(zip_url_folder, "w", zipfile.ZIP_DEFLATED, allowZip64=True)
+                for dirname, subdirs, files in os.walk(base_url_folder):
+                    for filename in files:
+                        file_path = os.path.join(dirname, filename)
+                        arcname = os.path.relpath(file_path, base_url_folder)
+                        zf.write(file_path, arcname)
+                zf.close()
+                shutil.rmtree(base_url_folder)
 
                 self.waits.pop(domain)
                 self.errors_website.pop(domain)
