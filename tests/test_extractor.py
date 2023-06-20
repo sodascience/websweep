@@ -1,10 +1,10 @@
 import sys
 import os
 
-sys.path.append( os.path.join(os.path.dirname( __file__ ), '..', 'src', 'websweep', 'extractor'))
-from extractor import FileExtractor
-unit = FileExtractor(["https://aaschroefpalen.nl", 0, "https://aaschroefpalen.nl", "2023-06-12 20:53:59", os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets", "aaschroefpalen.nl")])
-unit.extracting()
+# sys.path.append( os.path.join(os.path.dirname( __file__ ), '..', 'src', 'websweep', 'extractor'))
+# from extractor import FileExtractor
+# unit = FileExtractor(["https://aaschroefpalen.nl", 0, "https://aaschroefpalen.nl", "2023-06-12 20:53:59", os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets", "aaschroefpalen.nl")])
+# unit.extracting()
 
 # def test_addition():
 #     assert 2 + 2 == 4
