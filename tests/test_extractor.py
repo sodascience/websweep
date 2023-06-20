@@ -6,8 +6,8 @@ import os
 # unit = FileExtractor(["https://aaschroefpalen.nl", 0, "https://aaschroefpalen.nl", "2023-06-12 20:53:59", os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets", "aaschroefpalen.nl")])
 # unit.extracting()
 
-# def test_addition():
-#     assert 2 + 2 == 4
+def test_addition():
+    assert 2 + 2 == 4
 
 # def test__extract_phone(): 
 #     assert unit._extract_phone() == ["024 - 378 28 88"]
