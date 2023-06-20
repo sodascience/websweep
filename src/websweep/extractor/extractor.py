@@ -12,6 +12,7 @@ from shutil import rmtree
 from urllib.parse import urljoin
 from xmlrpc.client import Boolean
 
+import zipfile
 import ndjson
 import tqdm
 import typer
@@ -54,15 +55,18 @@ class FileExtractor:
         # that are callable (functions) and start with "_extract_", but exclude methods
         # defined in the FileExtractor class (dir(FileExtractor)), meaning that only the custom child methods are included
         self.child_methods = [method for method in dir(self) if callable(getattr(self, method)) and method.startswith('_extract_') and method not in [method for method in dir(FileExtractor) if callable(getattr(FileExtractor, method)) and method.startswith('_extract_')]]
-        
+
         if isinstance(info[-1], BeautifulSoup):
             self.soup = info[-1]
             self.metadata["path"] = ""
         else:
             # Read HTML to parse
-            with open(self.metadata["path"], "rb") as file:
-                self.text = file.read().decode("utf-8", "ignore")
-                self.soup = BeautifulSoup(self.text, "lxml")
+            next_slash = self.metadata["path"].find("/", self.metadata["path"].find("/crawled_data/") + len("/crawled_data/"))
+            with zipfile.ZipFile(self.metadata["path"][:next_slash] + ".zip", 'r') as zip_file:
+                with zip_file.open(self.metadata["path"][next_slash + 1:]) as file:
+                    self.text = file.read().decode("utf-8", "ignore")
+                    self.soup = BeautifulSoup(self.text, "lxml")
+
 
     def extracting(self):
         # Get metadata
