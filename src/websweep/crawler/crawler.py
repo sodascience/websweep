@@ -430,7 +430,7 @@ class Crawler:
                 base_url_folder = self.target_folder_path / "crawled_data" / f'{domain}'
                 zip_url_folder = self.target_folder_path / "crawled_data" / f'{domain}.zip'
 
-                zf = zipfile.ZipFile(zip_url_folder, "w", zipfile.ZIP_DEFLATED, allowZip64=True)
+                zf = zipfile.ZipFile(zip_url_folder, "w", zipfile.ZIP_LZMA, allowZip64=True)
                 for dirname, subdirs, files in os.walk(base_url_folder):
                     for filename in files:
                         file_path = os.path.join(dirname, filename)
