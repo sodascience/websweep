@@ -43,6 +43,7 @@ class FileExtractor:
         self.metadata = dict()
         (
             self.metadata["domain"],
+            self.metadata["identifier"],
             self.metadata["level"],
             self.metadata["website"],
             self.metadata["date"],
@@ -361,12 +362,12 @@ class Extractor:
         self.end_date = end_date
 
     def _create_results(self, path):
-        [domain, level, url, date, path] = path
+        [domain, identifier, level, url, date, path] = path
 
         if self.file_extractor != None:
-            metadata = self.file_extractor([domain, level, url, date, path]).extracting()
+            metadata = self.file_extractor([domain, identifier, level, url, date, path]).extracting()
         else:
-            metadata = FileExtractor([domain, level, url, date, path]).extracting()
+            metadata = FileExtractor([domain, identifier, level, url, date, path]).extracting()
 
         return metadata
 
@@ -380,7 +381,7 @@ class Extractor:
             )
             cursor = connection.cursor()
             results = cursor.execute(
-                f"""SELECT domain, level, url, session_date, path FROM Overview 
+                f"""SELECT domain, identifier, level, url, session_date, path FROM Overview 
                             WHERE (session_date >= '{self.start_date}') 
                             AND (session_date <= '{self.end_date}') 
                             AND (status == "200")"""
@@ -391,13 +392,13 @@ class Extractor:
                 f.readline()  # header
                 results = []
                 for line in f:
-                    domain, level, url, status, date, _, path = line.split("\t")
+                    domain, identifier, level, url, status, date, _, path = line.split("\t")
                     if (
                         (date >= self.start_date)
                         and (date <= self.end_date)
                         and (status == "200")
                     ):
-                        results.append([domain, level, url, date, path.strip()])
+                        results.append([domain, identifier, level, url, date, path.strip()])
         
         # chunking in 1M files
         n = 1000000

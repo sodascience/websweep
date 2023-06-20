@@ -59,9 +59,6 @@ def classify_url(url, level, classification_file_path = None):
         else:
             regex_string = r"over\-ons|contact|duurzaamheid|index\.php|algemene\-voorwaarden|vacatures|disclaimer|klantenservice|privacy\-policy|cookie\-policy|cookies|cookie|cookie\-beleid|over|overons|blogs|privacyverklaring|about|about\-us"
 
-        print(regex_string)
-
-
         regex = re.compile(regex_string, re.IGNORECASE,)
         report_regex = re.compile(r"""
                             financiele.?rapportage|annual.?report|jaarrekening|jaar.?verslag|jaarrapport|boekhouding.?rapportage|boekhouding.?rapport|financial.?performance|investor.?relations|investeerder.?relaties|financial.?results|financial.?statement
