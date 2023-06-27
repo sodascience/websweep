@@ -1,0 +1,12 @@
+{
+  "url": 
+  {
+    "url_regex": "over-ons|contact|duurzaamheid|index\\.php|algemene-voorwaarden|vacatures|disclaimer|klantenservice|privacy-policy|cookie-policy|cookies|cookie|cookie-beleid|over|overons|blogs|privacyverklaring|about|about-us",
+    "url_keywords": []
+  },
+  "report": 
+  {
+    "report_regex": "financiele.?rapportage|annual.?report|jaarrekening|jaar.?verslag|jaarrapport|boekhouding.?rapportage|boekhouding.?rapport|financial.?performance|investor.?relations|investeerder.?relaties|financial.?results|financial.?statement",
+    "report_keywords": []
+  }
+}

@@ -2,9 +2,10 @@ import re
 import sqlite3 as sql
 from pathlib import Path
 from urllib.parse import urlparse
+import json
 
 
-def classify_url(url, level, classification_file_path = None):
+def classify_url(url, level, classification_file_path = None) -> bool:
     """
     Classify url based on level
     """
@@ -13,8 +14,8 @@ def classify_url(url, level, classification_file_path = None):
         return True
 
     # Taking the path (next step) will remove this part, we need to catch it before
-    regex = re.compile(r"^mailto:|^tel:", re.IGNORECASE)
-    if re.search(regex, url):
+    url_regex = re.compile(r"^mailto:|^tel:", re.IGNORECASE)
+    if re.search(url_regex, url):
         return False
 
     # Detect annual report, download them!
@@ -24,11 +25,11 @@ def classify_url(url, level, classification_file_path = None):
     url = urlparse(url).path
 
     # Don't download these
-    regex = re.compile(
+    url_regex = re.compile(
         r"png$|jpg$|jpeg$|pdf$|collections|email\-protection|product|aanbod|assortiment|voorraad|koop|shop|artikelen|merken|wintersport|bouw|zoeken|search",
         re.IGNORECASE,
     )
-    if re.search(regex, url):
+    if re.search(url_regex, url):
         return False
     # Maybe if there are many links in one level we can skip it
 
@@ -41,30 +42,34 @@ def classify_url(url, level, classification_file_path = None):
         else:
             return True
     if level == 2:
-        # Keep only if it seems important
 
-        if classification_file_path != None:
-            # Open the text file
-            with open(classification_file_path, 'r') as file:
-                # Read the file contents
-                content = file.read()
+        if classification_file_path == None:
+            classification_file_path = Path(__file__).with_name('default_regex.json')
 
-            # Split the content into delimited items
-            items = content.split(';')
-            items = [item.replace(' ', r'.*').lower() for item in items]
+        with open(classification_file_path, 'r') as file:
+            content = file.read()
+        data = json.loads(content)
 
-            # Escape special characters and join items into a regex string
-            regex_string = '|'.join(items)
+        url_keywords = [keyword.replace(' ', r'.*').lower() for keyword in data['url']['url_keywords']]
+        url_keywords = [keyword.strip() for keyword in url_keywords]
+        url_regex = data['url']['url_regex']
+        if url_keywords and url_regex != "":
+            url_regex += '|' + '|'.join(url_keywords)
+        elif url_regex == "":
+            url_regex = '|'.join(url_keywords)
 
-        else:
-            regex_string = r"over\-ons|contact|duurzaamheid|index\.php|algemene\-voorwaarden|vacatures|disclaimer|klantenservice|privacy\-policy|cookie\-policy|cookies|cookie|cookie\-beleid|over|overons|blogs|privacyverklaring|about|about\-us"
+        report_keywords = [keyword.replace(' ', r'.*').lower() for keyword in data['report']['report_keywords']]
+        report_keywords = [keyword.strip() for keyword in report_keywords]
+        report_regex = data['report']['report_regex']
+        if report_keywords and report_regex != "":
+            report_regex += '|' + '|'.join(report_keywords)
+        elif report_regex == "":
+            report_regex = '|'.join(report_keywords)
 
-        regex = re.compile(regex_string, re.IGNORECASE,)
-        report_regex = re.compile(r"""
-                            financiele.?rapportage|annual.?report|jaarrekening|jaar.?verslag|jaarrapport|boekhouding.?rapportage|boekhouding.?rapport|financial.?performance|investor.?relations|investeerder.?relaties|financial.?results|financial.?statement
-                            """, re.VERBOSE | re.IGNORECASE)
+        url_regex = re.compile(url_regex, re.IGNORECASE,)
+        report_regex = re.compile(report_regex,re.IGNORECASE)
         
-        if re.search(regex, url) or re.search(report_regex, url):
+        if re.search(url_regex, url) or re.search(report_regex, url):
             return True
         else:
             return False

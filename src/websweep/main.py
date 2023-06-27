@@ -406,23 +406,24 @@ def crawl(
         save_html=not extract,
     )
 
-    if complement != None:
+    if classification_file != None and not Path.exists(classification_file):
+        typer.secho(
+            f"Given classification file does not exist, Crawler was terminated",
+            fg=typer.colors.RED,
+        )
+        return
+    elif complement != None:
         try:
             complement_date = datetime.date.fromisoformat(complement)
         except:
             typer.secho(
-            f"Given date does not conform to the YYYY-MM-DD format, Crawler was terminated",
-            fg=typer.colors.RED,
-        )
+                f"Given date does not conform to the YYYY-MM-DD format, Crawler was terminated",
+                fg=typer.colors.RED,
+            )
+            return
 
         worker.crawl_complement_base_urls(complement_date)
-
     else:
-        # with open(config.get_source_file_path(), "r") as f:
-        #     f.readline()
-        #     urls = [line.split(",") for line in f.readlines() if len(line) > 1]
-        #     urls = sorted([(url.strip(), custom_id.strip()) for url, custom_id in urls])
-
         with open(config.get_source_file_path(), "r") as f:
             f.readline()
             lines = [line.split(",") for line in f.readlines() if len(line) > 1]
