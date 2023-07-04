@@ -33,12 +33,6 @@ jobs:
         # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
         flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
 
-    - name: Cache Poetry installation
-      uses: actions/cache@v2
-      with:
-        path: ~/.local
-        key: poetry-1.1.12-0
-
     - name: Install Poetry
       uses: snok/install-poetry@v1
       with:
@@ -46,16 +40,8 @@ jobs:
         virtualenvs-create: true
         virtualenvs-in-project: true
 
-    - name: Cache dependencies
-      id: cache-deps
-      uses: actions/cache@v2
-      with:
-        path: .venv
-        key: pydeps-${{ hashFiles('**/poetry.lock') }}
-
     - name: Install dependencies 
       run: poetry install --no-interaction --no-root
-      if: steps.cache-deps.outputs.cache-hit != 'true'
 
     - name: Install project
       run: poetry install --no-interaction
