@@ -4,6 +4,16 @@ from pathlib import Path
 from urllib.parse import urlparse
 import json
 
+def create_regex_pattern(keywords, regex):
+    keywords = [keyword.replace(' ', r'.*').lower() for keyword in keywords]
+    keywords = [keyword.strip() for keyword in keywords]
+
+    if keywords and regex != "":
+        regex += '|' + '|'.join(keywords)
+    elif regex == "":
+        regex = '|'.join(keywords)
+
+    return re.compile(regex, re.IGNORECASE)
 
 def classify_url(url, level, classification_file_path = None) -> bool:
     """
@@ -24,12 +34,17 @@ def classify_url(url, level, classification_file_path = None) -> bool:
     # Keep the path only (avoid to reject websites such as "awesomeshop.nl/important_information")
     url = urlparse(url).path
 
+    # Load the default regex expressions
+    if classification_file_path == None:
+            classification_file_path = Path(__file__).with_name('default_regex.json')
+
+    with open(classification_file_path, 'r') as file:
+        content = file.read()
+    default_regex_data = json.loads(content)
+
     # Don't download these
-    url_regex = re.compile(
-        r"png$|jpg$|jpeg$|pdf$|collections|email\-protection|product|aanbod|assortiment|voorraad|koop|shop|artikelen|merken|wintersport|bouw|zoeken|search",
-        re.IGNORECASE,
-    )
-    if re.search(url_regex, url):
+    negative_regex = create_regex_pattern(default_regex_data['negative']['negative_keywords'], default_regex_data['negative']['negative_regex'])
+    if re.search(negative_regex, url):
         return False
     # Maybe if there are many links in one level we can skip it
 
@@ -43,31 +58,8 @@ def classify_url(url, level, classification_file_path = None) -> bool:
             return True
     if level == 2:
 
-        if classification_file_path == None:
-            classification_file_path = Path(__file__).with_name('default_regex.json')
-
-        with open(classification_file_path, 'r') as file:
-            content = file.read()
-        data = json.loads(content)
-
-        url_keywords = [keyword.replace(' ', r'.*').lower() for keyword in data['url']['url_keywords']]
-        url_keywords = [keyword.strip() for keyword in url_keywords]
-        url_regex = data['url']['url_regex']
-        if url_keywords and url_regex != "":
-            url_regex += '|' + '|'.join(url_keywords)
-        elif url_regex == "":
-            url_regex = '|'.join(url_keywords)
-
-        report_keywords = [keyword.replace(' ', r'.*').lower() for keyword in data['report']['report_keywords']]
-        report_keywords = [keyword.strip() for keyword in report_keywords]
-        report_regex = data['report']['report_regex']
-        if report_keywords and report_regex != "":
-            report_regex += '|' + '|'.join(report_keywords)
-        elif report_regex == "":
-            report_regex = '|'.join(report_keywords)
-
-        url_regex = re.compile(url_regex, re.IGNORECASE,)
-        report_regex = re.compile(report_regex,re.IGNORECASE)
+        url_regex = create_regex_pattern(default_regex_data['url']['url_keywords'], default_regex_data['url']['url_regex'])
+        report_regex = create_regex_pattern(default_regex_data['report']['report_keywords'], default_regex_data['report']['report_regex'])
         
         if re.search(url_regex, url) or re.search(report_regex, url):
             return True
