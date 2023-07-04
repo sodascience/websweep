@@ -69,11 +69,11 @@ to learn, inspire, and create. Any contributions you make are **greatly
 appreciated**.
 
 Please refer to the
-[DEVELOPMENT](https://github.com/sodascience/corporate_scraper/blob/main/DEVELOPMENT.md)
+[DEVELOPMENT](https://github.com/sodascience/websweep/blob/main/DEVELOPMENT.md)
 file for more information on how to run the library without installing and how to install it from source.
 
 Please refer to the
-[CONTRIBUTING](https://github.com/sodascience/corporate_scraper/blob/main/CONTRIBUTING.md)
+[CONTRIBUTING](https://github.com/sodascience/websweep/blob/main/CONTRIBUTING.md)
 file for more information on issues and pull requests.
 
 ## License and citation
