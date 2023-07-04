@@ -1,4 +1,9 @@
 {
+  "negative": 
+  {
+    "negative_regex": "png$|jpg$|jpeg$|pdf$|collections|email-protection|product|aanbod|assortiment|voorraad|koop|shop|artikelen|merken|wintersport|bouw|zoeken|search",
+    "negative_keywords": []
+  },
   "url": 
   {
     "url_regex": "over-ons|contact|duurzaamheid|index\\.php|algemene-voorwaarden|vacatures|disclaimer|klantenservice|privacy-policy|cookie-policy|cookies|cookie|cookie-beleid|over|overons|blogs|privacyverklaring|about|about-us",
