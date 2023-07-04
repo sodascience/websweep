@@ -124,7 +124,7 @@ class FileExtractor:
             re.VERBOSE | re.DOTALL,
         )
         # Phone numbers can be indicated by a variety of different ways, this regex tries to incorporate all of those as a possibillity
-        result_list = set(re.findall(pattern, self.soup.text))
+        result_list = set(re.findall(pattern, str(self.soup)))
         phone = {item[2] for item in result_list}
 
         return list(phone)
@@ -143,7 +143,7 @@ class FileExtractor:
                         )""",
             re.VERBOSE,
         )
-        self.email = set(re.findall(pattern, self.soup.text))
+        self.email = set(re.findall(pattern, str(self.soup)))
         emails = [email[:-1] if email[-1] == "." else email for email in self.email]
 
         return emails
@@ -169,7 +169,7 @@ class FileExtractor:
                                 """,
             re.VERBOSE | re.DOTALL,
         )
-        result_list = set(re.findall(pattern, self.soup.text))
+        result_list = set(re.findall(pattern, str(self.soup)))
         faxs = [item[2] for item in result_list]
         return faxs
 
