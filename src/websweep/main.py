@@ -20,8 +20,6 @@ from .extractor.websweep_extractor import FirmBackBoneFileExtractor
 from .crawler.crawler import Crawler
 from .utils.utils import classify_url
 
-
-
 try:
     HEADLESS = False
     from tkinter import Tk
