@@ -3,7 +3,7 @@ The package can also be used as a script without installation.
 When using windows, remember to use cd \ followed by the drive letter to change drives
 
 ```bash
-cd ~/home/[wherever the folder is located]/corporate_scraper/src
+cd ~/home/[wherever the folder is located]/websweep/src
 $ python(3) -m websweep init
 ```
 
