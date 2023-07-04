@@ -12,8 +12,6 @@ from shutil import rmtree
 from urllib.parse import urljoin
 from xmlrpc.client import Boolean
 
-import json
-import gzip
 import orjsonl
 import zipfile
 import ndjson
