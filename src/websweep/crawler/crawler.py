@@ -17,6 +17,7 @@ import ndjson
 import http.cookies
 import os
 import re
+import orjsonl
 import shutil
 import zipfile
 import sqlite3 as sql
@@ -118,7 +119,7 @@ class Crawler:
             self.file_res = (
                 self.target_folder_path
                 / "extracted_data"
-                / f"extracted_data_{self.crawler_session_date}.ndjson"
+                / f"extracted_data_{self.crawler_session_date}.ndjson.zip"
             )
             Path(self.file_res).parent.mkdir(parents=True, exist_ok=True)
             
@@ -127,7 +128,7 @@ class Crawler:
         # print("Execution value:", exc_value)
         # print("Traceback:", traceback)
 
-    def get_urls(self, r, url, level):
+    def get_urls(self, r, url, level, identifier):
         """
         Parse code and return content and urls. Defined it here to be able to pickle it and process it in a thread pool.
         """
@@ -165,13 +166,11 @@ class Crawler:
         if self.extractor_unit is not None:
             date = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             try:
-                json_dict = self.extractor_unit._create_results([base_url, level, url, date, soup])
+                json_dict = self.extractor_unit._create_results([base_url, identifier, level, url, date, soup])
             except Exception as e:
                 json_dict = {"domain": base_url, "website": url, "date": date, "path": "Error extracting"}
 
-            with open(self.file_res, "a+", encoding="UTF-8") as f_res:
-                writer_res = ndjson.writer(f_res, ensure_ascii=False)
-                writer_res.writerow(json_dict)
+            orjsonl.append(self.file_res, [json_dict], compression_level = 9, compression_format = "gz")
 
         return urls
 
@@ -280,7 +279,6 @@ class Crawler:
         return []
 
          
-
     async def __fetch_one_url_wrapped(self, domain, url, identifier, level, session):
         """
         Fetch one url, save the html, and return the list of urls found on the page.
@@ -310,7 +308,7 @@ class Crawler:
 
                     # parse the contents and extract URLS
                     urls = await self.loop.run_in_executor(
-                        self.cpu_executor, functools.partial(self.get_urls, r, url, level))
+                        self.cpu_executor, functools.partial(self.get_urls, r, url, level, identifier))
                     
 
                     if self.save_html:
@@ -426,21 +424,22 @@ class Crawler:
                     # reset waits for next level
                     self.waits[domain] = 0
 
-                # zip the folder
-                base_url_folder = self.target_folder_path / "crawled_data" / f'{domain}'
-                zip_url_folder = self.target_folder_path / "crawled_data" / f'{domain}.zip'
+                if self.extractor_unit is None:
+                    # zip the folder
+                    base_url_folder = self.target_folder_path / "crawled_data" / f'{domain}'
+                    zip_url_folder = self.target_folder_path / "crawled_data" / f'{domain}.zip'
 
-                zf = zipfile.ZipFile(zip_url_folder, "w", zipfile.ZIP_LZMA, allowZip64=True)
-                for dirname, subdirs, files in os.walk(base_url_folder):
-                    for filename in files:
-                        file_path = os.path.join(dirname, filename)
-                        arcname = os.path.relpath(file_path, base_url_folder)
-                        zf.write(file_path, arcname)
-                zf.close()
-                shutil.rmtree(base_url_folder)
+                    zf = zipfile.ZipFile(zip_url_folder, "w", zipfile.ZIP_LZMA, allowZip64=True)
+                    for dirname, subdirs, files in os.walk(base_url_folder):
+                        for filename in files:
+                            file_path = os.path.join(dirname, filename)
+                            arcname = os.path.relpath(file_path, base_url_folder)
+                            zf.write(file_path, arcname)
+                    zf.close()
+                    shutil.rmtree(base_url_folder)
 
-                self.waits.pop(domain)
-                self.errors_website.pop(domain)
+                    self.waits.pop(domain)
+                    self.errors_website.pop(domain)
 
             except Exception as e:
                 status = "Website not found"                  

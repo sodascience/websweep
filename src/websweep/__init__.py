@@ -9,6 +9,6 @@ __status__ = "development"
 ) = range(3)
 
 ERRORS = {
-    DIR_ERROR: "Config directory error",
-    FILE_ERROR: "Config file error",
+    DIR_ERROR: "Config directory was not found or could not be created",
+    FILE_ERROR: "Config file could not be created",
 }
