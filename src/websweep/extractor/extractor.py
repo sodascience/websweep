@@ -12,6 +12,9 @@ from shutil import rmtree
 from urllib.parse import urljoin
 from xmlrpc.client import Boolean
 
+import json
+import gzip
+import orjsonl
 import zipfile
 import ndjson
 import tqdm
@@ -325,6 +328,19 @@ class Extractor:
                         and (status == "200")
                     ):
                         results.append([domain, identifier, level, url, date, path.strip()])
+
+        # results_folder = (
+        #         self.target_folder_path
+        #         / "extracted_data"
+        #         / ("extracted_data")
+        #     )
+        # Path(results_folder).mkdir(parents=True, exist_ok=True)
+        # reports_folder = (
+        #         self.target_folder_path
+        #         / "extracted_data"
+        #         / ("annual_reports")
+        #     )
+        # Path(reports_folder).mkdir(parents=True, exist_ok=True)
         
         # chunking in 1M files
         n = 1000000
@@ -340,35 +356,31 @@ class Extractor:
                         / (
                             "extracted_data_"
                             + str(datelib.today())
-                            + f"_{i}-{i+n}.ndjson"
+                            + f"_{i}-{i+n}.ndjson.zip"
                         )
                     )
                     Path(file_res).parent.mkdir(parents=True, exist_ok=True)
+
                     file_rep = (
                         self.target_folder_path
                         / "extracted_data"
-                        / ("annual_report_" + str(datelib.today()) + ".ndjson")
+                        / ("annual_report_" 
+                           + str(datelib.today()) 
+                           + ".ndjson.zip")
                     )
                     Path(file_rep).parent.mkdir(parents=True, exist_ok=True)
-                    with open(file_res, "w+", encoding="UTF-8") as f_res, open(
-                        file_rep, "w+", encoding="UTF-8"
-                    ) as f_rep:
-                        writer_res = ndjson.writer(f_res, ensure_ascii=False)
-                        writer_rep = ndjson.writer(f_rep, ensure_ascii=False)
 
+                    for json_dict in pool.imap_unordered(self._create_results, results[i : i + n]):
+                        orjsonl.append(file_res, [json_dict], compression_level = 9, compression_format = "gz")
+                        
+                        try:
+                            if json_dict["annual_report"] != []:
+                                orjsonl.append(file_rep, [json_dict["annual_report"]], compression_level = 9, compression_format = "gz")
+                        except:
+                            pass
 
-                        for json_dict in pool.imap_unordered(
-                            self._create_results, results[i : i + n]
-                        ):
-
-                            writer_res.writerow(json_dict)
-                            try:
-                                if json_dict["annual_report"] != []:
-                                    writer_rep.writerow(json_dict["annual_report"])
-                            except:
-                                pass
-
-                            pbar.update()
+                        pbar.update()
+                        
 
         if self.extractor_delete_files:
             # Loop through all subdirectories in the given folder
