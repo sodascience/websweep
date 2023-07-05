@@ -119,7 +119,7 @@ class Crawler:
             self.file_res = (
                 self.target_folder_path
                 / "extracted_data"
-                / f"extracted_data_{self.crawler_session_date}.ndjson.zip"
+                / f"extracted_data_{self.crawler_session_date}.ndjson"
             )
             Path(self.file_res).parent.mkdir(parents=True, exist_ok=True)
             
@@ -170,7 +170,7 @@ class Crawler:
             except Exception as e:
                 json_dict = {"domain": base_url, "website": url, "date": date, "path": "Error extracting"}
 
-            orjsonl.append(self.file_res, [json_dict], compression_level = 9, compression_format = "gz")
+            orjsonl.append(self.file_res, [json_dict])
 
         return urls
 
