@@ -10,7 +10,7 @@ def test_addition():
     assert 2 + 2 == 4
 
 def test__extract_phone(): 
-    assert unit._extract_phone() == ["024 - 378 28 88"]
+    assert unit._extract_phone() == ["+31243782888"]
     
 def test__extract_email(): 
     assert unit._extract_email() == ["info@aaschroefpalen.nl"]
