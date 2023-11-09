@@ -370,7 +370,7 @@ def crawl(
         help="Complement the folder with failed pages, takes the crawl date as argument",
     ),
     sock_connect: int = typer.Option(
-        None,
+        120,
         help="Timeout value (ms) for establishing a connection to remote server",
     ),
     extract: bool = typer.Option(
