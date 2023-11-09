@@ -398,20 +398,20 @@ def crawl(
 
     worker = Crawler(
         target_folder_path=config.get_target_folder_path(), 
-        classifier=lambda url, level: classify_url(url, level, classification_file_path=classification_file),
+        classification_file_path=classification_file,
         use_sqlite=config.get_use_database(),
         sock_connect=sock_connect,
         extract=extract,
         save_html=not extract,
     )
 
-    if classification_file != None and not Path.exists(classification_file):
+    if classification_file is not None and not Path.exists(classification_file):
         typer.secho(
             f"Given classification file does not exist, Crawler was terminated",
             fg=typer.colors.RED,
         )
         return
-    elif complement != None:
+    elif complement is not None:
         try:
             complement_date = datetime.date.fromisoformat(complement)
         except:
