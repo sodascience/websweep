@@ -414,6 +414,7 @@ def crawl(
     elif complement is not None:
         try:
             complement_date = datetime.date.fromisoformat(complement)
+            worker.crawl_complement_base_urls(complement_date)
         except:
             typer.secho(
                 f"Given date does not conform to the YYYY-MM-DD format, Crawler was terminated",
@@ -421,7 +422,7 @@ def crawl(
             )
             return
 
-        worker.crawl_complement_base_urls(complement_date)
+        
     else:
         with open(config.get_source_file_path(), "r") as f:
             f.readline()
