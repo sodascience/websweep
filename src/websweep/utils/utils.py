@@ -35,7 +35,7 @@ def classify_url(url, level, classification_file_path = None) -> bool:
     url = urlparse(url).path
 
     # Load the default regex expressions
-    if classification_file_path == None:
+    if classification_file_path is None:
             classification_file_path = Path(__file__).with_name('default_regex.json')
 
     with open(classification_file_path, 'r') as file:
