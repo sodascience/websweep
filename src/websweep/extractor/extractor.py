@@ -354,7 +354,7 @@ class Extractor:
                         / (
                             "extracted_data_"
                             + str(datelib.today())
-                            + f"_{i}-{i+n}.ndjson.zip"
+                            + f"_{i}-{i+n}.ndjson"
                         )
                     )
                     Path(file_res).parent.mkdir(parents=True, exist_ok=True)
@@ -364,16 +364,16 @@ class Extractor:
                         / "extracted_data"
                         / ("annual_report_" 
                            + str(datelib.today()) 
-                           + ".ndjson.zip")
+                           + ".ndjson")
                     )
                     Path(file_rep).parent.mkdir(parents=True, exist_ok=True)
 
                     for json_dict in pool.imap_unordered(self._create_results, results[i : i + n]):
-                        orjsonl.append(file_res, [json_dict], compression_level = 9, compression_format = "gz")
+                        orjsonl.append(file_res, [json_dict])#, compression_level = 9, compression_format = "gz")
                         
                         try:
                             if json_dict["annual_report"] != []:
-                                orjsonl.append(file_rep, [json_dict["annual_report"]], compression_level = 9, compression_format = "gz")
+                                orjsonl.append(file_rep, [json_dict["annual_report"]])# compression_level = 9, compression_format = "gz")
                         except:
                             pass
 
