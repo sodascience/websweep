@@ -38,10 +38,10 @@ http.cookies._is_legal_key = lambda _: True
 
 try:
     from extractor import Extractor
-    from utils import clean_url
+    from utils import clean_url, set_regex, classify_url
 except:
     from ..extractor.extractor import Extractor
-    from ..utils.utils import clean_url
+    from ..utils.utils import clean_url, set_regex, classify_url
 
 class Crawler:
     def __init__(
@@ -49,7 +49,7 @@ class Crawler:
         target_folder_path,
         save_html=True,
         max_level=3,
-        classifier=lambda url, level: True,
+        classification_file_path=None,
         verify_ssl=False,
         concurrency_base_urls=1000,
         threads_bs4=10,
@@ -79,7 +79,9 @@ class Crawler:
 
         # Avoid error in SSL certificates
         self.verify_ssl = verify_ssl
-        self.classifier = classifier
+        self.url_regex_mail, self.negative_regex, self.url_regex, self.report_regex = set_regex(classification_file_path = classification_file_path)
+        self.classifier = classify_url
+
 
         # Base urls processed in parallel
         self.sem_num_comps = asyncio.Semaphore(concurrency_base_urls)
@@ -288,7 +290,7 @@ class Crawler:
         #     functools.partial(self.classifier, url, level))
 
 
-        flag_download = self.classifier(url, level)
+        flag_download = self.classifier(url, level, self.url_regex_mail, self.negative_regex, self.url_regex, self.report_regex)
         
         # classify url to see if it should be crawled
         if not flag_download:  # self.classifier(url, level):
@@ -474,14 +476,17 @@ class Crawler:
         ) as self.session:
             # for each url, create asynchronous task to fetch base url and append to tasks list
             for url in records:
-                identifier = url[1]
-                # clean url
-                if not url[0].startswith('http://') and not url[0].startswith('https://'):
-                    url = f'https://{url[0].strip()}'
-                else:
-                    url = url[0]
-        
-                domain = urlparse(url).netloc.replace("www.", "")
+                if not isinstance(url, str): #if tuple/list of form: (url, ID)
+                    identifier = url[1]
+                    # clean url
+                    if not url[0].startswith('http://') and not url[0].startswith('https://'):
+                        url = f'https://{url[0].strip()}'
+                    else:
+                        url = url[0]
+                    domain = urlparse(url).netloc.replace("www.", "")
+                else: #if only url use the domain as ID
+                    domain = urlparse(url).netloc.replace("www.", "")
+                    identifier = domain
                 task = asyncio.create_task(self.__fetch_one_base_url(domain, url, identifier))
                 tasks.append(task)
 
