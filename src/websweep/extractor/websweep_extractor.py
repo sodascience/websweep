@@ -1,6 +1,11 @@
 import re
 from urllib.parse import urljoin
-from .extractor import FileExtractor
+
+try:
+    from .extractor import FileExtractor
+except:
+    from extractor import FileExtractor
+    
 
 class FirmBackBoneFileExtractor(FileExtractor):
     def __init__(self, *args, **kwargs):
