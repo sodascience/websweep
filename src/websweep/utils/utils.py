@@ -15,24 +15,9 @@ def create_regex_pattern(keywords, regex):
 
     return re.compile(regex, re.IGNORECASE)
 
-def classify_url(url, level, classification_file_path = None) -> bool:
-    """
-    Classify url based on level
-    """
 
-    if level == 0:
-        return True
-
-    # Taking the path (next step) will remove this part, we need to catch it before
-    url_regex = re.compile(r"^mailto:|^tel:", re.IGNORECASE)
-    if re.search(url_regex, url):
-        return False
-
-    # Detect annual report, download them!
-    pass
-
-    # Keep the path only (avoid to reject websites such as "awesomeshop.nl/important_information")
-    url = urlparse(url).path
+def set_regex(classification_file_path = None):
+    url_regex_mail = re.compile(r"^mailto:|^tel:", re.IGNORECASE)
 
     # Load the default regex expressions
     if classification_file_path is None:
@@ -42,8 +27,34 @@ def classify_url(url, level, classification_file_path = None) -> bool:
         content = file.read()
     default_regex_data = json.loads(content)
 
-    # Don't download these
+    # Regex to not download
     negative_regex = create_regex_pattern(default_regex_data['negative']['negative_keywords'], default_regex_data['negative']['negative_regex'])
+    
+    # Only download sometimes
+    url_regex = create_regex_pattern(default_regex_data['url']['url_keywords'], default_regex_data['url']['url_regex'])
+    report_regex = create_regex_pattern(default_regex_data['report']['report_keywords'], default_regex_data['report']['report_regex'])
+        
+    return url_regex_mail, negative_regex, url_regex, report_regex
+
+def classify_url(url, level, url_regex_mail, negative_regex, url_regex, report_regex) -> bool:
+    """
+    Classify url based on level
+    """
+
+    if level == 0:
+        return True
+
+    # Taking the path (next step) will remove this part, we need to catch it before
+    if re.search(url_regex_mail, url):
+        return False
+
+    # Detect annual report, download them!
+    pass
+
+    # Keep the path only (avoid to reject websites such as "awesomeshop.nl/important_information")
+    url = urlparse(url).path
+
+    # Don't download these    
     if re.search(negative_regex, url):
         return False
     # Maybe if there are many links in one level we can skip it
@@ -58,9 +69,7 @@ def classify_url(url, level, classification_file_path = None) -> bool:
             return True
     if level == 2:
 
-        url_regex = create_regex_pattern(default_regex_data['url']['url_keywords'], default_regex_data['url']['url_regex'])
-        report_regex = create_regex_pattern(default_regex_data['report']['report_keywords'], default_regex_data['report']['report_regex'])
-        
+
         if re.search(url_regex, url) or re.search(report_regex, url):
             return True
         else:
