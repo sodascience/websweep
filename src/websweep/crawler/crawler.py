@@ -4,7 +4,6 @@ import csv
 # TODO: Temporary, remove!
 import warnings
 from pathlib import Path
-from re import S
 from typing import Any, Dict, List, NamedTuple
 
 warnings.filterwarnings("ignore")

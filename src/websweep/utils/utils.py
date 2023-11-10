@@ -1,4 +1,4 @@
-import re
+import regex as re
 import sqlite3 as sql
 from pathlib import Path
 from urllib.parse import urlparse
@@ -41,6 +41,8 @@ def classify_url(url, level, url_regex_mail, negative_regex, url_regex, report_r
     Classify url based on level
     """
 
+    ##TODO: Create classify_url from crawler, reading default_regex.json (modfiying it so it's by level)
+
     if level == 0:
         return True
 
@@ -68,8 +70,7 @@ def classify_url(url, level, url_regex_mail, negative_regex, url_regex, report_r
         else:
             return True
     if level == 2:
-
-
+        # Keep only important
         if re.search(url_regex, url) or re.search(report_regex, url):
             return True
         else:

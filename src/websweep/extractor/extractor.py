@@ -1,6 +1,6 @@
 import asyncio
 import os
-import re
+import regex as re
 import shutil
 import sqlite3 as sql
 import time
@@ -68,7 +68,6 @@ class FileExtractor:
                     self.text = file.read().decode("utf-8", "ignore")
                     self.soup = BeautifulSoup(self.text, "lxml")
 
-
     def extracting(self):
         # Get metadata
         self.metadata.update(self._extract_metadata()) #future self.metadata |= self._extract_metadata()
@@ -89,7 +88,6 @@ class FileExtractor:
 
     def extract_default_metadata(self):
         # Extract the default data, these are all the modular extract methods
-
         self.metadata["phone"] = self._extract_phone()
         self.metadata["email"] = self._extract_email()
         self.metadata["fax"] = self._extract_fax()
@@ -135,11 +133,11 @@ class FileExtractor:
         """
         pattern = re.compile(
             r"""
-                        ([a-zA-Z0-9_.+-]+   # one (or more) sets of all characters which numbers, letters or a subset of punctuations
+                        ([A-Za-z0-9\.\+_-]+   # one (or more) sets of all characters which numbers, letters or a subset of punctuations
                         @                   # needs a @    
-                        [a-zA-Z0-9-]{1,25}  # again, grab any number or letter
+                        [a-zA-Z0-9-_\.]{1,25}  # again, grab any number or letter,  to ensure we also grab stuff like .co.uk
                         \.                  # the dot in the email
-                        (?!png)(?!jpg)[a-zA-Z-.]{1,8}     # grab any combination of letters/numbers/dots, to ensure we also grab stuff like .co.uk
+                        (?!png|jpg|jpeg|gif|pdf)[a-zA-Z-]{1,7}     # grab any combination of letters/numbers/dots,
                         )""",
             re.VERBOSE,
         )
@@ -287,14 +285,19 @@ class Extractor:
         self.file_extractor = file_extractor
         self.start_date = start_date
         self.end_date = end_date
+        self.number_error = 0
 
     def _create_results(self, path):
         [domain, identifier, level, url, date, path] = path
-
-        if self.file_extractor != None:
-            metadata = self.file_extractor([domain, identifier, level, url, date, path]).extracting()
-        else:
-            metadata = FileExtractor([domain, identifier, level, url, date, path]).extracting()
+        
+        try:
+            if self.file_extractor is not None:
+                metadata = self.file_extractor([domain, identifier, level, url, date, path]).extracting()
+            else:
+                metadata = FileExtractor([domain, identifier, level, url, date, path]).extracting()
+        except:
+            metadata = {"domain": domain, "identifier": identifier, "level": level, "website": url, "date": date, "path": path}
+            self.number_error += 1
 
         return metadata
 
@@ -326,19 +329,6 @@ class Extractor:
                         and (status == "200")
                     ):
                         results.append([domain, identifier, level, url, date, path.strip()])
-
-        # results_folder = (
-        #         self.target_folder_path
-        #         / "extracted_data"
-        #         / ("extracted_data")
-        #     )
-        # Path(results_folder).mkdir(parents=True, exist_ok=True)
-        # reports_folder = (
-        #         self.target_folder_path
-        #         / "extracted_data"
-        #         / ("annual_reports")
-        #     )
-        # Path(reports_folder).mkdir(parents=True, exist_ok=True)
         
         # chunking in 1M files
         n = 1000000
@@ -378,7 +368,6 @@ class Extractor:
                             pass
 
                         pbar.update()
-                        
 
         if self.extractor_delete_files:
             # Loop through all subdirectories in the given folder
@@ -390,5 +379,5 @@ class Extractor:
                         shutil.rmtree(os.path.join(root, dir))
 
         print(
-            f"Extracted data from {len(results)} pages in {time.time() - start:2.1f} seconds."
+            f"Extracted data from {len(results)} pages ({self.number_error} errors) in {time.time() - start:2.1f} seconds."
         )
