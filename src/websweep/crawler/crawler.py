@@ -166,11 +166,8 @@ class Crawler:
 
         if self.extractor_unit is not None:
             date = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            try:
-                json_dict = self.extractor_unit._create_results([base_url, identifier, level, url, date, soup])
-            except Exception as e:
-                json_dict = {"domain": base_url, "website": url, "date": date, "path": "Error extracting"}
-
+            json_dict = self.extractor_unit._create_results([base_url, identifier, level, url, date, soup])
+            
             orjsonl.append(self.file_res, [json_dict])
 
         return urls

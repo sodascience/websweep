@@ -19,7 +19,8 @@ import tqdm
 import typer
 from bs4 import BeautifulSoup
 from multiprocess import Pool
-
+from gevent import monkey, Timeout
+monkey.patch_all(thread=False)
 
 class FileExtractor:
     """
@@ -289,14 +290,19 @@ class Extractor:
 
     def _create_results(self, path):
         [domain, identifier, level, url, date, path] = path
-        
-        try:
-            if self.file_extractor is not None:
-                metadata = self.file_extractor([domain, identifier, level, url, date, path]).extracting()
-            else:
-                metadata = FileExtractor([domain, identifier, level, url, date, path]).extracting()
-        except:
-            metadata = {"domain": domain, "identifier": identifier, "level": level, "website": url, "date": date, "path": path}
+                
+        metadata = None
+        with Timeout(10, False):
+            try:
+                if self.file_extractor is not None:
+                    metadata = self.file_extractor([domain, identifier, level, url, date, path]).extracting()
+                else:
+                    metadata = FileExtractor([domain, identifier, level, url, date, path]).extracting()
+            except Exception as e:
+                pass # Handled later
+
+        if metadata is None:
+            metadata = {"domain": domain, "identifier": identifier, "level": level, "website": url, "date": date, "path": "Error extracting"}
             self.number_error += 1
 
         return metadata
