@@ -1,0 +1,5 @@
+Extractor Module
+==============
+
+.. automodule:: websweep.extractor
+   :members:

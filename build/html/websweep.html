@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>websweep package &mdash; websweep 1.0.0 documentation</title>
+      <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
+        <script src="_static/doctools.js"></script>
+        <script src="_static/sphinx_highlight.js"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="index.html" class="icon icon-home">
+            websweep
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <!-- Local TOC -->
+              <div class="local-toc"><ul>
+<li><a class="reference internal" href="#">websweep package</a><ul>
+<li><a class="reference internal" href="#subpackages">Subpackages</a></li>
+<li><a class="reference internal" href="#submodules">Submodules</a></li>
+<li><a class="reference internal" href="#module-websweep.config">websweep.config module</a><ul>
+<li><a class="reference internal" href="#websweep.config.current_websweep_instance"><code class="docutils literal notranslate"><span class="pre">current_websweep_instance()</span></code></a></li>
+<li><a class="reference internal" href="#websweep.config.init_app"><code class="docutils literal notranslate"><span class="pre">init_app()</span></code></a></li>
+<li><a class="reference internal" href="#websweep.config.restore_app"><code class="docutils literal notranslate"><span class="pre">restore_app()</span></code></a></li>
+<li><a class="reference internal" href="#websweep.config.get_target_folder_path"><code class="docutils literal notranslate"><span class="pre">get_target_folder_path()</span></code></a></li>
+<li><a class="reference internal" href="#websweep.config.get_source_file_path"><code class="docutils literal notranslate"><span class="pre">get_source_file_path()</span></code></a></li>
+<li><a class="reference internal" href="#websweep.config.get_extractor_delete"><code class="docutils literal notranslate"><span class="pre">get_extractor_delete()</span></code></a></li>
+<li><a class="reference internal" href="#websweep.config.get_use_database"><code class="docutils literal notranslate"><span class="pre">get_use_database()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#websweep-main-module">websweep.main module</a></li>
+<li><a class="reference internal" href="#module-websweep">Module contents</a></li>
+</ul>
+</li>
+</ul>
+</div>
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">websweep</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">websweep package</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/websweep.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="websweep-package">
+<h1>websweep package<a class="headerlink" href="#websweep-package" title="Permalink to this heading"></a></h1>
+<section id="subpackages">
+<h2>Subpackages<a class="headerlink" href="#subpackages" title="Permalink to this heading"></a></h2>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="websweep.crawler.html">websweep.crawler package</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="websweep.crawler.html#submodules">Submodules</a></li>
+<li class="toctree-l2"><a class="reference internal" href="websweep.crawler.html#websweep-crawler-crawler-module">websweep.crawler.crawler module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="websweep.crawler.html#module-websweep.crawler">Module contents</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="websweep.extractor.html">websweep.extractor package</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="websweep.extractor.html#submodules">Submodules</a></li>
+<li class="toctree-l2"><a class="reference internal" href="websweep.extractor.html#websweep-extractor-add-host-module">websweep.extractor.add_host module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="websweep.extractor.html#websweep-extractor-extractor-module">websweep.extractor.extractor module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="websweep.extractor.html#websweep-extractor-websweep-extractor-module">websweep.extractor.websweep_extractor module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="websweep.extractor.html#module-websweep.extractor">Module contents</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="websweep.utils.html">websweep.utils package</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="websweep.utils.html#submodules">Submodules</a></li>
+<li class="toctree-l2"><a class="reference internal" href="websweep.utils.html#module-websweep.utils.utils">websweep.utils.utils module</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="websweep.utils.html#websweep.utils.utils.create_regex_pattern"><code class="docutils literal notranslate"><span class="pre">create_regex_pattern()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="websweep.utils.html#websweep.utils.utils.set_regex"><code class="docutils literal notranslate"><span class="pre">set_regex()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="websweep.utils.html#websweep.utils.utils.classify_url"><code class="docutils literal notranslate"><span class="pre">classify_url()</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="websweep.utils.html#websweep.utils.utils.clean_url"><code class="docutils literal notranslate"><span class="pre">clean_url()</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="websweep.utils.html#module-websweep.utils">Module contents</a></li>
+</ul>
+</li>
+</ul>
+</div>
+</section>
+<section id="submodules">
+<h2>Submodules<a class="headerlink" href="#submodules" title="Permalink to this heading"></a></h2>
+</section>
+<section id="module-websweep.config">
+<span id="websweep-config-module"></span><h2>websweep.config module<a class="headerlink" href="#module-websweep.config" title="Permalink to this heading"></a></h2>
+<p>This module provides the WebSweep config functionality.</p>
+<dl class="py function">
+<dt class="sig sig-object py" id="websweep.config.current_websweep_instance">
+<span class="sig-prename descclassname"><span class="pre">websweep.config.</span></span><span class="sig-name descname"><span class="pre">current_websweep_instance</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Path</span></span></span><a class="headerlink" href="#websweep.config.current_websweep_instance" title="Permalink to this definition"></a></dt>
+<dd><p>Return the current websweep location</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="websweep.config.init_app">
+<span class="sig-prename descclassname"><span class="pre">websweep.config.</span></span><span class="sig-name descname"><span class="pre">init_app</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">target_folder_path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">source_file_path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">extractor_delete_files</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">use_database</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">int</span></span></span><a class="headerlink" href="#websweep.config.init_app" title="Permalink to this definition"></a></dt>
+<dd><p>Initialize the application.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="websweep.config.restore_app">
+<span class="sig-prename descclassname"><span class="pre">websweep.config.</span></span><span class="sig-name descname"><span class="pre">restore_app</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">target_folder_path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Path</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">int</span></span></span><a class="headerlink" href="#websweep.config.restore_app" title="Permalink to this definition"></a></dt>
+<dd><p>Restore existing application.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="websweep.config.get_target_folder_path">
+<span class="sig-prename descclassname"><span class="pre">websweep.config.</span></span><span class="sig-name descname"><span class="pre">get_target_folder_path</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">config_file</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Path</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">PosixPath('/Users/bjorn/Downloads/websweep-4jul-4/settings.ini')</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Path</span></span></span><a class="headerlink" href="#websweep.config.get_target_folder_path" title="Permalink to this definition"></a></dt>
+<dd><p>Return the current WebSweep instance location path</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="websweep.config.get_source_file_path">
+<span class="sig-prename descclassname"><span class="pre">websweep.config.</span></span><span class="sig-name descname"><span class="pre">get_source_file_path</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">config_file</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Path</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">PosixPath('/Users/bjorn/Downloads/websweep-4jul-4/settings.ini')</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Path</span></span></span><a class="headerlink" href="#websweep.config.get_source_file_path" title="Permalink to this definition"></a></dt>
+<dd><p>Return the current source file path</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="websweep.config.get_extractor_delete">
+<span class="sig-prename descclassname"><span class="pre">websweep.config.</span></span><span class="sig-name descname"><span class="pre">get_extractor_delete</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">config_file</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Path</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">PosixPath('/Users/bjorn/Downloads/websweep-4jul-4/settings.ini')</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">bool</span></span></span><a class="headerlink" href="#websweep.config.get_extractor_delete" title="Permalink to this definition"></a></dt>
+<dd><p>Return whether to delete processed raw files</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="websweep.config.get_use_database">
+<span class="sig-prename descclassname"><span class="pre">websweep.config.</span></span><span class="sig-name descname"><span class="pre">get_use_database</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">config_file</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Path</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">PosixPath('/Users/bjorn/Downloads/websweep-4jul-4/settings.ini')</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">bool</span></span></span><a class="headerlink" href="#websweep.config.get_use_database" title="Permalink to this definition"></a></dt>
+<dd><p>Return whether to use an SQL database raw files</p>
+</dd></dl>
+
+</section>
+<section id="websweep-main-module">
+<h2>websweep.main module<a class="headerlink" href="#websweep-main-module" title="Permalink to this heading"></a></h2>
+</section>
+<section id="module-websweep">
+<span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-websweep" title="Permalink to this heading"></a></h2>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2023, ODISSEI Social Data Science.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

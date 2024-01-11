@@ -6,7 +6,6 @@ import sys
 import time
 import typer #TODO: can we just import Typer?
 import webbrowser
-import typer
 from datetime import date as datelib
 from functools import wraps
 from importlib.resources import path

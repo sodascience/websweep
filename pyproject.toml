@@ -5,6 +5,9 @@ description = ""
 authors = []
 readme = "README.md"
 
+[tool.poetry.packages]
+include = [{ from = "src", include = "websweep" }]
+
 [tool.poetry.scripts]
 websweep = "websweep.main:app"
 
