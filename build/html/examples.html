@@ -1,0 +1,201 @@
+
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
+
+    <title>Examples &#8212; WebSweep 1.0 documentation</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="_static/alabaster.css" />
+    <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
+    <script src="_static/doctools.js"></script>
+    <script src="_static/sphinx_highlight.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="prev" title="User’s Guide" href="userguide.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  <div class="document">
+    
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="index.html">WebSweep</a></h1>
+
+
+
+<p class="blurb">A powerful Python library for web scraping</p>
+
+
+
+
+
+
+<!-- contents.html -->
+<!-- _templates/github_button.html -->
+
+<iframe src="https://ghbtns.com/github-btn.html?user=sodascience&repo=websweep&type=watch&count=true&size=large&v=2" frameborder="0" scrolling="0" width="170" height="30" title="GitHub"></iframe>
+
+<h3>Contents</h3>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="userguide.html">User’s Guide</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Examples</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#command-line-interface-examples">Command Line Interface Examples</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#python-package-examples">Python Package Examples</a></li>
+</ul>
+</li>
+</ul>
+
+
+<!-- Add the title for the project links -->
+<h3>Project</h3>
+
+<ul>
+    
+    <li class="toctree-l1"><a href="contribute.html">Contribute</a></li>
+    
+    <li class="toctree-l1"><a href="contact.html">Contact</a></li>
+    
+    <li class="toctree-l1"><a href="https://pypi.org/project/websweep/">PyPI Releases</a></li>
+    
+    <li class="toctree-l1"><a href="https://github.com/sodascience/websweep">Source Code</a></li>
+    
+    <li class="toctree-l1"><a href="https://github.com/sodascience/websweep/issues">Issue Tracker</a></li>
+    
+</ul>
+
+
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+        </div>
+      </div>
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="examples">
+<span id="id1"></span><h1>Examples<a class="headerlink" href="#examples" title="Permalink to this heading">¶</a></h1>
+<p>This page provides examples of how to use <cite>websweep</cite> both as a command line interface (CLI) tool and as a Python package.</p>
+<section id="command-line-interface-examples">
+<h2>Command Line Interface Examples<a class="headerlink" href="#command-line-interface-examples" title="Permalink to this heading">¶</a></h2>
+<p>Initialize a new WebSweep instance:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span>websweep<span class="w"> </span>init
+<span class="w">  </span>--headless
+</pre></div>
+</div>
+<p>Restore an existing WebSweep instance:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span>websweep<span class="w"> </span>restore
+<span class="w">  </span>--headless
+</pre></div>
+</div>
+<p>Configure WebSweep settings:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span>websweep<span class="w"> </span>config
+<span class="w">  </span>--delete-processed-files
+<span class="w">  </span>--target-folder-path<span class="w"> </span>/path/to/new/output
+<span class="w">  </span>--source-file-path<span class="w"> </span>/path/to/new/source/file.csv
+</pre></div>
+</div>
+<p>View active WebSweep instance:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span>websweep<span class="w"> </span>instance
+</pre></div>
+</div>
+<p>Start crawling process:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span>websweep<span class="w"> </span>crawl
+<span class="w">  </span>--sock-connect<span class="w"> </span><span class="m">150</span>
+</pre></div>
+</div>
+<p>Start extracting process:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span>websweep<span class="w"> </span>extract
+<span class="w">  </span>--start-date<span class="w"> </span>YYYY-MM-DD
+<span class="w">  </span>--end-date<span class="w"> </span>YYYY-MM-DD
+</pre></div>
+</div>
+</section>
+<section id="python-package-examples">
+<h2>Python Package Examples<a class="headerlink" href="#python-package-examples" title="Permalink to this heading">¶</a></h2>
+<p>Scraping and extracting at the same time (no HTML saved):</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">websweep</span> <span class="kn">import</span> <span class="n">Crawler</span>
+
+<span class="n">urls</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;https://firmbackbone.nl&#39;</span><span class="p">,</span> <span class="s1">&#39;https://uu.nl/&#39;</span><span class="p">,</span> <span class="s1">&#39;https://odissei-soda.nl&#39;</span><span class="p">]</span>
+
+<span class="n">crawler_unit</span> <span class="o">=</span> <span class="n">Crawler</span><span class="p">(</span><span class="n">target_folder_path</span><span class="o">=</span><span class="n">Path</span><span class="p">(</span><span class="s2">&quot;your/data/folder&quot;</span><span class="p">),</span> <span class="n">save_html</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">extract</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="n">crawler_unit</span><span class="o">.</span><span class="n">crawl_base_urls</span><span class="p">(</span><span class="n">urls</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Only scraping (saving HTML):</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">websweep</span> <span class="kn">import</span> <span class="n">Crawler</span>
+
+<span class="n">urls</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;https://firmbackbone.nl&#39;</span><span class="p">,</span> <span class="s1">&#39;https://uu.nl/&#39;</span><span class="p">,</span> <span class="s1">&#39;https://odissei-soda.nl&#39;</span><span class="p">]</span>
+
+<span class="n">crawler_unit</span> <span class="o">=</span> <span class="n">Crawler</span><span class="p">(</span><span class="n">target_folder_path</span><span class="o">=</span><span class="n">Path</span><span class="p">(</span><span class="s2">&quot;your/data/folder&quot;</span><span class="p">))</span>
+<span class="n">crawler_unit</span><span class="o">.</span><span class="n">crawl_base_urls</span><span class="p">(</span><span class="n">urls</span><span class="p">)</span>
+</pre></div>
+</div>
+<p>Only extracting (using HTML):</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">websweep</span> <span class="kn">import</span> <span class="n">FileExtractor</span>
+
+<span class="n">extractor</span> <span class="o">=</span> <span class="n">FileExtractor</span><span class="p">(</span><span class="n">target_folder_path</span><span class="o">=</span><span class="n">Path</span><span class="p">(</span><span class="s2">&quot;your/data/folder&quot;</span><span class="p">))</span>
+<span class="n">extractor</span><span class="o">.</span><span class="n">extract_urls</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>Only extracting with custom Extractor methods (using HTML):</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">websweep</span> <span class="kn">import</span> <span class="n">FileExtractor</span>
+<span class="kn">from</span> <span class="nn">pathlib</span> <span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">import</span> <span class="nn">re</span>
+
+<span class="k">class</span> <span class="nc">MyCustomFileExtractor</span><span class="p">(</span><span class="n">FileExtractor</span><span class="p">):</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="o">*</span><span class="n">args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">_extract_something</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Extract something from the input file, and add found somethings to self.something in set form</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">pattern</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="sa">r</span><span class="s1">&#39;\b\d{5,}\b&#39;</span><span class="p">,</span> <span class="n">re</span><span class="o">.</span><span class="n">VERBOSE</span><span class="p">)</span>
+        <span class="n">somethings</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="n">re</span><span class="o">.</span><span class="n">findall</span><span class="p">(</span><span class="n">pattern</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">text</span><span class="p">)))</span>
+        <span class="k">return</span> <span class="n">somethings</span>
+
+<span class="n">extractor_unit</span> <span class="o">=</span> <span class="n">MyCustomFileExtractor</span><span class="p">(</span><span class="n">target_folder_path</span><span class="o">=</span><span class="n">Path</span><span class="p">(</span><span class="s2">&quot;your/data/folder&quot;</span><span class="p">))</span>
+<span class="n">extractor_unit</span><span class="o">.</span><span class="n">extract_urls</span><span class="p">()</span>
+</pre></div>
+</div>
+</section>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+    <div class="clearer"></div>
+  </div>
+    <div class="footer">
+      &copy;2023, ODISSEI Social Data Science.
+      
+      |
+      <a href="_sources/examples.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>
