@@ -11,10 +11,10 @@ import sys
 sys.path.insert(0, os.path.abspath('../src'))
 
 
-project = 'websweep'
+project = 'WebSweep'
 copyright = '2023, ODISSEI Social Data Science'
 author = 'ODISSEI Social Data Science'
-release = '1.0.0'
+release = '1.0'
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
@@ -32,5 +32,28 @@ autodoc_member_order = 'bysource'  # Or 'alphabetical', or 'groupwise'
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
-html_theme = 'sphinx_rtd_theme'
+html_theme = 'alabaster'
+
+html_sidebars = {
+    '**': [
+        'about.html',
+        'contents.html',
+        'searchbox.html',
+    ]
+}
+
+html_theme_options = {
+    'sidebar_caption': 'Contents',
+    'description': 'A powerful Python library for web scraping',
+    'show_powered_by': False,
+    'fixed_sidebar': True,
+    'extra_nav_links': {
+        "Contribute": "contribute.html",
+        "Contact": "contact.html",
+        "PyPI Releases": "https://pypi.org/project/websweep/",
+        "Source Code": "https://github.com/sodascience/websweep",
+        "Issue Tracker": "https://github.com/sodascience/websweep/issues",
+    }
+}
+
 html_static_path = ['_static']

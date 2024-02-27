@@ -1,6 +1,9 @@
-__version__ = '0.3.0'
+from .crawler.crawler import *
+from .extractor.extractor import *
+
+__version__ = '1.0.0'
 __app_name__ = "websweep"
-__status__ = "development"
+__status__ = "production"
 
 (
     SUCCESS,

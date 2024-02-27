@@ -506,6 +506,8 @@ class Crawler:
         :param urls: List of all level 0 urls to visit
         """
 
+        print(urls)
+
         start = time()
 
         with ThreadPoolExecutor(max_workers=self.threads_bs4) as self.cpu_executor, \

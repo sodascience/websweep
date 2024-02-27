@@ -1,0 +1,18 @@
+<!-- contents.html -->
+<!-- _templates/github_button.html -->
+
+<iframe src="https://ghbtns.com/github-btn.html?user=sodascience&repo=websweep&type=watch&count=true&size=large&v=2" frameborder="0" scrolling="0" width="170" height="30" title="GitHub"></iframe>
+
+<h3>{{ _('Contents') }}</h3>
+{{ toctree(includehidden=theme_sidebar_includehidden, collapse=theme_sidebar_collapse) }}
+
+<!-- Add the title for the project links -->
+<h3>{{ _('Project') }}</h3>
+{% if theme_extra_nav_links %}
+<ul>
+    {% for text, uri in theme_extra_nav_links.items() %}
+    <li class="toctree-l1"><a href="{{ uri }}">{{ text }}</a></li>
+    {% endfor %}
+</ul>
+{% endif %}
+
