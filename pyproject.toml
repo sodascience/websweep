@@ -1,9 +1,12 @@
 [tool.poetry]
 name = "websweep"
-version = "0.1.0"
+version = "1.0.0"
 description = ""
 authors = []
 readme = "README.md"
+packages = [
+    { include = "websweep", from = "src" },
+]
 
 [tool.poetry.scripts]
 websweep = "websweep.main:app"

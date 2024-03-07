@@ -6,7 +6,6 @@ import sys
 import time
 import typer #TODO: can we just import Typer?
 import webbrowser
-import typer
 from datetime import date as datelib
 from functools import wraps
 from importlib.resources import path
@@ -293,9 +292,9 @@ def cli_config(
     delete_processed_files: bool = typer.Option(
         None, help="Delete / Not-Delete extractor processed raw files"
     ),
-    target_folder_path: str = typer.Option(
-        None, "--target-folder-path", help="Set new path for crawled data output"
-    ),
+    # target_folder_path: str = typer.Option(
+    #     None, "--target-folder-path", help="Set new path for crawled data output"
+    # ),
     source_file_path: str = typer.Option(
         None, "--source-file-path", help="Set new path for csv source file"
     ),
@@ -308,7 +307,7 @@ def cli_config(
 
     if (
         delete_processed_files is None
-        and target_folder_path is None
+        # and target_folder_path is None
         and source_file_path is None
     ):
         typer.secho("WebSweep is configured:", fg=typer.colors.YELLOW)
@@ -335,8 +334,8 @@ def cli_config(
             else:
                 config._save_extractor_delete(False)
         # TODO: Verify what happens when the target folder location is changed, the folder should be moved as well
-        if target_folder_path is not None:
-            config._save_target_folder(target_folder_path)
+        # if target_folder_path is not None:
+        #     config._save_target_folder(target_folder_path)
         if source_file_path is not None:
             config._save_source_file(source_file_path)
 
