@@ -19,6 +19,7 @@ from .extractor.extractor import Extractor
 from .extractor.websweep_extractor import FirmBackBoneFileExtractor
 from .crawler.crawler import Crawler
 from .utils.utils import classify_url
+#from .consolidator.consolidator import Consolidator
 
 try:
     HEADLESS = False
@@ -367,7 +368,7 @@ def websweep_address() -> None:
 def crawl(
     complement: str = typer.Option(
         None,
-        help="Complement the folder with failed pages, takes the crawl date as argument",
+        help="Complement the folder with failed pages, takes the crawl date (e.g. '2019-12-04') as argument",
     ),
     sock_connect: int = typer.Option(
         120,
@@ -378,9 +379,10 @@ def crawl(
         help="Extract files instead of saving HTML",
     ),
     classification_file: Path = typer.Option(
-        None,
+        os.path.join(os.path.dirname(os.path.abspath(__file__)), 'utils', 'default_regex.json'),
         help="Use a custom classification file with page title terms (plain .txt with ';' delimitation)",
     ),
+
 ) -> None:
     """
     Start caching websites
@@ -403,6 +405,7 @@ def crawl(
         sock_connect=sock_connect,
         extract=extract,
         save_html=not extract,
+        file_extractor=FirmBackBoneFileExtractor
     )
 
     if classification_file is not None and not Path.exists(classification_file):
@@ -495,4 +498,50 @@ def extract(
         worker.extract_urls()
     
     typer.secho(f"Extractor finished successfully\n", fg=typer.colors.GREEN)
+        
+# Starts consolidating the information at the domain site, based on the extracted files
+# Calls an Consolidator instance which handles the consolidation procedure
+# Consolidated data is stored in the active working websweep instance folder under 'crawled_data'
+# Can only be run when the application has been initialised
+# Can only be run after the extractor has been run
+# @app.command(name="consolidate")
+# @operate()
+# def consolidate() -> None:
+#     """
+#     Start consolidating data from the extracted files
+    
+#     """
+
+#     typer.secho(f"Consolidator is started with instructions:", fg=typer.colors.GREEN)
+#     typer.secho(
+#         f"- source folder: {config.get_target_folder_path()}", fg=typer.colors.YELLOW
+#     )
+
+#     input_file = (
+#         Path(config.get_target_folder_path())
+#         / "extracted_data"
+#         / (
+#             "extracted_data_"
+#             + str(datelib.today())
+#             + f"_{i}-{i+n}.ndjson"
+#         )
+#     )
+
+#     output_file = (
+#         Path(config.get_target_folder_path())
+#         / "consolidated_data"
+#         / (
+#             "consolidated_data_"
+#             + str(datelib.today())
+#             + f".nsjson"
+#         )
+#     )
+
+#     Path(output_file).parent.mkdir(parents=True, exist_ok=True)
+    
+
+#     processor = Consolidator(input_file="../../server_downloaded_data/20240108_scrape/extracted_data/head10000_extracted_data.ndjson", chunk_size=10_000)
+#     processor.consolidate(output_file)
+
+#     typer.secho(f"Consolidator finished successfully\n", fg=typer.colors.GREEN)
         

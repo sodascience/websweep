@@ -20,7 +20,7 @@ import typer
 from bs4 import BeautifulSoup
 from multiprocess import Pool
 from gevent import monkey, Timeout
-monkey.patch_all(thread=False)
+monkey.patch_all(thread=False, select=False)
 
 class FileExtractor:
     """

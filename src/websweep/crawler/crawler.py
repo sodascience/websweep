@@ -1,14 +1,13 @@
 """This module provides the Crawler model-controller."""
-
 import csv
 # TODO: Temporary, remove!
 import warnings
+warnings.filterwarnings("ignore")
 from pathlib import Path
 from typing import Any, Dict, List, NamedTuple
-
-warnings.filterwarnings("ignore")
-
 import asyncio
+from asyncio import CancelledError
+from aiohttp.client_exceptions import ClientConnectorError
 import datetime
 import functools
 import ndjson
@@ -25,7 +24,6 @@ from pathlib import Path
 # import hashlib
 from time import time
 from urllib.parse import urljoin, urlparse
-
 import tldextract
 import tqdm
 import tqdm.asyncio
@@ -52,12 +50,14 @@ class Crawler:
         verify_ssl=False,
         concurrency_base_urls=1000,
         threads_bs4=10,
-        threads_download=1000,
+        threads_download=500,
         use_sqlite=True,
-        sock_connect=120,
+        sock_connect=180,
         extract=False,
         headers=None,
-        file_extractor=None
+        file_extractor=None,
+        max_pages_per_domain=50,
+        min_days_between_crawls=30
     ):
         self.target_folder_path = Path(target_folder_path)
         self.use_sqlite = use_sqlite
@@ -72,6 +72,8 @@ class Crawler:
 
         self.save_html = save_html
         self.max_level = max_level
+        self.max_pages_per_domain = max_pages_per_domain
+        self.min_days_between_crawls = min_days_between_crawls
 
         # Create file tracking downloaded packages
         self.__create_overview_file()
@@ -124,12 +126,9 @@ class Crawler:
             )
             Path(self.file_res).parent.mkdir(parents=True, exist_ok=True)
             
-   
-        # print("Execution type:", exc_type)
-        # print("Execution value:", exc_value)
-        # print("Traceback:", traceback)
 
-    def get_urls(self, r, url, level, identifier):
+
+    def get_urls(self, r, url, domain, level, identifier):
         """
         Parse code and return content and urls. Defined it here to be able to pickle it and process it in a thread pool.
         """
@@ -139,26 +138,25 @@ class Crawler:
 
         # parse
         soup = BeautifulSoup(contents, "lxml")
-
+        
         # extract urls from html code in beautiful soup
         # <a href="http://www.google.com/">Google</a>
         urls = [a.attrs.get("href") for a in soup.select("a[href]")]
-
+        
         # filter out urls from other domains
         # create base url
         url_parsed = urlparse(url)
         base_url = url_parsed.scheme + "://" + url_parsed.netloc
-
+        
         # add netloc/schema when missing
-        # TODO: do we want to keep mailto? mailto:info@frieslandbouwdetachering.nl?
         urls = [urljoin(base_url, url_found) for url_found in urls]
-
+        
         # keep only the urls found within the same domain
         urls = [
             url_found
             for url_found in urls
             if tldextract.extract(url_found).registered_domain
-            == tldextract.extract(url).registered_domain
+            == domain # compare to domain, allows for redirects
         ]
 
         # remove query string # bol.com/nl/producten/product/...?p=1
@@ -191,7 +189,7 @@ class Crawler:
                 """
                 CREATE TABLE IF NOT EXISTS Overview
                 (domain TEXT, identifier TEXT, level INT, url TEXT, status TEXT, session_date TEXT, crawl_date TEXT, path TEXT, 
-                UNIQUE (domain, url, status));
+                UNIQUE (domain, url, session_date, status));
                 """
             )
             cursor.execute("CREATE INDEX IF NOT EXISTS index_date ON Overview (crawl_date);")
@@ -213,7 +211,7 @@ class Crawler:
         if (":" in url[:6]) and (url[:4] != "http"):  # tel: or mailto:
             domain = url
         else:
-            domain = urlparse(url).netloc.replace("www.", "")
+            domain = tldextract.extract(url).registered_domain.replace("www.", "")
 
         if self.use_sqlite:
             # opening the file is fast (0.00x per query), minimum gain to keep it open (and potential trouble with threading)
@@ -247,14 +245,27 @@ class Crawler:
 
             
     async def __fetch_one_url(self, domain, url, identifier, level):
+        
+        flag_download = self.classifier(url, level, self.url_regex_mail, self.negative_regex, self.url_regex, self.report_regex)
+        
+        # classify url to see if it should be crawled
+        if not flag_download:  # self.classifier(url, level):
+            # add to file, without path
+            #self.__update_overview_file(id, level, url, -9, "")
+            return []
+        
         # be nice and wait a bit per url (non blocking)
         self.waits[domain] += 0.1
         await asyncio.sleep(self.waits[domain])
-
+ 
+        
         try_number = 0
+        status = "One URL: Too many errors in website"
+        path = ""
+
         while (try_number < 3) and (self.errors_website[domain] < 20):
             if try_number == 0:
-                urls = await self.__fetch_one_url_wrapped(domain, url, identifier, level, self.session)
+                urls, status, path = await self.__fetch_one_url_wrapped(domain, url, identifier, level, self.session)
             else:
                 await asyncio.sleep(20)
 
@@ -267,13 +278,17 @@ class Crawler:
                                             ttl_dns_cache=0,
                                             force_close=True), #a bit slower but more reliable
                                             timeout=ClientTimeout(total=None, sock_connect=300, sock_read=300)) as session:
-                    urls = await self.__fetch_one_url_wrapped(domain, url, identifier, level, session)
+                    urls, status, path = await self.__fetch_one_url_wrapped(domain, url, identifier, level, session)
 
             try_number += 1
             
+            # No error
             if urls is not None:
+                self.__update_overview_file(domain, level, url, identifier, status, path)
                 return urls
         
+        # Error (also by domain)
+        self.__update_overview_file(domain, level, url, identifier, status, path)
         return []
 
          
@@ -283,19 +298,11 @@ class Crawler:
         """
         # flag_download = await self.loop.run_in_executor(
         #     self.io_executor,
-        #     functools.partial(self.classifier, url, level))
-
-
-        flag_download = self.classifier(url, level, self.url_regex_mail, self.negative_regex, self.url_regex, self.report_regex)
-        
-        # classify url to see if it should be crawled
-        if not flag_download:  # self.classifier(url, level):
-            # add to file, without path
-            #self.__update_overview_file(id, level, url, -9, "")
-            return []
+        #     functools.partial(self.classifier, url, level))        
 
         urls = []    
         path = ""
+        status = "-9"
         try:
             async with session.get(url) as response:
                 await asyncio.sleep(0.001)
@@ -306,7 +313,7 @@ class Crawler:
 
                     # parse the contents and extract URLS
                     urls = await self.loop.run_in_executor(
-                        self.cpu_executor, functools.partial(self.get_urls, r, url, level, identifier))
+                        self.cpu_executor, functools.partial(self.get_urls, r, url, domain, level, identifier))
                     
 
                     if self.save_html:
@@ -322,18 +329,82 @@ class Crawler:
                     else:
                         path = ""
 
-                self.__update_overview_file(domain, level, url, identifier, status, path)
+                #self.__update_overview_file(domain, level, url, identifier, status, path)
                 
-                return urls
+                return urls, status, path
 
         except Exception as e:
             status = "Website not found"
-            path = ""
-            self.__update_overview_file(domain, level, url, identifier, status, path)
+            path = "One wrapped: " + str(e)
+            #self.__update_overview_file(domain, level, url, identifier, status, path)
             self.errors_website[domain] += 1
-            return None
+            return None, status, path
             
+    async def __test_domain_robots(self, url, domain, identifier):
+        """
+        Test if domain robots is accessible. If not, return None.
+        """
+        if not url.startswith('http://') and not url.startswith('https://'):
+            url_test = f'https://{url}'
+        else:
+            url_test = f'{url}'
 
+        domain_return = None
+        
+        async with ClientSession(headers=self.headers, 
+                                 trust_env=True, 
+                                 connector=
+                                 TCPConnector(limit=1, #number of websites/request in parallel
+                                    ssl=self.verify_ssl, 
+                                    ttl_dns_cache=0,
+                                    force_close=True
+                                    ), #a bit slower but more reliable
+                                    timeout=ClientTimeout(total=None, sock_connect=300, sock_read=300)) as session:
+            # Try HTTPS
+            try:
+                async with session.get(url_test) as response:
+                    await asyncio.sleep(0.001)
+                    r = await response.read()
+                    status = response.status
+                    if status == 200:
+                        domain_return = response.url.host.replace("www.", "")
+            except (CancelledError, Exception) as e:
+                # Try HTTP
+                try:
+                    if (not url.startswith('http://')) and (not url.startswith('https://')):
+                        url_test = f'http://{url}/'
+                        async with session.get(url_test) as response:
+                            await asyncio.sleep(0.001)
+                            r = await response.read()
+                            status = response.status
+                            if status == 200:
+                                domain_return = response.url.host.replace("www.", "")
+                    else:
+                        return None
+                        
+                # Quit domain
+                except (CancelledError, Exception) as e:
+                    status = "Website not found in __test_domain_robots"
+                    path = "Domain robots URL: " + str(e)
+
+                    # save problem with the request for robots.txt (usually page doesn't exist)
+                    self.__update_overview_file(domain, 0, url, identifier, status, path)
+
+                    return None
+
+            # Try getting robots.txt
+            try:
+                async with session.get(f"{url_test}/robots.txt") as response:
+                    #try reading robots
+                    await asyncio.sleep(0.001)
+                    r = await response.read()
+                    rp = Protego.parse(r.decode("utf-8", "ignore")) 
+            except Exception as e:
+                # allow everything
+                rp = Protego.parse("User-agent: *\nDisallow: \n")
+            return url_test, domain_return, rp
+          
+                        
     async def __fetch_one_base_url(self, domain, url, identifier):
         """
         Crawl the base url up max_level. Save html to file.
@@ -343,17 +414,23 @@ class Crawler:
         """
         
         async with self.sem_num_comps:
+            # test if domain is accessible
+            domain = await self.__test_domain_robots(url, domain, identifier)
+            if domain is None:
+                return None
+            else:
+                url, domain, rp = domain
             try:
                 self.waits[domain] = 0
                 self.errors_website[domain] = 0
                 
                 level = 0
+
                 all_records = [url]
                 records = [url]
-
+                
                 # get list of dates when url was crawled
-                # TODO: threshold variable
-                sourcepath = f'crawled_data/{domain}/{clean_url(url)}'
+                sourcepath = f'{self.base_path}/{domain}/{urlparse(url).netloc.replace("www.","")}'
                 if Path(sourcepath).exists():
                     crawl_dates = [
                         datetime.datetime.strptime(
@@ -362,16 +439,10 @@ class Crawler:
                         for path in Path(sourcepath).iterdir()
                         if path.is_dir()
                     ]
-                    # check if most recent crawldate is within threshold and if so, log finding and stop crawling for this base url
-                    if (datetime.date.today() - max(crawl_dates)).days < 30:
+                    # check if most recent crawldate is within threshold and if so, stop crawling for this base url
+                    if (datetime.date.today() - max(crawl_dates)).days < self.min_days_between_crawls:
                         return
-                
-                # Read the robots (if robots.txt does not exist all requests are accepted)
-                async with self.session.get(f"{url}/robots.txt") as response:
-                    await asyncio.sleep(0.001)
-                    r = await response.read()
-                    rp = Protego.parse(r.decode("utf-8", "ignore")) 
-                    
+
                 # Breath first search algorithm from urls
                 while (len(records) > 0) and (level < self.max_level):
                     tasks = []
@@ -385,7 +456,7 @@ class Crawler:
                             tasks.append(task)
 
                     records = await asyncio.gather(*tasks)
-
+                    #records)
                     # flatten list python and remove duplicates
                     records = [
                         item
@@ -394,14 +465,14 @@ class Crawler:
                         for item in sublist
                     ]
                     
-
+                    
                     # speed up search using a set (and remove www to avoid downloading twice the same url)
                     temp_all_records = set(
                         [clean_url(url) for url in all_records]
                     )
 
-                    # make sure the scraper doesn't run forever (TODO: make sure it's 100 downloaded, not 100 found)
-                    if len(temp_all_records) > 100:
+                    # make sure the scraper doesn't run forever 
+                    if len(temp_all_records) > self.max_pages_per_domain:
                         break
 
                     # remove urls already downloaded
@@ -421,11 +492,11 @@ class Crawler:
 
                     # reset waits for next level
                     self.waits[domain] = 0
-
+                
                 if self.extractor_unit is None:
                     # zip the folder
-                    base_url_folder = self.target_folder_path / "crawled_data" / f'{domain}'
-                    zip_url_folder = self.target_folder_path / "crawled_data" / f'{domain}.zip'
+                    base_url_folder = self.base_path  / f'{domain}'
+                    zip_url_folder = self.base_path /  f'{domain}.zip'
 
                     zf = zipfile.ZipFile(zip_url_folder, "w", zipfile.ZIP_LZMA, allowZip64=True)
                     for dirname, subdirs, files in os.walk(base_url_folder):
@@ -440,8 +511,8 @@ class Crawler:
                     self.errors_website.pop(domain)
 
             except Exception as e:
-                status = "Website not found"                  
-                path = ""
+                status = "Website not found"
+                path = "One base URL: " + str(e)
 
                 # save problem with the request for robots.txt (usually page doesn't exist)
                 self.__update_overview_file(domain, 0, url, identifier, status, path)
@@ -474,14 +545,10 @@ class Crawler:
             for url in records:
                 if not isinstance(url, str): #if tuple/list of form: (url, ID)
                     identifier = url[1]
-                    # clean url
-                    if not url[0].startswith('http://') and not url[0].startswith('https://'):
-                        url = f'https://{url[0].strip()}'
-                    else:
-                        url = url[0]
-                    domain = urlparse(url).netloc.replace("www.", "")
+                    url = url[0].strip()
+                    domain = tldextract.extract(url).registered_domain.replace("www.", "")
                 else: #if only url use the domain as ID
-                    domain = urlparse(url).netloc.replace("www.", "")
+                    domain = tldextract.extract(url).registered_domain.replace("www.", "")
                     identifier = domain
                 task = asyncio.create_task(self.__fetch_one_base_url(domain, url, identifier))
                 tasks.append(task)
@@ -507,7 +574,7 @@ class Crawler:
         """
 
         start = time()
-
+        
         with ThreadPoolExecutor(max_workers=self.threads_bs4) as self.cpu_executor, \
              ThreadPoolExecutor(max_workers=1) as self.io_executor:
             self.loop = asyncio.get_event_loop()
@@ -524,8 +591,7 @@ class Crawler:
             connection = sql.connect(self.overview_path)
             cursor = connection.cursor()
 
-            # TODO: Implement for overview_urls.tsv instead of db
-            cursor.execute("SELECT domain, url FROM Overview WHERE session_date = ? AND status != 200 AND status != '' AND status != 'Website not found';", (complement_date,))
+            cursor.execute("SELECT domain, url FROM Overview WHERE session_date = ? AND status != 200 AND status != -9 AND status != '' AND status != 'Website not found';", (complement_date,))
             urls = cursor.fetchall()
             
             connection.commit()
@@ -546,8 +612,10 @@ class Crawler:
                     session_date = row[4]
 
                     # Check if session_date matches the complement_date and status is not 200, '', or 'Website not found'
-                    if session_date == str(complement_date) and status != "200" and status != "" and status != "Website not found":
+                    if session_date == str(complement_date) and status not in ["200", "", "-9", "Website not found"]:
                         urls.append((domain, url))
 
-                #print(urls)
+                
         self.crawl_base_urls(urls)
+
+

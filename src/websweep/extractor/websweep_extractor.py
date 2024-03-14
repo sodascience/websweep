@@ -1,4 +1,4 @@
-import re
+import re2 as re
 from urllib.parse import urljoin
 
 try:
@@ -17,19 +17,10 @@ class FirmBackBoneFileExtractor(FileExtractor):
         """
         pdf_links = set()
 
-        pattern = re.compile(
-            r"""
-                            financiele.?rapportage|annual.?report|jaarrekening|jaar.?verslag|jaarrapport|jaarrekening|boekhouding.?rapportage|boekhouding.?rapport|financial.?performance|investor|investeerder|financial.?results
-                            """,
-            re.VERBOSE | re.IGNORECASE,
-        )
-        neg_pattern = re.compile(
-            r"""
-                            medewerker|studeren|slim|algemene.?voorwaarden|privacy|test|asbestos|website|mailto|CO2|webshopp|app|experience|opstellen|zoek|coronavirus|diensten|nieuwsbrief|ZZP|freelancers|wat.?is|vertalen
-                            """,
-            re.VERBOSE | re.IGNORECASE,
-        )
 
+        pattern = re.compile(r"(?i)financiele.?rapportage|annual.?report|jaarrekening|jaar.?verslag|jaarrapport|jaarrekening|boekhouding.?rapportage|boekhouding.?rapport|financial.?performance|investor|investeerder|financial.?results")
+        neg_pattern = re.compile(r"(?i)medewerker|studeren|slim|algemene.?voorwaarden|privacy|test|asbestos|website|mailto|CO2|webshopp|app|experience|opstellen|zoek|coronavirus|diensten|nieuwsbrief|ZZP|freelancers|wat.?is|vertalen")
+                            
         for link in self.soup.find_all("a"):
             if re.search(pattern, str(link.get("href"))) and not re.search(
                 neg_pattern, str(link.get("href"))
@@ -50,21 +41,9 @@ class FirmBackBoneFileExtractor(FileExtractor):
         Extract the KVK number from the input file, and add found KVK number to self.kvk in set form
 
         """
-        pattern = re.compile(
-                r"""
-                k\.?v\.?k.{0,40}?(\b\d{8}) | 
-                (\b\d{8}).{0,5}?k\.?v\.?k | 
-                (?<=kamer van koophandel).{0,50}(\d{8})
-                #k\.?v\.?k.{0,20}?(?:\b|[A-Z]{2})(\d{8}\b)    | 
-                #(?:\b|[A-Z]{2})(\d{8}\b).{0,5}?k\.?v\.?k     | 
-                #(?<=kamer van koophandel).{0,20}(?:\b|[A-Z]{2})(\d{8}\b)
-                """,
-                
-            re.VERBOSE | re.IGNORECASE | re.DOTALL,
-        )
+        pattern = re.compile(r'(?s)(?i)k\.?v\.?k.{0,40}?(\b\d{8}\b)|kamer van koophandel.{0,50}?(\b\d{8}\b)')
         result_list = re.findall(pattern, self.text)
-
-        kvk = set([subitem for item in result_list for subitem in item if len(subitem) > 0])
+        kvk = {subitem for item in result_list for subitem in item if subitem}    
 
         return list(kvk)
 
@@ -72,14 +51,10 @@ class FirmBackBoneFileExtractor(FileExtractor):
         """
         Extract the BTW number from the input file, and add found BTW Numbers (usually only 1) to self.btw in list form
         """
-
-        pattern = re.compile(
-                        r"""
-                        (btw|BTW|VAT|vat)(.+)(\bNL\s*[0-9-_.]{9,12}\s*[B 0-9\.]{0,5}|\bNL\b[0-9-_.B]+)
-                        """,
-            re.VERBOSE | re.DOTALL,
-        )
-        result_list = set(re.findall(pattern, self.text))
-        btw = {item[2] for item in result_list}
+        
+        pattern = re.compile(r"(?s)(?i)(btw|BTW|VAT|vat)(.{1,20})(\bNL\s*[0-9-_.]{9,12}\s*[B 0-9\.]{0,5}|\bNL\b[0-9-_.B]+)")
+        
+        btw = {item[2] for item in re.findall(pattern, self.text)}
+        
 
         return list(btw)
