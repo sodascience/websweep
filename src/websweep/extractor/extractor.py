@@ -1,6 +1,6 @@
 import asyncio
 import os
-import regex as re
+import re2 as re
 import shutil
 import sqlite3 as sql
 import time
@@ -108,23 +108,12 @@ class FileExtractor:
 
         """
         pattern = re.compile(
-            r"""
-                                (Tel:\s{0,4}|
-                                tel:\s{0,4}|
-                                telefoon:\s{0,4}|
-                                Telefoon:\s{0,4}|
-                                T:\s{0,4}|
-                                t:\s{0,4}|
-                                T\s{0,4}|
-                                T\.\s{0,4})
-                                (&nbsp;|/{0,2})?
-                                ((\+?|\"?)(\d|\s|\(|\)|-){9,22}\d)
-                                """,
-            re.VERBOSE | re.DOTALL,
+            r'(?s)(?i)(?:tel:|telefoon:|t:|t\s|t\.)[\s|&nbsp;|\/]{0,4}'
+            r'([\+|\"]?[\d|\s|\(|\)|-]{9,15})\b'
         )
         # Phone numbers can be indicated by a variety of different ways, this regex tries to incorporate all of those as a possibillity
-        result_list = set(re.findall(pattern, str(self.soup)))
-        phone = {item[2] for item in result_list}
+        phone = set(re.findall(pattern, str(self.soup)))
+        
 
         return list(phone)
 
@@ -132,18 +121,15 @@ class FileExtractor:
         """
         Extract the Email adress from the input file, and adds the found email adress to self.email in set form
         """
-        pattern = re.compile(
-            r"""
-                        ([A-Za-z0-9\.\+_-]+   # one (or more) sets of all characters which numbers, letters or a subset of punctuations
-                        @                   # needs a @    
-                        [a-zA-Z0-9-_\.]{1,25}  # again, grab any number or letter,  to ensure we also grab stuff like .co.uk
-                        \.                  # the dot in the email
-                        (?!png|jpg|jpeg|gif|pdf)[a-zA-Z-]{1,7}     # grab any combination of letters/numbers/dots,
-                        )""",
-            re.VERBOSE,
-        )
-        self.email = set(re.findall(pattern, str(self.soup)))
-        emails = [email[:-1] if email[-1] == "." else email for email in self.email]
+        undesired_extensions = {
+            "png", "jpg", "jpeg", "gif", "pdf", "doc", "docx", "xls", "xlsx", 
+            "txt", "rtf", "zip", "mp3", "mp4", "wav", "avi", "mov", "psd", "tif", "tiff"
+        }
+        pattern = re.compile(r"([A-Za-z0-9\.\+_-]+@[a-zA-Z0-9-_\.]{1,25}\.[a-zA-Z-]{1,7})")
+        # Find all potential email matches
+        potential_emails = pattern.findall(str(self.soup))
+        emails = [email for email in set(potential_emails) if email.split('.')[-1].lower() not in undesired_extensions]
+
 
         return emails
 
@@ -152,38 +138,24 @@ class FileExtractor:
         Extract the fax number from the input file, and add found fax numbers to self.fax in set form
 
         """
-
         pattern = re.compile(
-            r"""
-                                (Fax:\s{0,4}|
-                                fax:\s{0,4}|
-                                FaxNumber:\s{0,4}|
-                                Faxnummer:\s{0,4}|
-                                f:\s{0,4}|
-                                F:\s{0,4}|)
-                                (&nbsp;|/{0,2})?
-                                (?<!\S)
-                                ((\+?|\"?)(\d|\s|\(|\)|-){9,22}\d)
-                                (?!\d)
-                                """,
-            re.VERBOSE | re.DOTALL,
+                            r"(?s)(?i)\b(?:fax|faxnumber|f):[\s|&nbsp;|\/]{0,4}"
+                            r"([\+|\"]?[\d|\s|\(|\)|-]{9,15})\b"
         )
-        result_list = set(re.findall(pattern, str(self.soup)))
-        faxs = [item[2] for item in result_list]
-        return faxs
+
+        faxs = set(re.findall(pattern, str(self.soup)))
+        return list(set([_.strip() for _ in faxs]))
+
 
     def _extract_zipcode(self) -> list:
         """
         Extract the zipcode from the input file, and add found zipcodes to self.zipcode in set form
         """
 
-        pattern = re.compile(
-            r"""
-                                (\b\d{4}\s?(?!SS)(?!SD)(?!SA)(?!px)(?!em)(?!rm)[A-Z]{2}\b)
-                                """,
-            re.VERBOSE,
-        )
-        zipcodes = list(set(re.findall(pattern, self.text)))
+        pattern = re.compile(r"\b(?:NL-)?\d{4}\s?[A-Z]{2}\b")
+
+        # Remove non-feasible endings
+        zipcodes = [zipcode for zipcode in set(re.findall(pattern, self.text)) if zipcode[-2:] not in {'SS', 'SD', 'SA'}]
 
         return zipcodes
 
@@ -208,14 +180,14 @@ class FileExtractor:
                 add = add[-1] 
 
             pattern = (
-                r"\b([ a-zA-ZÀ-ÿ]+\s+[\s0-9-_a-zA-Z]{1,9})" + #address part
+                r"\b([ a-zA-ZÀ-ÿ\-]+\s+[\s0-9-_a-zA-Z]{1,9})" + #address part
                 r"[\s\-,\|]{0,5}"
                 )
 
             matches = re.findall(pattern, add.strip())
             if len(matches) > 0:
                 # Remove unwanted words from matches
-                filtered_matches = [re.sub(r"\b(?:gevestigd|aan|te)\b", "", match, flags=re.IGNORECASE) for match in matches]
+                filtered_matches = [re.sub(r"(?i}\b(?:gevestigd|aan|te)\b", "", match) for match in matches]
                 filtered_matches = [match.strip() for match in filtered_matches if match.strip()]
                 if filtered_matches:
                     add_found.append(filtered_matches[-1])
