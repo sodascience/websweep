@@ -1,20 +1,15 @@
-import asyncio
+"""This module provides the Extracter model-controller."""
 import os
 import re2 as re
 import shutil
 import sqlite3 as sql
 import time
 import unicodedata
-from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
 from datetime import date as datelib
 from pathlib import Path
-from shutil import rmtree
-from urllib.parse import urljoin
-from xmlrpc.client import Boolean
 
 import orjsonl
 import zipfile
-import ndjson
 import tqdm
 import typer
 from bs4 import BeautifulSoup
@@ -163,11 +158,16 @@ class FileExtractor:
     def _extract_address(self) -> list:
         """
         Extract the adres from the input file, and add found adres to self.adres in set form(
-        TODO: Compile patterns available to all (in utils?). Use re.DOTALL in address
+        TODO: Compile patterns available to all (in utils?). 
 
         """
         add_found = []
-  
+        pattern = re.compile(
+            r"\b([ a-zA-ZÀ-ÿ\-]+\s+[\s0-9-_a-zA-Z]{1,9})" + #address part
+            r"[\s\-,\|]{0,5}"
+        )
+
+
         for zipcode in self.metadata["zipcode"]:
             add, *_ = self.text.partition(zipcode)
             if _[0] == "":
@@ -179,15 +179,10 @@ class FileExtractor:
             else:
                 add = add[-1] 
 
-            pattern = (
-                r"\b([ a-zA-ZÀ-ÿ\-]+\s+[\s0-9-_a-zA-Z]{1,9})" + #address part
-                r"[\s\-,\|]{0,5}"
-                )
-
             matches = re.findall(pattern, add.strip())
             if len(matches) > 0:
                 # Remove unwanted words from matches
-                filtered_matches = [re.sub(r"(?i}\b(?:gevestigd|aan|te)\b", "", match) for match in matches]
+                filtered_matches = [re.sub(r"(?i)\b(?:gevestigd|aan|te)\b", "", match) for match in matches]
                 filtered_matches = [match.strip() for match in filtered_matches if match.strip()]
                 if filtered_matches:
                     add_found.append(filtered_matches[-1])
@@ -270,7 +265,7 @@ class Extractor:
                     metadata = self.file_extractor([domain, identifier, level, url, date, path]).extracting()
                 else:
                     metadata = FileExtractor([domain, identifier, level, url, date, path]).extracting()
-            except Exception as e:
+            except Exception:
                 pass # Handled later
 
         if metadata is None:
@@ -327,23 +322,23 @@ class Extractor:
                     )
                     Path(file_res).parent.mkdir(parents=True, exist_ok=True)
 
-                    file_rep = (
-                        self.target_folder_path
-                        / "extracted_data"
-                        / ("annual_report_" 
-                           + str(datelib.today()) 
-                           + ".ndjson")
-                    )
-                    Path(file_rep).parent.mkdir(parents=True, exist_ok=True)
+                    # file_rep = (
+                    #     self.target_folder_path
+                    #     / "extracted_data"
+                    #     / ("annual_report_" 
+                    #        + str(datelib.today()) 
+                    #        + ".ndjson")
+                    # )
+                    # Path(file_rep).parent.mkdir(parents=True, exist_ok=True)
 
                     for json_dict in pool.imap_unordered(self._create_results, results[i : i + n]):
                         orjsonl.append(file_res, [json_dict])#, compression_level = 9, compression_format = "gz")
                         
-                        try:
-                            if json_dict["annual_report"] != []:
-                                orjsonl.append(file_rep, [json_dict["annual_report"]])# compression_level = 9, compression_format = "gz")
-                        except:
-                            pass
+                        # try:
+                        #     if json_dict["annual_report"] != []:
+                        #         orjsonl.append(file_rep, [json_dict["annual_report"]])# compression_level = 9, compression_format = "gz")
+                        # except Exception:
+                        #     pass
 
                         pbar.update()
 
