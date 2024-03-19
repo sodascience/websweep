@@ -1,4 +1,3 @@
-import asyncio
 import datetime
 import os
 import sqlite3 as sql
@@ -6,12 +5,10 @@ import sys
 import time
 import typer #TODO: can we just import Typer?
 import webbrowser
-import typer
 from datetime import date as datelib
 from functools import wraps
 from importlib.resources import path
 from pathlib import Path
-from shutil import rmtree
 from typing import List, Optional
 
 from websweep import ERRORS, __app_name__, __status__, __version__, config
@@ -25,7 +22,7 @@ try:
     HEADLESS = False
     from tkinter import Tk
     from tkinter import filedialog as fd
-except:
+except Exception:
     HEADLESS = True
 
 app = typer.Typer()
