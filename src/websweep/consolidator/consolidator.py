@@ -1,8 +1,10 @@
+"""This module provides the Consolidator model-controller."""
 import dataclasses
 from collections import Counter
 from typing import List, Generator, Dict, Any
 import orjson
 import re2 as re
+import tldextract
 from itertools import islice
 from pathlib import Path
 from tqdm import tqdm
@@ -140,7 +142,7 @@ class Consolidator:
         """
         try:
             return orjson.loads(line)
-        except:
+        except Exception:
             return None
 
     def read_ndjson_in_chunks(self) -> Generator[List[Dict[str, Any]], None, None]:
@@ -264,7 +266,9 @@ class Consolidator:
         Returns:
             str: The cleaned domain name.
         """
-        return ".".join(re.split("\.|/|@", domain)[-2:])
+        
+        return tldextract.extract(domain).registered_domain
+        
     
     def _initialize_domain_counters(self, site: Dict[str, Any]) -> Domain:
         """
