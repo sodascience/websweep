@@ -15,7 +15,7 @@ from typing import List, Optional
 
 from websweep import ERRORS, __app_name__, __status__, __version__, config
 from .extractor.extractor import Extractor
-from .extractor.websweep_extractor import FirmBackBoneFileExtractor
+from .extractor.firmbackbone_extractor import FirmBackBoneFileExtractor
 from .crawler.crawler import Crawler
 from .utils.utils import classify_url
 
