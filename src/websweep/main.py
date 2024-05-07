@@ -379,6 +379,10 @@ def crawl(
         os.path.join(os.path.dirname(os.path.abspath(__file__)), 'utils', 'default_regex.json'),
         help="Use a custom classification file with page title terms (plain .txt with ';' delimitation)",
     ),
+    target_temp_folder_path: Path = typer.Option(
+        None,
+        help="Set new path for temporary storage of crawled data",
+    ),
 
 ) -> None:
     """
@@ -397,6 +401,7 @@ def crawl(
 
     worker = Crawler(
         target_folder_path=config.get_target_folder_path(), 
+        target_temp_folder_path=target_temp_folder_path,
         classification_file_path=classification_file,
         use_sqlite=config.get_use_database(),
         sock_connect=sock_connect,
@@ -405,6 +410,13 @@ def crawl(
         file_extractor=FirmBackBoneFileExtractor
     )
 
+    if target_temp_folder_path is not None and not Path.exists(target_temp_folder_path):
+        typer.secho(
+            f"Given temporary folder does not exist, Crawler was terminated",
+            fg=typer.colors.RED,
+        )
+        return
+    
     if classification_file is not None and not Path.exists(classification_file):
         typer.secho(
             f"Given classification file does not exist, Crawler was terminated",

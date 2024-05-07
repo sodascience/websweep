@@ -25,6 +25,10 @@ from aiohttp import ClientSession, ClientTimeout, TCPConnector
 from bs4 import BeautifulSoup
 from protego import Protego
 
+import warnings
+from bs4.builder import XMLParsedAsHTMLWarning
+warnings.filterwarnings('ignore', category=XMLParsedAsHTMLWarning)
+
 http.cookies._is_legal_key = lambda _: True
 
 try:
