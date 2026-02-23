@@ -1,0 +1,82 @@
+name: Docs
+
+on:
+  push:
+    paths:
+      - "src/**"
+      - "docs/source/**"
+      - "examples/**"
+      - "README.md"
+      - "Makefile"
+      - "make.bat"
+      - "pyproject.toml"
+      - ".readthedocs.yml"
+      - ".github/workflows/docs.yml"
+  pull_request:
+    paths:
+      - "src/**"
+      - "docs/source/**"
+      - "examples/**"
+      - "README.md"
+      - "Makefile"
+      - "make.bat"
+      - "pyproject.toml"
+      - ".readthedocs.yml"
+      - ".github/workflows/docs.yml"
+  workflow_dispatch:
+
+jobs:
+  build-docs:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          enable-cache: true
+
+      - name: Install dependencies
+        run: uv sync --group docs
+
+      - name: Validate featured notebook example
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path("examples/example_scraper_extractor.ipynb")
+          if not p.exists():
+              raise SystemExit("Missing featured notebook: examples/example_scraper_extractor.ipynb")
+          text = p.read_text(encoding="utf-8")
+          required_urls = [
+              "https://www.dggrootverbruik.nl/",
+              "https://www.gosliga.nl/",
+              "https://www.heeren2.nl/",
+          ]
+          for url in required_urls:
+              if url not in text:
+                  raise SystemExit(f"Featured notebook does not contain required URL: {url}")
+          if "127.0.0.1" in text:
+              raise SystemExit("Featured notebook still references localhost; expected real websites.")
+          print("Notebook validation passed.")
+          PY
+
+      - name: Build docs
+        run: uv run make docs
+
+      - name: Upload docs artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: docs-html
+          path: docs/build/html
+
+      - name: Upload featured notebook artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: notebook-example
+          path: examples/example_scraper_extractor.ipynb

@@ -1,59 +1,55 @@
-# Configuration file for the Sphinx documentation builder.
-#
-# For the full list of built-in configuration values, see the documentation:
-# https://www.sphinx-doc.org/en/master/usage/configuration.html
-
-# -- Project information -----------------------------------------------------
-# https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
-
-import os
 import sys
-sys.path.insert(0, os.path.abspath('../src'))
+from importlib.metadata import PackageNotFoundError, version as metadata_version
+from pathlib import Path
+
+ROOT_DIR = Path(__file__).resolve().parents[2]
+SRC_DIR = ROOT_DIR / "src"
+if str(SRC_DIR) not in sys.path:
+    sys.path.insert(0, str(SRC_DIR))
 
 
-project = 'WebSweep'
-copyright = '2023, ODISSEI Social Data Science'
-author = 'ODISSEI Social Data Science'
-release = '1.0'
-
-# -- General configuration ---------------------------------------------------
-# https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
+project = "WebSweep"
+copyright = "2026, ODISSEI Social Data Science"
+author = "ODISSEI Social Data Science"
+try:
+    release = metadata_version("websweep")
+except PackageNotFoundError:
+    release = "0.0.0"
+version = ".".join(release.split(".")[:2])
 
 extensions = [
-    'sphinx.ext.autodoc'
+    "sphinx.ext.autodoc",
+    "sphinx.ext.napoleon",
+    "sphinx.ext.viewcode",
 ]
 
-templates_path = ['_templates']
-exclude_patterns = []
+templates_path = ["_templates"]
+exclude_patterns = ["_build"]
+autodoc_member_order = "bysource"
+autodoc_typehints = "description"
+napoleon_google_docstring = True
+napoleon_numpy_docstring = True
 
-autodoc_member_order = 'bysource'  # Or 'alphabetical', or 'groupwise'
-
-
-# -- Options for HTML output -------------------------------------------------
-# https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
-
-html_theme = 'alabaster'
-
+html_theme = "sphinx_rtd_theme"
+html_theme_options = {
+    "navigation_depth": 3,
+    "collapse_navigation": False,
+    "style_external_links": True,
+    "style_nav_header_background": "#1f2937",
+}
+html_context = {
+    "display_github": True,
+    "github_user": "sodascience",
+    "github_repo": "websweep",
+    "github_version": "main",
+    "conf_py_path": "/docs/source/",
+}
 html_sidebars = {
-    '**': [
-        'about.html',
-        'contents.html',
-        'searchbox.html',
+    "**": [
+        "about.html",
+        "navigation.html",
+        "relations.html",
+        "searchbox.html",
     ]
 }
-
-html_theme_options = {
-    'sidebar_caption': 'Contents',
-    'description': 'A powerful Python library for web scraping',
-    'show_powered_by': False,
-    'fixed_sidebar': True,
-    'extra_nav_links': {
-        "Contribute": "contribute.html",
-        "Contact": "contact.html",
-        "PyPI Releases": "https://pypi.org/project/websweep/",
-        "Source Code": "https://github.com/sodascience/websweep",
-        "Issue Tracker": "https://github.com/sodascience/websweep/issues",
-    }
-}
-
-html_static_path = ['_static']
+html_static_path = []

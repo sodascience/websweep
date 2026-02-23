@@ -7,6 +7,7 @@ Subpackages
 .. toctree::
    :maxdepth: 4
 
+   websweep.consolidator
    websweep.crawler
    websweep.extractor
    websweep.utils
@@ -19,7 +20,6 @@ websweep.config module
 
 .. automodule:: websweep.config
    :members:
-   :undoc-members:
    :show-inheritance:
 
 websweep.main module
@@ -27,13 +27,5 @@ websweep.main module
 
 .. automodule:: websweep.main
    :members:
-   :undoc-members:
    :show-inheritance:
 
-Module contents
----------------
-
-.. automodule:: websweep
-   :members:
-   :undoc-members:
-   :show-inheritance:

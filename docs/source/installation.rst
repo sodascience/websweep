@@ -1,53 +1,49 @@
 Installation
 ============
 
-This section provides detailed instructions on how to install WebSweep.
+Requirements
+------------
 
-Prerequisites
--------------
+- Python 3.10+
+- pip
 
-Before installing WebSweep, ensure you have the following prerequisites:
-
-- Python 3.8
-- pip (Python package manager)
-
-Basic Installation
-------------------
-
-To install WebSweep, run the following command in your terminal:
-
-.. code-block:: bash
-
-    pip install websweep
-
-Advanced Installation
----------------------
-
-For advanced users who want to install from the source or customize their installation:
-
-1. Clone the repository:
-
-   .. code-block:: bash
-
-       git clone https://github.com/sodascience/websweep.git
-
-2. Navigate to the WebSweep directory:
-
-   .. code-block:: bash
-
-       cd websweep
-
-3. Install the package:
-
-   .. code-block:: bash
-
-       pip install .
-
-Post-installation
+Install from PyPI
 -----------------
 
-After installing WebSweep, you can verify the installation by running:
+.. code-block:: bash
+
+   pip install websweep
+
+By default, ``pip install websweep`` installs ``google-re2`` on supported
+Python versions (3.10+). If unavailable, WebSweep falls back to ``regex``.
+WebSweep also installs and uses ``lxml`` as the default HTML parser for faster
+crawling/extraction parsing.
+
+Verify installation:
 
 .. code-block:: bash
 
-    websweep --version
+   websweep --version
+
+
+Install from Source (Developers)
+--------------------------------
+
+.. code-block:: bash
+
+   git clone https://github.com/sodascience/websweep.git
+   cd websweep
+   pip install uv
+   uv sync --group test --group docs --group dev
+
+Run tests:
+
+.. code-block:: bash
+
+   uv run pytest -q
+
+Build docs:
+
+.. code-block:: bash
+
+   uv run make docs

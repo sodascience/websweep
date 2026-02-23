@@ -3,109 +3,84 @@
 Examples
 ========
 
-This page provides examples of how to use `websweep` both as a command line interface (CLI) tool and as a Python package.
+Featured notebook
+-----------------
 
-Command Line Interface Examples
--------------------------------
+Primary end-to-end example (crawler -> extractor -> consolidator):
 
-Initialize a new WebSweep instance:
+- https://github.com/sodascience/websweep/blob/main/examples/example_scraper_extractor.ipynb
 
-.. code-block:: bash
+The notebook uses real websites and shows:
 
-   $ websweep init
-     --headless
+- input URLs
+- crawler output
+- extractor output sample
+- consolidator output sample
+- custom ``FileExtractor`` add-on usage
 
-Restore an existing WebSweep instance:
 
-.. code-block:: bash
+CLI Examples
+------------
 
-   $ websweep restore
-     --headless
-
-Configure WebSweep settings:
-
-.. code-block:: bash
-
-   $ websweep config
-     --delete-processed-files
-     --target-folder-path /path/to/new/output
-     --source-file-path /path/to/new/source/file.csv
-
-View active WebSweep instance:
+Initialize:
 
 .. code-block:: bash
 
-   $ websweep instance
+   websweep init --headless
 
-Start crawling process:
-
-.. code-block:: bash
-
-   $ websweep crawl
-     --sock-connect 150
-
-Start extracting process:
+Crawl:
 
 .. code-block:: bash
 
-   $ websweep extract
-     --start-date YYYY-MM-DD
-     --end-date YYYY-MM-DD
+   websweep crawl
+
+Crawl and extract in one go (lower disk usage):
+
+.. code-block:: bash
+
+   websweep crawl --extract
+
+Extract:
+
+.. code-block:: bash
+
+   websweep extract
+
+Backend and filtering controls:
+
+.. code-block:: bash
+
+   websweep crawl --overview-backend duckdb
+   websweep crawl --allow-extensions pdf,png
+   websweep crawl --block-extensions pdf,png,zip
 
 
-Python Package Examples
-----------------------
+Python Examples
+---------------
 
-Scraping and extracting at the same time (no HTML saved):
+Basic pipeline:
 
 .. code-block:: python
 
-   from websweep import Crawler
-
-   urls = ['https://firmbackbone.nl', 'https://uu.nl/', 'https://odissei-soda.nl']
-
-   crawler_unit = Crawler(target_folder_path=Path("your/data/folder"), save_html=False, extract=True)
-   crawler_unit.crawl_base_urls(urls)
-
-Only scraping (saving HTML):
-
-.. code-block:: python
-
-   from websweep import Crawler
-
-   urls = ['https://firmbackbone.nl', 'https://uu.nl/', 'https://odissei-soda.nl']
-
-   crawler_unit = Crawler(target_folder_path=Path("your/data/folder"))
-   crawler_unit.crawl_base_urls(urls)
-
-Only extracting (using HTML):
-
-.. code-block:: python
-
-   from websweep import FileExtractor
-
-   extractor = FileExtractor(target_folder_path=Path("your/data/folder"))
-   extractor.extract_urls()
-
-Only extracting with custom Extractor methods (using HTML):
-
-.. code-block:: python
-
-   from websweep import FileExtractor
    from pathlib import Path
-   import re
+   from websweep import Crawler, Extractor, Consolidator
 
-   class MyCustomFileExtractor(FileExtractor):
-       def __init__(self, *args, **kwargs):
-           super().__init__(*args, **kwargs)
+   urls = ["https://example.com", "https://example.org"]
+   out = Path("./research_output")
 
-       def _extract_something(self) -> list:
-           """
-           Extract something from the input file, and add found somethings to self.something in set form
-           """
-           pattern = re.compile(r'\b\d{5,}\b', re.VERBOSE)
-           somethings = list(set(re.findall(pattern, self.text)))
-           return somethings
+   Crawler(target_folder_path=out).crawl_base_urls(urls)
+   Extractor(target_folder_path=out).extract_urls()
 
-   extractor_unit = MyCustomFileExtractor(target_folder_path=Path("your/data/folder"))
-   extractor_unit.extract_urls()
+   extracted = sorted((out / "extracted_data").glob("*.ndjson"))[0]
+   Consolidator(str(extracted)).consolidate(str(out / "consolidated_data" / "consolidated.ndjson"))
+
+One-pass crawling + extraction:
+
+.. code-block:: python
+
+   from pathlib import Path
+   from websweep import Crawler
+
+   urls = ["https://example.com", "https://example.org"]
+   Crawler(target_folder_path=Path("./research_output"), save_html=False, extract=True).crawl_base_urls(urls)
+
