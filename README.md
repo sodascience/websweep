@@ -55,6 +55,21 @@ One-pass mode (lower disk usage):
 Input URLs -> Crawler(extract=True, save_html=False) -> extracted_data/*.ndjson
 ```
 
+### What Each Step Does
+
+- `Crawler`:
+  starts from base URLs (one domain per row), downloads pages, follows only
+  within-domain links, applies exclusion rules (for example blocked extensions),
+  and stops at depth `max_level` (default: `3`).
+- `Extractor`:
+  reads crawled pages and extracts structured page-level fields such as cleaned
+  text (`text`), metadata (`meta_*`), and location fields (`zipcode`, `address`).
+- `Consolidator`:
+  merges page-level records back to one record per domain, keeping aggregated
+  postcode information (`zipcode` frequencies, where the most frequent can be
+  treated as the main postcode and others as additional postcodes) and
+  concatenated domain text.
+
 ## Quickstart (Python)
 
 ```python

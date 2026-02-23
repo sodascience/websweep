@@ -8,6 +8,7 @@ import functools
 import http.cookies
 import os
 from time import time
+from email.utils import parsedate_to_datetime
 import zipfile
 import shutil
 import sqlite3 as sql
@@ -211,6 +212,9 @@ class Crawler:
         concurrency_pages: Optional[int] = None,
         page_batch_size: int = 500,
         base_url_batch_size: int = 1000,
+        max_concurrency_per_domain: int = 2,
+        overview_create_indexes: Optional[bool] = None,
+        duckdb_deduplicate: bool = False,
         **kwargs,
     ):
         self.target_folder_path = Path(target_folder_path)
@@ -249,6 +253,33 @@ class Crawler:
         else:
             self.overview_path = f"{self.target_temp_folder_path}/overview_urls.tsv"
 
+        # Storage knobs:
+        # - DuckDB defaults to append-only inserts (no dedupe query, no secondary indexes)
+        #   for sustained high-volume crawls.
+        # - SQLite keeps historical behavior.
+        if overview_create_indexes is None:
+            self.overview_create_indexes = self.overview_backend == "sqlite"
+        else:
+            self.overview_create_indexes = bool(overview_create_indexes)
+        self.duckdb_deduplicate = bool(duckdb_deduplicate and self.overview_backend == "duckdb")
+
+        self._duckdb_insert_sql = "INSERT INTO Overview VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+        if self.duckdb_deduplicate:
+            self._duckdb_insert_sql = """
+                INSERT INTO Overview
+                SELECT ?, ?, ?, ?, ?, ?, ?, ?
+                WHERE NOT EXISTS (
+                    SELECT 1 FROM Overview
+                    WHERE domain = ? AND url = ? AND session_date = ? AND status = ?
+                )
+            """
+
+        # Keep DuckDB writes on a single persistent connection per crawl run.
+        self._duckdb_connection = None
+        self._duckdb_cursor = None
+        self._duckdb_batch = []
+        self._duckdb_batch_size = 500
+
         self.save_html = save_html
         self.max_level = max_level
         self.max_pages_per_domain = max_pages_per_domain
@@ -278,17 +309,22 @@ class Crawler:
         self.concurrency_pages = (
             threads_download if concurrency_pages is None else max(1, int(concurrency_pages))
         )
+        self.max_concurrency_per_domain = max(1, int(max_concurrency_per_domain))
         self.sem_pages = None
         self.page_batch_size = max(1, int(page_batch_size))
         self.base_url_batch_size = max(1, int(base_url_batch_size))
         self.threads_bs4 = threads_bs4
         self.threads_download = threads_download
         self.sock_connect = sock_connect
-        self.domain_wait_increment = 0.05
-        self.max_domain_wait = 1.0
+        self.domain_wait_decay = 0.7
+        self.domain_wait_on_429 = 2.0
+        self.domain_wait_on_403 = 1.0
+        self.domain_wait_on_transient_error = 0.75
+        self.max_domain_wait = 8.0
         self.retry_waits = (0, 2, 5)
 
         self.waits = dict()
+        self.domain_semaphores = dict()
         self.errors_website = dict()
         if headers is None:
             self.headers = {
@@ -340,6 +376,68 @@ class Crawler:
                 ) from exc
             return duckdb.connect(self.overview_path)
         return sql.connect(self.overview_path)
+
+    def _open_duckdb_overview_writer(self):
+        """Open persistent DuckDB writer connection for this crawl run."""
+        if self.overview_backend != "duckdb":
+            return
+        if self._duckdb_connection is not None:
+            return
+        self._duckdb_connection = self._connect_overview_db()
+        self._duckdb_cursor = self._duckdb_connection.cursor()
+        self._duckdb_batch = []
+
+    def _flush_duckdb_overview_batch(self, force=False):
+        """Flush buffered overview rows to DuckDB in one transaction."""
+        if self.overview_backend != "duckdb":
+            return
+        if self._duckdb_connection is None or self._duckdb_cursor is None:
+            return
+        if not self._duckdb_batch:
+            return
+        if (not force) and (len(self._duckdb_batch) < self._duckdb_batch_size):
+            return
+
+        self._duckdb_cursor.executemany(self._duckdb_insert_sql, self._duckdb_batch)
+        self._duckdb_connection.commit()
+        self._duckdb_batch = []
+
+    def _build_overview_row(self, domain, identifier, level, url, status, date, path):
+        """Build one overview row tuple and optional dedupe suffix for DuckDB."""
+        row = (
+            domain,
+            identifier,
+            level,
+            url,
+            status,
+            self.crawler_session_date,
+            date,
+            path,
+        )
+        if self.duckdb_deduplicate:
+            return row + (domain, url, self.crawler_session_date, status)
+        return row
+
+    def _close_duckdb_overview_writer(self):
+        """Flush and close persistent DuckDB writer connection."""
+        if self.overview_backend != "duckdb":
+            return
+        if self._duckdb_connection is None:
+            return
+        try:
+            self._flush_duckdb_overview_batch(force=True)
+            try:
+                # Ensure WAL/checkpoint state is finalized for this run.
+                self._duckdb_connection.execute("CHECKPOINT")
+            except Exception:
+                pass
+        finally:
+            try:
+                self._duckdb_connection.close()
+            finally:
+                self._duckdb_connection = None
+                self._duckdb_cursor = None
+                self._duckdb_batch = []
 
 
     def get_urls(self, r, url, domain, level, identifier):
@@ -404,19 +502,28 @@ class Crawler:
         if self.overview_backend in {"sqlite", "duckdb"}:
             connection = self._connect_overview_db()
             cursor = connection.cursor()
-            cursor.execute(
-                """
-                CREATE TABLE IF NOT EXISTS Overview
-                (domain TEXT, identifier TEXT, level INT, url TEXT, status TEXT, session_date TEXT, crawl_date TEXT, path TEXT, 
-                UNIQUE (domain, url, session_date, status));
-                """
-            )
-            try:
-                cursor.execute("CREATE INDEX IF NOT EXISTS index_date ON Overview (crawl_date);")
-                cursor.execute("CREATE INDEX IF NOT EXISTS index_status ON Overview (status);")
-            except Exception:
-                # Not all backends support IF NOT EXISTS for indexes equally.
-                pass
+            if self.overview_backend == "duckdb" and not self.duckdb_deduplicate:
+                cursor.execute(
+                    """
+                    CREATE TABLE IF NOT EXISTS Overview
+                    (domain TEXT, identifier TEXT, level INT, url TEXT, status TEXT, session_date TEXT, crawl_date TEXT, path TEXT);
+                    """
+                )
+            else:
+                cursor.execute(
+                    """
+                    CREATE TABLE IF NOT EXISTS Overview
+                    (domain TEXT, identifier TEXT, level INT, url TEXT, status TEXT, session_date TEXT, crawl_date TEXT, path TEXT,
+                    UNIQUE (domain, url, session_date, status));
+                    """
+                )
+            if self.overview_create_indexes:
+                try:
+                    cursor.execute("CREATE INDEX IF NOT EXISTS index_date ON Overview (crawl_date);")
+                    cursor.execute("CREATE INDEX IF NOT EXISTS index_status ON Overview (status);")
+                except Exception:
+                    # Not all backends support IF NOT EXISTS for indexes equally.
+                    pass
             connection.commit()
             connection.close()
 
@@ -435,6 +542,13 @@ class Crawler:
             domain = _registered_domain(url)
 
         if self.overview_backend in {"sqlite", "duckdb"}:
+            if self.overview_backend == "duckdb" and self._duckdb_connection is not None:
+                self._duckdb_batch.append(
+                    self._build_overview_row(domain, identifier, level, url, status, date, path)
+                )
+                self._flush_duckdb_overview_batch(force=False)
+                return
+
             # opening the file is fast (0.00x per query), minimum gain to keep it open (and potential trouble with threading)
             connection = self._connect_overview_db()
             cursor = connection.cursor()
@@ -446,28 +560,8 @@ class Crawler:
                 )
             else:
                 cursor.execute(
-                    """
-                    INSERT INTO Overview
-                    SELECT ?, ?, ?, ?, ?, ?, ?, ?
-                    WHERE NOT EXISTS (
-                        SELECT 1 FROM Overview
-                        WHERE domain = ? AND url = ? AND session_date = ? AND status = ?
-                    )
-                    """,
-                    (
-                        domain,
-                        identifier,
-                        level,
-                        url,
-                        status,
-                        self.crawler_session_date,
-                        date,
-                        path,
-                        domain,
-                        url,
-                        self.crawler_session_date,
-                        status,
-                    ),
+                    self._duckdb_insert_sql,
+                    self._build_overview_row(domain, identifier, level, url, status, date, path),
                 )
 
             connection.commit()
@@ -493,72 +587,162 @@ class Crawler:
         # return current day in format "YYYY-MM-DD"
         return datetime.datetime.now().strftime(fmt)
 
+    def _parse_retry_after_seconds(self, value):
+        """Parse Retry-After header value into seconds (best-effort)."""
+        if value is None:
+            return None
+        raw = str(value).strip()
+        if not raw:
+            return None
+        if raw.isdigit():
+            return float(raw)
+        try:
+            dt = parsedate_to_datetime(raw)
+        except Exception:
+            return None
+        if dt is None:
+            return None
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=datetime.timezone.utc)
+        now = datetime.datetime.now(datetime.timezone.utc)
+        delta = (dt - now).total_seconds()
+        if delta <= 0:
+            return 0.0
+        return float(delta)
+
+    def _status_code(self, status):
+        """Return integer status code when possible, else ``None``."""
+        value = str(status).strip()
+        if not value:
+            return None
+        try:
+            return int(float(value))
+        except Exception:
+            return None
+
+    def _update_domain_wait(self, wait_key, status, retry_after_seconds=None):
+        """
+        Update per-domain backoff wait using response outcome.
+
+        Strategy:
+        - 429: strong backoff (use Retry-After when provided)
+        - 403: medium backoff
+        - transient errors/5xx: modest backoff
+        - success/other statuses: decay wait so queues recover quickly
+        """
+        current_wait = float(self.waits.get(wait_key, 0.0))
+        code = self._status_code(status)
+        status_text = str(status).lower()
+
+        if code == 429:
+            target = retry_after_seconds
+            if target is None:
+                target = max(self.domain_wait_on_429, current_wait * 2.0)
+            new_wait = min(self.max_domain_wait, max(0.0, float(target)))
+        elif code == 403:
+            new_wait = min(
+                self.max_domain_wait,
+                max(self.domain_wait_on_403, current_wait * 1.6 + 0.25),
+            )
+        elif code is not None and code >= 500:
+            new_wait = min(
+                self.max_domain_wait,
+                max(self.domain_wait_on_transient_error, current_wait * 1.3 + 0.15),
+            )
+        elif (
+            "timeout" in status_text
+            or "connection failed" in status_text
+            or "request failed" in status_text
+            or "dns lookup failed" in status_text
+        ):
+            new_wait = min(
+                self.max_domain_wait,
+                max(self.domain_wait_on_transient_error, current_wait * 1.2 + 0.1),
+            )
+        else:
+            new_wait = max(0.0, current_wait * self.domain_wait_decay)
+
+        self.waits[wait_key] = new_wait
+
             
     async def __fetch_one_url(self, domain, url, identifier, level, state_key=None):
         if state_key is None:
             state_key = domain
-        async with self.sem_pages:
-            flag_download = self.classifier(
-                url,
-                level,
-                self.url_regex_mail,
-                self.negative_regex,
-                self.url_regex,
-                self.allowed_extensions,
-                self.blocked_extensions,
-            )
+        wait_key = domain
+        domain_sem = self.domain_semaphores.get(wait_key)
+        if domain_sem is None:
+            domain_sem = asyncio.Semaphore(self.max_concurrency_per_domain)
+            self.domain_semaphores[wait_key] = domain_sem
 
-            # classify url to see if it should be crawled
-            if not flag_download:
-                return []
+        async with domain_sem:
+            async with self.sem_pages:
+                flag_download = self.classifier(
+                    url,
+                    level,
+                    self.url_regex_mail,
+                    self.negative_regex,
+                    self.url_regex,
+                    self.allowed_extensions,
+                    self.blocked_extensions,
+                )
 
-            # be nice and wait a bit per url (non blocking)
-            current_wait = self.waits.get(state_key, 0.0)
-            if current_wait > 0:
-                await asyncio.sleep(current_wait)
-            self.waits[state_key] = min(
-                current_wait + self.domain_wait_increment,
-                self.max_domain_wait,
-            )
+                # classify url to see if it should be crawled
+                if not flag_download:
+                    return []
 
-            try_number = 0
-            status = "One URL: Too many errors in domain"
-            path = ""
+                # Respect adaptive per-domain wait (non blocking).
+                current_wait = self.waits.get(wait_key, 0.0)
+                if current_wait > 0:
+                    await asyncio.sleep(current_wait)
 
-            while (try_number < len(self.retry_waits)) and (self.errors_website[state_key] < 20):
-                if try_number == 0:
-                    urls, status, path = await self.__fetch_one_url_wrapped(
-                        domain, url, identifier, level, self.session, state_key=state_key
-                    )
-                else:
-                    await asyncio.sleep(self.retry_waits[try_number])
+                try_number = 0
+                status = "One URL: Too many errors in domain"
+                path = ""
 
-                    # If failure, give an individual session
-                    async with ClientSession(
-                        headers=self.headers,
-                        trust_env=True,
-                        connector=TCPConnector(
-                            limit=1,  # number of websites/request in parallel
-                            ssl=self.verify_ssl,
-                            ttl_dns_cache=0,
-                            force_close=True,
-                        ),
-                        timeout=ClientTimeout(total=None, sock_connect=self.sock_connect, sock_read=300),
-                    ) as session:
-                        urls, status, path = await self.__fetch_one_url_wrapped(
-                            domain, url, identifier, level, session, state_key=state_key
+                while (try_number < len(self.retry_waits)) and (self.errors_website[state_key] < 20):
+                    if try_number == 0:
+                        urls, status, path, retry_after_seconds = await self.__fetch_one_url_wrapped(
+                            domain, url, identifier, level, self.session, state_key=state_key
                         )
+                    else:
+                        wait_before_retry = max(
+                            self.retry_waits[try_number],
+                            float(self.waits.get(wait_key, 0.0)),
+                        )
+                        if wait_before_retry > 0:
+                            await asyncio.sleep(wait_before_retry)
 
-                try_number += 1
+                        # If failure, give an individual session
+                        async with ClientSession(
+                            headers=self.headers,
+                            trust_env=True,
+                            connector=TCPConnector(
+                                limit=1,  # number of websites/request in parallel
+                                ssl=self.verify_ssl,
+                                ttl_dns_cache=0,
+                                force_close=True,
+                            ),
+                            timeout=ClientTimeout(total=None, sock_connect=self.sock_connect, sock_read=300),
+                        ) as session:
+                            urls, status, path, retry_after_seconds = await self.__fetch_one_url_wrapped(
+                                domain, url, identifier, level, session, state_key=state_key
+                            )
 
-                # No error
-                if urls is not None:
-                    self.__update_overview_file(domain, level, url, identifier, status, path)
-                    return urls
+                    self._update_domain_wait(
+                        wait_key,
+                        status,
+                        retry_after_seconds=retry_after_seconds,
+                    )
+                    try_number += 1
 
-            # Error (also by domain)
-            self.__update_overview_file(domain, level, url, identifier, status, path)
-            return []
+                    # No error
+                    if urls is not None:
+                        self.__update_overview_file(domain, level, url, identifier, status, path)
+                        return urls
+
+                # Error (also by domain)
+                self.__update_overview_file(domain, level, url, identifier, status, path)
+                return []
 
          
     async def __fetch_one_url_wrapped(self, domain, url, identifier, level, session, state_key=None):
@@ -572,10 +756,17 @@ class Crawler:
         urls = []    
         path = ""
         status = "-9"
+        retry_after_seconds = None
         try:
             async with session.get(url) as response:
                 r = await response.read()
                 status = response.status
+                if status == 429:
+                    retry_after_seconds = self._parse_retry_after_seconds(
+                        response.headers.get("Retry-After")
+                    )
+                    if retry_after_seconds is not None:
+                        path = f"Retry-After={retry_after_seconds:.2f}s"
                 if status == 200:
                     self.count_downloads += 1
                     # If the chunk size is reached, move the old file outside of temp, create a new file
@@ -604,7 +795,7 @@ class Crawler:
 
                 #self.__update_overview_file(domain, level, url, identifier, status, path)
                 
-                return urls, status, path
+                return urls, status, path, retry_after_seconds
 
         except Exception as e:
             error_text = str(e).lower()
@@ -621,7 +812,7 @@ class Crawler:
                 status = "Request failed"
             path = "One wrapped: " + str(e)
             self.errors_website[state_key] += 1
-            return None, status, path
+            return None, status, path, retry_after_seconds
             
     async def __test_domain_robots(self, url, domain, identifier):
         """
@@ -704,7 +895,7 @@ class Crawler:
                 url, domain, rp = domain
             state_key = f"{domain}|{identifier}|{clean_url(url)}"
             try:
-                self.waits[state_key] = 0
+                self.waits.setdefault(domain, 0.0)
                 self.errors_website[state_key] = 0
                 
                 level = 0
@@ -756,9 +947,6 @@ class Crawler:
                         records.append(next_url)
 
                     level += 1
-
-                    # reset waits for next level
-                    self.waits[state_key] = 0
                 
                 if self.save_html:
                     # zip the folder
@@ -774,7 +962,6 @@ class Crawler:
                     zf.close()
                     shutil.rmtree(base_url_folder)
 
-                self.waits.pop(state_key, None)
                 self.errors_website.pop(state_key, None)
 
             except Exception as e:
@@ -885,18 +1072,22 @@ class Crawler:
         :param urls: List of all level 0 urls to visit
         """
         start = time()
-        with ThreadPoolExecutor(max_workers=self.threads_bs4) as self.cpu_executor:
-            try:
-                running_loop = asyncio.get_running_loop()
-            except RuntimeError:
-                running_loop = None
+        self._open_duckdb_overview_writer()
+        try:
+            with ThreadPoolExecutor(max_workers=self.threads_bs4) as self.cpu_executor:
+                try:
+                    running_loop = asyncio.get_running_loop()
+                except RuntimeError:
+                    running_loop = None
 
-            if running_loop and running_loop.is_running():
-                # Jupyter/async contexts already own the current event loop.
-                with ThreadPoolExecutor(max_workers=1) as loop_executor:
-                    loop_executor.submit(self._run_fetch_loop, urls).result()
-            else:
-                self._run_fetch_loop(urls)
+                if running_loop and running_loop.is_running():
+                    # Jupyter/async contexts already own the current event loop.
+                    with ThreadPoolExecutor(max_workers=1) as loop_executor:
+                        loop_executor.submit(self._run_fetch_loop, urls).result()
+                else:
+                    self._run_fetch_loop(urls)
+        finally:
+            self._close_duckdb_overview_writer()
 
         # Move last results file
         if (self.count_downloads > 0) and (self.extractor_unit is not None):
@@ -908,22 +1099,31 @@ class Crawler:
                     dst.unlink()
                 shutil.move(str(src), str(dst))
 
+        # Per-domain throttling state is only needed during a crawl run.
+        self.waits.clear()
+        self.domain_semaphores.clear()
+
         print(
             f"Crawled {self.count_downloads} pages from {self.num_urls} urls to level {self.max_level} in {time() - start:2.1f} seconds."
         )
 
     def __get_downloaded_domains(self):
         if self.overview_backend in {"sqlite", "duckdb"}:
-            connection = self._connect_overview_db()
-            cursor = connection.cursor()
             min_date = datetime.date.today() - datetime.timedelta(days=self.min_days_between_crawls)
             min_date = min_date.strftime("%Y-%m-%d")
-            
-            cursor.execute("SELECT url FROM Overview WHERE level = 0 AND session_date > ?;", (min_date,))
-            urls = [clean_url(_[0]) for _ in cursor.fetchall()]
 
-            connection.commit()
-            connection.close()
+            if self.overview_backend == "duckdb" and self._duckdb_connection is not None:
+                self._flush_duckdb_overview_batch(force=True)
+                cursor = self._duckdb_connection.cursor()
+                cursor.execute("SELECT url FROM Overview WHERE level = 0 AND session_date > ?;", (min_date,))
+                urls = [clean_url(_[0]) for _ in cursor.fetchall()]
+            else:
+                connection = self._connect_overview_db()
+                cursor = connection.cursor()
+                cursor.execute("SELECT url FROM Overview WHERE level = 0 AND session_date > ?;", (min_date,))
+                urls = [clean_url(_[0]) for _ in cursor.fetchall()]
+                connection.commit()
+                connection.close()
         else:
             with open(self.overview_path, "r", newline='') as f:
                 reader = csv.reader(f, delimiter='\t')
@@ -950,16 +1150,24 @@ class Crawler:
         failed_records = []
 
         if self.overview_backend in {"sqlite", "duckdb"}:
-            connection = self._connect_overview_db()
-            cursor = connection.cursor()
-            cursor.execute(
-                "SELECT url, identifier, level, status, session_date FROM Overview WHERE session_date = ?;",
-                (complement_date_str,),
-            )
-            rows = cursor.fetchall()
-            
-            connection.commit()
-            connection.close()
+            if self.overview_backend == "duckdb" and self._duckdb_connection is not None:
+                self._flush_duckdb_overview_batch(force=True)
+                cursor = self._duckdb_connection.cursor()
+                cursor.execute(
+                    "SELECT url, identifier, level, status, session_date FROM Overview WHERE session_date = ?;",
+                    (complement_date_str,),
+                )
+                rows = cursor.fetchall()
+            else:
+                connection = self._connect_overview_db()
+                cursor = connection.cursor()
+                cursor.execute(
+                    "SELECT url, identifier, level, status, session_date FROM Overview WHERE session_date = ?;",
+                    (complement_date_str,),
+                )
+                rows = cursor.fetchall()
+                connection.commit()
+                connection.close()
 
             for row in rows:
                 url = str(row[0]).strip()

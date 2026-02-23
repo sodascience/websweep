@@ -6,20 +6,21 @@
   <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Examples &mdash; WebSweep 0.0.0.post1.dev435 documentation</title>
+  <title>Examples &mdash; WebSweep 0.0.0.post1.dev440 documentation</title>
       <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=9edc463e" />
 
   
       <script src="_static/jquery.js?v=5d32c60e"></script>
       <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
-      <script src="_static/documentation_options.js?v=4368d9c6"></script>
+      <script src="_static/documentation_options.js?v=fe7f70e5"></script>
       <script src="_static/doctools.js?v=fd6eb6e6"></script>
       <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
+      <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
     <script src="_static/js/theme.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="websweep" href="modules.html" />
+    <link rel="next" title="WebSweep Example for Researchers" href="example_scraper_extractor.html" />
     <link rel="prev" title="User Guide" href="userguide.html" /> 
 </head>
 
@@ -50,24 +51,33 @@
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="userguide.html">User Guide</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="userguide.html#pipeline-overview">Pipeline Overview</a></li>
+<li class="toctree-l2"><a class="reference internal" href="userguide.html#quickstart">Quickstart</a></li>
+<li class="toctree-l2"><a class="reference internal" href="userguide.html#what-each-component-does">What each component does</a></li>
 <li class="toctree-l2"><a class="reference internal" href="userguide.html#library-quickstart">Library Quickstart</a></li>
+<li class="toctree-l2"><a class="reference internal" href="userguide.html#library-workflow-detailed">Library Workflow (Detailed)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="userguide.html#cli-workflow-detailed">CLI Workflow (Detailed)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="userguide.html#how-cli-configuration-works">How CLI configuration works</a></li>
+</ul>
+</li>
 <li class="toctree-l2"><a class="reference internal" href="userguide.html#custom-extraction-add-ons">Custom Extraction Add-ons</a></li>
 <li class="toctree-l2"><a class="reference internal" href="userguide.html#url-filtering-rules">URL Filtering Rules</a></li>
-<li class="toctree-l2"><a class="reference internal" href="userguide.html#cli-workflow">CLI Workflow</a></li>
 <li class="toctree-l2"><a class="reference internal" href="userguide.html#troubleshooting-statuses">Troubleshooting Statuses</a></li>
 </ul>
 </li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">Examples</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="#featured-notebook">Featured notebook</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#cli-examples">CLI Examples</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#python-examples">Python Examples</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#featured-notebook-parsed">Featured Notebook (Parsed)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="example_scraper_extractor.html">WebSweep Example for Researchers</a></li>
+</ul>
+</li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="modules.html">websweep</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="websweep.html">websweep package</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="websweep.html#subpackages">Subpackages</a></li>
-<li class="toctree-l3"><a class="reference internal" href="websweep.html#submodules">Submodules</a></li>
+<li class="toctree-l2"><a class="reference internal" href="websweep.html">websweep</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="websweep.consolidator.html">websweep.consolidator package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="websweep.crawler.html">websweep.crawler package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="websweep.extractor.html">websweep.extractor package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="websweep.utils.html">websweep.utils package</a></li>
 <li class="toctree-l3"><a class="reference internal" href="websweep.html#module-websweep.config">websweep.config module</a></li>
 <li class="toctree-l3"><a class="reference internal" href="websweep.html#module-websweep.main">websweep.main module</a></li>
 </ul>
@@ -109,21 +119,6 @@
              
   <section id="examples">
 <span id="id1"></span><h1>Examples<a class="headerlink" href="#examples" title="Link to this heading"></a></h1>
-<section id="featured-notebook">
-<h2>Featured notebook<a class="headerlink" href="#featured-notebook" title="Link to this heading"></a></h2>
-<p>Primary end-to-end example (crawler -&gt; extractor -&gt; consolidator):</p>
-<ul class="simple">
-<li><p><a class="reference external" href="https://github.com/sodascience/websweep/blob/main/examples/example_scraper_extractor.ipynb">https://github.com/sodascience/websweep/blob/main/examples/example_scraper_extractor.ipynb</a></p></li>
-</ul>
-<p>The notebook uses real websites and shows:</p>
-<ul class="simple">
-<li><p>input URLs</p></li>
-<li><p>crawler output</p></li>
-<li><p>extractor output sample</p></li>
-<li><p>consolidator output sample</p></li>
-<li><p>custom <code class="docutils literal notranslate"><span class="pre">FileExtractor</span></code> add-on usage</p></li>
-</ul>
-</section>
 <section id="cli-examples">
 <h2>CLI Examples<a class="headerlink" href="#cli-examples" title="Link to this heading"></a></h2>
 <p>Initialize:</p>
@@ -149,30 +144,29 @@ websweep<span class="w"> </span>crawl<span class="w"> </span>--block-extensions<
 </pre></div>
 </div>
 </section>
-<section id="python-examples">
-<h2>Python Examples<a class="headerlink" href="#python-examples" title="Link to this heading"></a></h2>
-<p>Basic pipeline:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">websweep</span><span class="w"> </span><span class="kn">import</span> <span class="n">Crawler</span><span class="p">,</span> <span class="n">Extractor</span><span class="p">,</span> <span class="n">Consolidator</span>
-
-<span class="n">urls</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;https://example.com&quot;</span><span class="p">,</span> <span class="s2">&quot;https://example.org&quot;</span><span class="p">]</span>
-<span class="n">out</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="s2">&quot;./research_output&quot;</span><span class="p">)</span>
-
-<span class="n">Crawler</span><span class="p">(</span><span class="n">target_folder_path</span><span class="o">=</span><span class="n">out</span><span class="p">)</span><span class="o">.</span><span class="n">crawl_base_urls</span><span class="p">(</span><span class="n">urls</span><span class="p">)</span>
-<span class="n">Extractor</span><span class="p">(</span><span class="n">target_folder_path</span><span class="o">=</span><span class="n">out</span><span class="p">)</span><span class="o">.</span><span class="n">extract_urls</span><span class="p">()</span>
-
-<span class="n">extracted</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">((</span><span class="n">out</span> <span class="o">/</span> <span class="s2">&quot;extracted_data&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="s2">&quot;*.ndjson&quot;</span><span class="p">))[</span><span class="mi">0</span><span class="p">]</span>
-<span class="n">Consolidator</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">extracted</span><span class="p">))</span><span class="o">.</span><span class="n">consolidate</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">out</span> <span class="o">/</span> <span class="s2">&quot;consolidated_data&quot;</span> <span class="o">/</span> <span class="s2">&quot;consolidated.ndjson&quot;</span><span class="p">))</span>
-</pre></div>
+<section id="featured-notebook-parsed">
+<h2>Featured Notebook (Parsed)<a class="headerlink" href="#featured-notebook-parsed" title="Link to this heading"></a></h2>
+<p>Primary end-to-end example (crawler -&gt; extractor -&gt; consolidator), rendered
+directly in the documentation and synced from
+<code class="docutils literal notranslate"><span class="pre">examples/example_scraper_extractor.ipynb</span></code>:</p>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="example_scraper_extractor.html">WebSweep Example for Researchers</a></li>
+</ul>
 </div>
-<p>One-pass crawling + extraction:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">websweep</span><span class="w"> </span><span class="kn">import</span> <span class="n">Crawler</span>
-
-<span class="n">urls</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;https://example.com&quot;</span><span class="p">,</span> <span class="s2">&quot;https://example.org&quot;</span><span class="p">]</span>
-<span class="n">Crawler</span><span class="p">(</span><span class="n">target_folder_path</span><span class="o">=</span><span class="n">Path</span><span class="p">(</span><span class="s2">&quot;./research_output&quot;</span><span class="p">),</span> <span class="n">save_html</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">extract</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span><span class="o">.</span><span class="n">crawl_base_urls</span><span class="p">(</span><span class="n">urls</span><span class="p">)</span>
-</pre></div>
-</div>
+<p>The notebook uses real websites and shows:</p>
+<ul class="simple">
+<li><p>input URLs</p></li>
+<li><p>how the crawler downloads pages and follows within-domain links up to
+<code class="docutils literal notranslate"><span class="pre">max_level=3</span></code> by default (with exclusions)</p></li>
+<li><p>how the extractor keeps page-level fields (text, metadata, postcode/address)</p></li>
+<li><p>how the consolidator merges page-level rows into one domain-level row with
+postcode counts and concatenated text</p></li>
+<li><p>crawler output</p></li>
+<li><p>extractor output sample</p></li>
+<li><p>consolidator output sample</p></li>
+<li><p>custom <code class="docutils literal notranslate"><span class="pre">FileExtractor</span></code> add-on usage</p></li>
+</ul>
 </section>
 </section>
 
@@ -181,7 +175,7 @@ websweep<span class="w"> </span>crawl<span class="w"> </span>--block-extensions<
           </div>
           <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
         <a href="userguide.html" class="btn btn-neutral float-left" title="User Guide" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
-        <a href="modules.html" class="btn btn-neutral float-right" title="websweep" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+        <a href="example_scraper_extractor.html" class="btn btn-neutral float-right" title="WebSweep Example for Researchers" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
     </div>
 
   <hr/>

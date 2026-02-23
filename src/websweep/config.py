@@ -15,7 +15,7 @@ def _truncate_section(config_file: Path, section: str) -> None:
     config_parser = configparser.ConfigParser()
 
     with open(config_file, "r") as f:
-        config_parser.readfp(f)
+        config_parser.read_file(f)
 
     config_parser.remove_section(section)
 

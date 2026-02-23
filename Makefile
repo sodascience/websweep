@@ -15,6 +15,7 @@ help:
 	@$(SPHINXBUILD) -M help "$(SOURCEDIR)" "$(BUILDDIR)" $(SPHINXOPTS) $(O)
 
 apidoc:
+	@$(PYTHON) docs/scripts/sync_featured_notebook.py
 	@$(PYTHON) -m sphinx.ext.apidoc -o "$(SOURCEDIR)" "$(APIPKGDIR)" --force
 	@$(PYTHON) docs/scripts/clean_apidoc.py
 

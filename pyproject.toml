@@ -59,6 +59,7 @@ websweep = "websweep.main:app"
 
 [project.optional-dependencies]
 docs = [
+    "nbsphinx>=0.9.5",
     "sphinx>=7.4.7",
     "sphinx-rtd-theme>=2.0.0",
     "sphinxcontrib-napoleon>=0.7",
@@ -88,6 +89,7 @@ test = [
     "pytest>=8.0.0",
 ]
 docs = [
+    "nbsphinx>=0.9.5",
     "sphinx>=7.4.7",
     "sphinx-rtd-theme>=2.0.0",
     "sphinxcontrib-napoleon>=0.7",

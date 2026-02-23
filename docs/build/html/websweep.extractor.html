@@ -6,16 +6,17 @@
   <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>websweep.extractor package &mdash; WebSweep 0.0.0.post1.dev435 documentation</title>
+  <title>websweep.extractor package &mdash; WebSweep 0.0.0.post1.dev440 documentation</title>
       <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=9edc463e" />
 
   
       <script src="_static/jquery.js?v=5d32c60e"></script>
       <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
-      <script src="_static/documentation_options.js?v=4368d9c6"></script>
+      <script src="_static/documentation_options.js?v=fe7f70e5"></script>
       <script src="_static/doctools.js?v=fd6eb6e6"></script>
       <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
+      <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
     <script src="_static/js/theme.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
@@ -50,24 +51,33 @@
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="userguide.html">User Guide</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="userguide.html#pipeline-overview">Pipeline Overview</a></li>
+<li class="toctree-l2"><a class="reference internal" href="userguide.html#quickstart">Quickstart</a></li>
+<li class="toctree-l2"><a class="reference internal" href="userguide.html#what-each-component-does">What each component does</a></li>
 <li class="toctree-l2"><a class="reference internal" href="userguide.html#library-quickstart">Library Quickstart</a></li>
+<li class="toctree-l2"><a class="reference internal" href="userguide.html#library-workflow-detailed">Library Workflow (Detailed)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="userguide.html#cli-workflow-detailed">CLI Workflow (Detailed)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="userguide.html#how-cli-configuration-works">How CLI configuration works</a></li>
+</ul>
+</li>
 <li class="toctree-l2"><a class="reference internal" href="userguide.html#custom-extraction-add-ons">Custom Extraction Add-ons</a></li>
 <li class="toctree-l2"><a class="reference internal" href="userguide.html#url-filtering-rules">URL Filtering Rules</a></li>
-<li class="toctree-l2"><a class="reference internal" href="userguide.html#cli-workflow">CLI Workflow</a></li>
 <li class="toctree-l2"><a class="reference internal" href="userguide.html#troubleshooting-statuses">Troubleshooting Statuses</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="examples.html">Examples</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="examples.html#featured-notebook">Featured notebook</a></li>
 <li class="toctree-l2"><a class="reference internal" href="examples.html#cli-examples">CLI Examples</a></li>
-<li class="toctree-l2"><a class="reference internal" href="examples.html#python-examples">Python Examples</a></li>
+<li class="toctree-l2"><a class="reference internal" href="examples.html#featured-notebook-parsed">Featured Notebook (Parsed)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="example_scraper_extractor.html">WebSweep Example for Researchers</a></li>
+</ul>
+</li>
 </ul>
 </li>
 <li class="toctree-l1 current"><a class="reference internal" href="modules.html">websweep</a><ul class="current">
-<li class="toctree-l2 current"><a class="reference internal" href="websweep.html">websweep package</a><ul class="current">
-<li class="toctree-l3 current"><a class="reference internal" href="websweep.html#subpackages">Subpackages</a></li>
-<li class="toctree-l3"><a class="reference internal" href="websweep.html#submodules">Submodules</a></li>
+<li class="toctree-l2 current"><a class="reference internal" href="websweep.html">websweep</a><ul class="current">
+<li class="toctree-l3"><a class="reference internal" href="websweep.consolidator.html">websweep.consolidator package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="websweep.crawler.html">websweep.crawler package</a></li>
+<li class="toctree-l3 current"><a class="current reference internal" href="#">websweep.extractor package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="websweep.utils.html">websweep.utils package</a></li>
 <li class="toctree-l3"><a class="reference internal" href="websweep.html#module-websweep.config">websweep.config module</a></li>
 <li class="toctree-l3"><a class="reference internal" href="websweep.html#module-websweep.main">websweep.main module</a></li>
 </ul>
@@ -98,7 +108,7 @@
   <ul class="wy-breadcrumbs">
       <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
           <li class="breadcrumb-item"><a href="modules.html">websweep</a></li>
-          <li class="breadcrumb-item"><a href="websweep.html">websweep package</a></li>
+          <li class="breadcrumb-item"><a href="websweep.html">websweep</a></li>
       <li class="breadcrumb-item active">websweep.extractor package</li>
       <li class="wy-breadcrumbs-aside">
               <a href="https://github.com/sodascience/websweep/blob/main/docs/source/websweep.extractor.rst" class="fa fa-github"> Edit on GitHub</a>

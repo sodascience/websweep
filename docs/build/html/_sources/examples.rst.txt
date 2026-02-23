@@ -3,22 +3,6 @@
 Examples
 ========
 
-Featured notebook
------------------
-
-Primary end-to-end example (crawler -> extractor -> consolidator):
-
-- https://github.com/sodascience/websweep/blob/main/examples/example_scraper_extractor.ipynb
-
-The notebook uses real websites and shows:
-
-- input URLs
-- crawler output
-- extractor output sample
-- consolidator output sample
-- custom ``FileExtractor`` add-on usage
-
-
 CLI Examples
 ------------
 
@@ -54,33 +38,27 @@ Backend and filtering controls:
    websweep crawl --allow-extensions pdf,png
    websweep crawl --block-extensions pdf,png,zip
 
+Featured Notebook (Parsed)
+--------------------------
 
-Python Examples
----------------
+Primary end-to-end example (crawler -> extractor -> consolidator), rendered
+directly in the documentation and synced from
+``examples/example_scraper_extractor.ipynb``:
 
-Basic pipeline:
+.. toctree::
+   :maxdepth: 1
 
-.. code-block:: python
+   example_scraper_extractor
 
-   from pathlib import Path
-   from websweep import Crawler, Extractor, Consolidator
+The notebook uses real websites and shows:
 
-   urls = ["https://example.com", "https://example.org"]
-   out = Path("./research_output")
-
-   Crawler(target_folder_path=out).crawl_base_urls(urls)
-   Extractor(target_folder_path=out).extract_urls()
-
-   extracted = sorted((out / "extracted_data").glob("*.ndjson"))[0]
-   Consolidator(str(extracted)).consolidate(str(out / "consolidated_data" / "consolidated.ndjson"))
-
-One-pass crawling + extraction:
-
-.. code-block:: python
-
-   from pathlib import Path
-   from websweep import Crawler
-
-   urls = ["https://example.com", "https://example.org"]
-   Crawler(target_folder_path=Path("./research_output"), save_html=False, extract=True).crawl_base_urls(urls)
-
+- input URLs
+- how the crawler downloads pages and follows within-domain links up to
+  ``max_level=3`` by default (with exclusions)
+- how the extractor keeps page-level fields (text, metadata, postcode/address)
+- how the consolidator merges page-level rows into one domain-level row with
+  postcode counts and concatenated text
+- crawler output
+- extractor output sample
+- consolidator output sample
+- custom ``FileExtractor`` add-on usage

@@ -6,16 +6,17 @@
   <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>User Guide &mdash; WebSweep 0.0.0.post1.dev435 documentation</title>
+  <title>User Guide &mdash; WebSweep 0.0.0.post1.dev440 documentation</title>
       <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
       <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=9edc463e" />
 
   
       <script src="_static/jquery.js?v=5d32c60e"></script>
       <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
-      <script src="_static/documentation_options.js?v=4368d9c6"></script>
+      <script src="_static/documentation_options.js?v=fe7f70e5"></script>
       <script src="_static/doctools.js?v=fd6eb6e6"></script>
       <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
+      <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
     <script src="_static/js/theme.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
@@ -50,24 +51,33 @@
 </ul>
 </li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">User Guide</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="#pipeline-overview">Pipeline Overview</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#quickstart">Quickstart</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#what-each-component-does">What each component does</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#library-quickstart">Library Quickstart</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#library-workflow-detailed">Library Workflow (Detailed)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#cli-workflow-detailed">CLI Workflow (Detailed)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#how-cli-configuration-works">How CLI configuration works</a></li>
+</ul>
+</li>
 <li class="toctree-l2"><a class="reference internal" href="#custom-extraction-add-ons">Custom Extraction Add-ons</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#url-filtering-rules">URL Filtering Rules</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#cli-workflow">CLI Workflow</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#troubleshooting-statuses">Troubleshooting Statuses</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="examples.html">Examples</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="examples.html#featured-notebook">Featured notebook</a></li>
 <li class="toctree-l2"><a class="reference internal" href="examples.html#cli-examples">CLI Examples</a></li>
-<li class="toctree-l2"><a class="reference internal" href="examples.html#python-examples">Python Examples</a></li>
+<li class="toctree-l2"><a class="reference internal" href="examples.html#featured-notebook-parsed">Featured Notebook (Parsed)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="example_scraper_extractor.html">WebSweep Example for Researchers</a></li>
+</ul>
+</li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="modules.html">websweep</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="websweep.html">websweep package</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="websweep.html#subpackages">Subpackages</a></li>
-<li class="toctree-l3"><a class="reference internal" href="websweep.html#submodules">Submodules</a></li>
+<li class="toctree-l2"><a class="reference internal" href="websweep.html">websweep</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="websweep.consolidator.html">websweep.consolidator package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="websweep.crawler.html">websweep.crawler package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="websweep.extractor.html">websweep.extractor package</a></li>
+<li class="toctree-l3"><a class="reference internal" href="websweep.utils.html">websweep.utils package</a></li>
 <li class="toctree-l3"><a class="reference internal" href="websweep.html#module-websweep.config">websweep.config module</a></li>
 <li class="toctree-l3"><a class="reference internal" href="websweep.html#module-websweep.main">websweep.main module</a></li>
 </ul>
@@ -111,17 +121,14 @@
 <span id="userguide"></span><h1>User Guide<a class="headerlink" href="#user-guide" title="Link to this heading"></a></h1>
 <p>WebSweep can be used in two ways:</p>
 <ul class="simple">
-<li><p>Python library (recommended for reproducible research code)</p></li>
-<li><p>CLI (<cite>websweep …</cite>) for instance-based runs</p></li>
+<li><p>Python library (recommended for reproducible research code and notebooks)</p></li>
+<li><p>CLI (<code class="docutils literal notranslate"><span class="pre">websweep</span> <span class="pre">...</span></code>) for instance-based runs driven by a source file</p></li>
 </ul>
-<p>Input file format for CLI runs:</p>
-<ul class="simple">
-<li><p>CSV or TSV</p></li>
-<li><p>required column: <code class="docutils literal notranslate"><span class="pre">url</span></code> (or <code class="docutils literal notranslate"><span class="pre">website</span></code> / <code class="docutils literal notranslate"><span class="pre">domain</span></code>)</p></li>
-<li><p>optional column: <code class="docutils literal notranslate"><span class="pre">identifier</span></code> (or <code class="docutils literal notranslate"><span class="pre">id</span></code>)</p></li>
-</ul>
-<section id="pipeline-overview">
-<h2>Pipeline Overview<a class="headerlink" href="#pipeline-overview" title="Link to this heading"></a></h2>
+<p>Use the library when you want full control in Python code (custom extractors,
+custom loops, programmatic analysis). Use the CLI when you want a simple,
+repeatable command-line workflow.</p>
+<section id="quickstart">
+<h2>Quickstart<a class="headerlink" href="#quickstart" title="Link to this heading"></a></h2>
 <div class="highlight-text notranslate"><div class="highlight"><pre><span></span>Input URLs
   -&gt; Crawler
      Output: crawled_data/*.zip + overview_urls.{duckdb|db|tsv}
@@ -135,6 +142,21 @@
 <div class="highlight-text notranslate"><div class="highlight"><pre><span></span>Input URLs -&gt; Crawler(extract=True, save_html=False) -&gt; extracted_data/*.ndjson
 </pre></div>
 </div>
+</section>
+<section id="what-each-component-does">
+<h2>What each component does<a class="headerlink" href="#what-each-component-does" title="Link to this heading"></a></h2>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">Crawler</span></code>: starts from base URLs (one domain per row), downloads pages,
+follows only within-domain links, applies URL/file exclusion rules, and
+stops at depth <code class="docutils literal notranslate"><span class="pre">max_level</span></code> (default <code class="docutils literal notranslate"><span class="pre">3</span></code>).</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">Extractor</span></code>: reads crawled pages and extracts page-level fields such as
+cleaned text (<code class="docutils literal notranslate"><span class="pre">text</span></code>), metadata (<code class="docutils literal notranslate"><span class="pre">meta_*</span></code>), and location fields
+(<code class="docutils literal notranslate"><span class="pre">zipcode</span></code>, <code class="docutils literal notranslate"><span class="pre">address</span></code>).</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">Consolidator</span></code>: merges page-level records into one domain-level record,
+keeping aggregated postcode counts (the most frequent can be treated as the
+main postcode, with the others as additional postcodes) and concatenated
+domain text.</p></li>
+</ul>
 </section>
 <section id="library-quickstart">
 <h2>Library Quickstart<a class="headerlink" href="#library-quickstart" title="Link to this heading"></a></h2>
@@ -156,6 +178,94 @@
 <span class="n">extractor</span><span class="o">.</span><span class="n">extract_urls</span><span class="p">()</span>
 </pre></div>
 </div>
+</section>
+<section id="library-workflow-detailed">
+<h2>Library Workflow (Detailed)<a class="headerlink" href="#library-workflow-detailed" title="Link to this heading"></a></h2>
+<p>Standard 3-step run:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">websweep</span><span class="w"> </span><span class="kn">import</span> <span class="n">Crawler</span><span class="p">,</span> <span class="n">Extractor</span><span class="p">,</span> <span class="n">Consolidator</span>
+
+<span class="n">urls</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;https://example.com&quot;</span><span class="p">,</span> <span class="s2">&quot;https://example.org&quot;</span><span class="p">]</span>
+<span class="n">out</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="s2">&quot;./research_output&quot;</span><span class="p">)</span>
+
+<span class="n">Crawler</span><span class="p">(</span><span class="n">target_folder_path</span><span class="o">=</span><span class="n">out</span><span class="p">)</span><span class="o">.</span><span class="n">crawl_base_urls</span><span class="p">(</span><span class="n">urls</span><span class="p">)</span>
+<span class="n">Extractor</span><span class="p">(</span><span class="n">target_folder_path</span><span class="o">=</span><span class="n">out</span><span class="p">)</span><span class="o">.</span><span class="n">extract_urls</span><span class="p">()</span>
+
+<span class="n">extracted</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">((</span><span class="n">out</span> <span class="o">/</span> <span class="s2">&quot;extracted_data&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="s2">&quot;*.ndjson&quot;</span><span class="p">))[</span><span class="mi">0</span><span class="p">]</span>
+<span class="n">Consolidator</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">extracted</span><span class="p">))</span><span class="o">.</span><span class="n">consolidate</span><span class="p">(</span>
+    <span class="nb">str</span><span class="p">(</span><span class="n">out</span> <span class="o">/</span> <span class="s2">&quot;consolidated_data&quot;</span> <span class="o">/</span> <span class="s2">&quot;consolidated.ndjson&quot;</span><span class="p">)</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+<p>One-pass run (crawl + extract together, less disk usage):</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">websweep</span><span class="w"> </span><span class="kn">import</span> <span class="n">Crawler</span>
+
+<span class="n">urls</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;https://example.com&quot;</span><span class="p">,</span> <span class="s2">&quot;https://example.org&quot;</span><span class="p">]</span>
+<span class="n">Crawler</span><span class="p">(</span>
+    <span class="n">target_folder_path</span><span class="o">=</span><span class="n">Path</span><span class="p">(</span><span class="s2">&quot;./research_output&quot;</span><span class="p">),</span>
+    <span class="n">save_html</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="n">extract</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+<span class="p">)</span><span class="o">.</span><span class="n">crawl_base_urls</span><span class="p">(</span><span class="n">urls</span><span class="p">)</span>
+</pre></div>
+</div>
+</section>
+<section id="cli-workflow-detailed">
+<h2>CLI Workflow (Detailed)<a class="headerlink" href="#cli-workflow-detailed" title="Link to this heading"></a></h2>
+<p>Input file format for CLI runs:</p>
+<ul class="simple">
+<li><p>CSV or TSV</p></li>
+<li><p>required column: <code class="docutils literal notranslate"><span class="pre">url</span></code> (or <code class="docutils literal notranslate"><span class="pre">website</span></code> / <code class="docutils literal notranslate"><span class="pre">domain</span></code>)</p></li>
+<li><p>optional column: <code class="docutils literal notranslate"><span class="pre">identifier</span></code> (or <code class="docutils literal notranslate"><span class="pre">id</span></code>)</p></li>
+</ul>
+<p>Initialize an instance:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>websweep<span class="w"> </span>init<span class="w"> </span>--headless
+</pre></div>
+</div>
+<section id="how-cli-configuration-works">
+<h3>How CLI configuration works<a class="headerlink" href="#how-cli-configuration-works" title="Link to this heading"></a></h3>
+<p>When you run <code class="docutils literal notranslate"><span class="pre">websweep</span> <span class="pre">init</span></code>, WebSweep writes two configuration files:</p>
+<ul class="simple">
+<li><p>Application config file (global pointer to the active instance): <code class="docutils literal notranslate"><span class="pre">config.ini</span></code></p></li>
+<li><p>Instance settings file (settings for that instance): <code class="docutils literal notranslate"><span class="pre">&lt;your_instance_folder&gt;/settings.ini</span></code></p></li>
+</ul>
+<p>The application config file is created automatically during <code class="docutils literal notranslate"><span class="pre">websweep</span> <span class="pre">init</span></code> and
+stores where the active instance lives.</p>
+<p>Example <code class="docutils literal notranslate"><span class="pre">config.ini</span></code>:</p>
+<div class="highlight-ini notranslate"><div class="highlight"><pre><span></span><span class="k">[Instance]</span>
+<span class="na">location</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">/path/to/your/websweep_instance</span>
+</pre></div>
+</div>
+<p>Example <code class="docutils literal notranslate"><span class="pre">settings.ini</span></code>:</p>
+<div class="highlight-ini notranslate"><div class="highlight"><pre><span></span><span class="k">[Instance]</span>
+<span class="na">location</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">/path/to/your/websweep_instance</span>
+
+<span class="k">[Source]</span>
+<span class="na">source_file</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">/path/to/overview_urls.tsv</span>
+
+<span class="k">[Extractor]</span>
+<span class="na">extractor_delete_files</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">False</span>
+
+<span class="k">[Database]</span>
+<span class="na">use_database</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">True</span>
+</pre></div>
+</div>
+<p>You can inspect or update these values with:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>websweep<span class="w"> </span>config
+</pre></div>
+</div>
+<p>Crawl and extract:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>websweep<span class="w"> </span>crawl
+websweep<span class="w"> </span>extract
+</pre></div>
+</div>
+<p>Helpful flags:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>websweep<span class="w"> </span>crawl<span class="w"> </span>--overview-backend<span class="w"> </span>duckdb
+websweep<span class="w"> </span>crawl<span class="w"> </span>--extract
+websweep<span class="w"> </span>extract<span class="w"> </span>--workers<span class="w"> </span><span class="m">8</span>
+</pre></div>
+</div>
+</section>
 </section>
 <section id="custom-extraction-add-ons">
 <h2>Custom Extraction Add-ons<a class="headerlink" href="#custom-extraction-add-ons" title="Link to this heading"></a></h2>
@@ -213,24 +323,6 @@ named <code class="docutils literal notranslate"><span class="pre">_extract_&lt;
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>websweep<span class="w"> </span>crawl<span class="w"> </span>--allow-extensions<span class="w"> </span>pdf,png
 websweep<span class="w"> </span>crawl<span class="w"> </span>--block-extensions<span class="w"> </span>pdf,png,zip
 websweep<span class="w"> </span>crawl<span class="w"> </span>--classification-file<span class="w"> </span>/path/to/rules.json
-</pre></div>
-</div>
-</section>
-<section id="cli-workflow">
-<h2>CLI Workflow<a class="headerlink" href="#cli-workflow" title="Link to this heading"></a></h2>
-<p>Initialize an instance:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>websweep<span class="w"> </span>init<span class="w"> </span>--headless
-</pre></div>
-</div>
-<p>Crawl and extract:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>websweep<span class="w"> </span>crawl
-websweep<span class="w"> </span>extract
-</pre></div>
-</div>
-<p>Helpful flags:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>websweep<span class="w"> </span>crawl<span class="w"> </span>--overview-backend<span class="w"> </span>duckdb
-websweep<span class="w"> </span>crawl<span class="w"> </span>--extract
-websweep<span class="w"> </span>extract<span class="w"> </span>--workers<span class="w"> </span><span class="m">8</span>
 </pre></div>
 </div>
 </section>

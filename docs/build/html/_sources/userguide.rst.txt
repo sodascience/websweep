@@ -5,18 +5,16 @@ User Guide
 
 WebSweep can be used in two ways:
 
-- Python library (recommended for reproducible research code)
-- CLI (`websweep ...`) for instance-based runs
+- Python library (recommended for reproducible research code and notebooks)
+- CLI (``websweep ...``) for instance-based runs driven by a source file
 
-Input file format for CLI runs:
-
-- CSV or TSV
-- required column: ``url`` (or ``website`` / ``domain``)
-- optional column: ``identifier`` (or ``id``)
+Use the library when you want full control in Python code (custom extractors,
+custom loops, programmatic analysis). Use the CLI when you want a simple,
+repeatable command-line workflow.
 
 
-Pipeline Overview
------------------
+Quickstart
+----------
 
 .. code-block:: text
 
@@ -33,6 +31,20 @@ Disk-saving one-pass mode:
 .. code-block:: text
 
    Input URLs -> Crawler(extract=True, save_html=False) -> extracted_data/*.ndjson
+
+What each component does
+------------------------
+
+- ``Crawler``: starts from base URLs (one domain per row), downloads pages,
+  follows only within-domain links, applies URL/file exclusion rules, and
+  stops at depth ``max_level`` (default ``3``).
+- ``Extractor``: reads crawled pages and extracts page-level fields such as
+  cleaned text (``text``), metadata (``meta_*``), and location fields
+  (``zipcode``, ``address``).
+- ``Consolidator``: merges page-level records into one domain-level record,
+  keeping aggregated postcode counts (the most frequent can be treated as the
+  main postcode, with the others as additional postcodes) and concatenated
+  domain text.
 
 
 Library Quickstart
@@ -56,6 +68,113 @@ Library Quickstart
 
    extractor = Extractor(target_folder_path=output_dir)
    extractor.extract_urls()
+
+
+Library Workflow (Detailed)
+---------------------------
+
+Standard 3-step run:
+
+.. code-block:: python
+
+   from pathlib import Path
+   from websweep import Crawler, Extractor, Consolidator
+
+   urls = ["https://example.com", "https://example.org"]
+   out = Path("./research_output")
+
+   Crawler(target_folder_path=out).crawl_base_urls(urls)
+   Extractor(target_folder_path=out).extract_urls()
+
+   extracted = sorted((out / "extracted_data").glob("*.ndjson"))[0]
+   Consolidator(str(extracted)).consolidate(
+       str(out / "consolidated_data" / "consolidated.ndjson")
+   )
+
+One-pass run (crawl + extract together, less disk usage):
+
+.. code-block:: python
+
+   from pathlib import Path
+   from websweep import Crawler
+
+   urls = ["https://example.com", "https://example.org"]
+   Crawler(
+       target_folder_path=Path("./research_output"),
+       save_html=False,
+       extract=True,
+   ).crawl_base_urls(urls)
+
+
+CLI Workflow (Detailed)
+-----------------------
+
+Input file format for CLI runs:
+
+- CSV or TSV
+- required column: ``url`` (or ``website`` / ``domain``)
+- optional column: ``identifier`` (or ``id``)
+
+Initialize an instance:
+
+.. code-block:: bash
+
+   websweep init --headless
+
+How CLI configuration works
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+When you run ``websweep init``, WebSweep writes two configuration files:
+
+- Application config file (global pointer to the active instance): ``config.ini``
+- Instance settings file (settings for that instance): ``<your_instance_folder>/settings.ini``
+
+The application config file is created automatically during ``websweep init`` and
+stores where the active instance lives.
+
+Example ``config.ini``:
+
+.. code-block:: ini
+
+   [Instance]
+   location = /path/to/your/websweep_instance
+
+Example ``settings.ini``:
+
+.. code-block:: ini
+
+   [Instance]
+   location = /path/to/your/websweep_instance
+
+   [Source]
+   source_file = /path/to/overview_urls.tsv
+
+   [Extractor]
+   extractor_delete_files = False
+
+   [Database]
+   use_database = True
+
+You can inspect or update these values with:
+
+.. code-block:: bash
+
+   websweep config
+
+Crawl and extract:
+
+.. code-block:: bash
+
+   websweep crawl
+   websweep extract
+
+Helpful flags:
+
+.. code-block:: bash
+
+   websweep crawl --overview-backend duckdb
+   websweep crawl --extract
+   websweep extract --workers 8
 
 
 Custom Extraction Add-ons
@@ -122,31 +241,6 @@ CLI overrides:
    websweep crawl --allow-extensions pdf,png
    websweep crawl --block-extensions pdf,png,zip
    websweep crawl --classification-file /path/to/rules.json
-
-
-CLI Workflow
-------------
-
-Initialize an instance:
-
-.. code-block:: bash
-
-   websweep init --headless
-
-Crawl and extract:
-
-.. code-block:: bash
-
-   websweep crawl
-   websweep extract
-
-Helpful flags:
-
-.. code-block:: bash
-
-   websweep crawl --overview-backend duckdb
-   websweep crawl --extract
-   websweep extract --workers 8
 
 
 Troubleshooting Statuses

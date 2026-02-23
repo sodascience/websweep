@@ -11,9 +11,9 @@ from typing import Optional
 from websweep import ERRORS, __app_name__, __status__, __version__, config
 from .extractor.extractor import Extractor
 from .crawler.crawler import Crawler
+from .consolidator.consolidator import Consolidator
 from .utils.backend import resolve_overview_backend
 from .utils.source_urls import read_source_urls
-#from .consolidator.consolidator import Consolidator
 
 try:
     HEADLESS = False
@@ -610,49 +610,60 @@ def extract(
     
     typer.secho("Extractor finished successfully\n", fg=typer.colors.GREEN)
         
-# Starts consolidating the information at the domain site, based on the extracted files
-# Calls an Consolidator instance which handles the consolidation procedure
-# Consolidated data is stored in the active working websweep instance folder under 'crawled_data'
-# Can only be run when the application has been initialised
-# Can only be run after the extractor has been run
-# @app.command(name="consolidate")
-# @operate()
-# def consolidate() -> None:
-#     """
-#     Start consolidating data from the extracted files
-    
-#     """
+@app.command(name="consolidate")
+@operate()
+def consolidate(
+    input_file: Optional[Path] = typer.Option(
+        None,
+        help="Path to extracted NDJSON file. Defaults to latest file in extracted_data/.",
+    ),
+    output_file: Optional[Path] = typer.Option(
+        None,
+        help="Output NDJSON path. Defaults to consolidated_data/consolidated.ndjson.",
+    ),
+    chunk_size: int = typer.Option(
+        10000,
+        help="Number of extracted rows processed per consolidation chunk.",
+    ),
+) -> None:
+    """
+    Consolidate page-level extracted NDJSON into domain-level NDJSON.
+    """
+    target_folder = Path(config.get_target_folder_path())
+    extracted_dir = target_folder / "extracted_data"
 
-#     typer.secho(f"Consolidator is started with instructions:", fg=typer.colors.GREEN)
-#     typer.secho(
-#         f"- source folder: {config.get_target_folder_path()}", fg=typer.colors.YELLOW
-#     )
+    if input_file is None:
+        extracted_files = sorted(
+            extracted_dir.glob("*.ndjson"),
+            key=lambda p: p.stat().st_mtime,
+        )
+        if not extracted_files:
+            typer.secho(
+                "No extracted NDJSON files found. Run websweep extract first.",
+                fg=typer.colors.RED,
+            )
+            return
+        input_file = extracted_files[-1]
 
-#     input_file = (
-#         Path(config.get_target_folder_path())
-#         / "extracted_data"
-#         / (
-#             "extracted_data_"
-#             + str(datelib.today())
-#             + f"_{i}-{i+n}.ndjson"
-#         )
-#     )
+    if not input_file.exists() or not input_file.is_file():
+        typer.secho(
+            f"Input file does not exist: {input_file}",
+            fg=typer.colors.RED,
+        )
+        return
 
-#     output_file = (
-#         Path(config.get_target_folder_path())
-#         / "consolidated_data"
-#         / (
-#             "consolidated_data_"
-#             + str(datelib.today())
-#             + f".nsjson"
-#         )
-#     )
+    if output_file is None:
+        output_file = target_folder / "consolidated_data" / "consolidated.ndjson"
+    output_file.parent.mkdir(parents=True, exist_ok=True)
 
-#     Path(output_file).parent.mkdir(parents=True, exist_ok=True)
-    
+    typer.secho("Consolidator is started with instructions:", fg=typer.colors.GREEN)
+    typer.secho(f"- input file: {input_file}", fg=typer.colors.YELLOW)
+    typer.secho(f"- output file: {output_file}", fg=typer.colors.YELLOW)
+    typer.secho(f"- chunk size: {chunk_size}\n", fg=typer.colors.YELLOW)
 
-#     processor = Consolidator(input_file="../../server_downloaded_data/20240108_scrape/extracted_data/head10000_extracted_data.ndjson", chunk_size=10_000)
-#     processor.consolidate(output_file)
+    Consolidator(str(input_file), chunk_size=max(1, int(chunk_size))).consolidate(
+        str(output_file)
+    )
 
-#     typer.secho(f"Consolidator finished successfully\n", fg=typer.colors.GREEN)
+    typer.secho("Consolidator finished successfully\n", fg=typer.colors.GREEN)
         

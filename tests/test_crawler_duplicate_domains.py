@@ -25,7 +25,7 @@ def test_duplicate_domain_base_urls_do_not_collide_in_state(tmp_path):
         return url, _registered_domain(url), _AllowAllRobots()
 
     async def _fake_fetch_one_url_wrapped(self, domain, url, identifier, level, session, state_key=None):
-        return [], "200", ""
+        return [], "200", "", None
 
     crawler._Crawler__test_domain_robots = MethodType(_fake_test_domain_robots, crawler)
     crawler._Crawler__fetch_one_url_wrapped = MethodType(_fake_fetch_one_url_wrapped, crawler)

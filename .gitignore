@@ -63,3 +63,6 @@ examples/test*
 sidn_test_kopie.csv
 init files/
 .scrapy/
+
+# Internal tooling
+/scripts/

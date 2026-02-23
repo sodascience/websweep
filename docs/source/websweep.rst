@@ -1,8 +1,5 @@
-websweep package
-================
-
-Subpackages
------------
+websweep
+========
 
 .. toctree::
    :maxdepth: 4
@@ -11,9 +8,6 @@ Subpackages
    websweep.crawler
    websweep.extractor
    websweep.utils
-
-Submodules
-----------
 
 websweep.config module
 ----------------------
