@@ -1,154 +1,165 @@
 .. _userguide:
 
-User's Guide
-============
+User Guide
+==========
 
-The `websweep` tool can be used as a Python library or through its command line interface (CLI). Below are the basic usage instructions for both methods.
+WebSweep can be used in two ways:
 
-Using as a Library
+- Python library (recommended for reproducible research code)
+- CLI (`websweep ...`) for instance-based runs
+
+Input file format for CLI runs:
+
+- CSV or TSV
+- required column: ``url`` (or ``website`` / ``domain``)
+- optional column: ``identifier`` (or ``id``)
+
+
+Pipeline Overview
+-----------------
+
+.. code-block:: text
+
+   Input URLs
+     -> Crawler
+        Output: crawled_data/*.zip + overview_urls.{duckdb|db|tsv}
+     -> Extractor
+        Output: extracted_data/*.ndjson
+     -> Consolidator
+        Output: consolidated_data/*.ndjson
+
+Disk-saving one-pass mode:
+
+.. code-block:: text
+
+   Input URLs -> Crawler(extract=True, save_html=False) -> extracted_data/*.ndjson
+
+
+Library Quickstart
 ------------------
-
-To use `websweep` as a library, you can import it into your Python script and call its functions directly. Here is an example of how to use `websweep` in your code:
 
 .. code-block:: python
 
-   # Example Python code that uses websweep as a library
-   from websweep import Crawler
+   from pathlib import Path
+   from websweep import Crawler, Extractor
 
-   # Initialize the Scraper
-   crawler = Crawler(target_folder_path = Path("your/data/folder"))
-   # Use the Crawler to download HTML content
-   crawler.crawl_base_urls(['https://firmbackbone.nl', 'https://uu.nl/'])
+   urls = [
+       "https://www.dggrootverbruik.nl/",
+       "https://www.gosliga.nl/",
+       "https://www.heeren2.nl/",
+   ]
 
-   # Process the content...
-   # (your code here)
+   output_dir = Path("./research_output")
 
-Command Line Interface (CLI)
-----------------------------
+   crawler = Crawler(target_folder_path=output_dir)
+   crawler.crawl_base_urls(urls)
 
-`websweep` also provides a command line interface for easy access to its features directly from your terminal.
-
-
-Options
-^^^^^^^^
-
-.. code-block:: none
-
-   -v, --version            Show the application's version and exit.
-   --install-completion     Install completion for the current shell.
-   --show-completion        Show completion for the current shell, to copy it or
-                            customize the installation.
-   --help                   Show this message and exit.
-
-Commands
-^^^^^^^^^
-
-.. code-block:: none
-
-   $ websweep config        Alter WebSweep configuration settings.
-   $ websweep crawl         Start caching websites.
-   $ websweep extract       Start extracting data from the fetched files.
-   $ websweep init          Initialise a new WebSweep instance.
-   $ websweep instance      Open configured WebSweep instance folder.
-   $ websweep restore       Restore configuration of existing WebSweep instance.
+   extractor = Extractor(target_folder_path=output_dir)
+   extractor.extract_urls()
 
 
-Initialise WebSweep
-^^^^^^^^^^^^^^^^^^^^^^
+Custom Extraction Add-ons
+-------------------------
 
-Before using WebSweep, you need to initialize a new instance or you need to restore an instance. Note that only one instance can be active at any given time. However, you can switch between instances by restoring such sessions.
-To initialise a new instance, you can use the `init` command:
+The core extractor is intentionally conservative. By default it keeps:
 
-.. code-block:: bash
+- metadata (`meta_*`)
+- cleaned page text (`text`)
+- zipcode/address (`zipcode`, `address`)
 
-   $ websweep init
+It does not include `phone`, `email`, or `fax` unless you add them.
 
-Options:
-  --headless
-                                  Run without GUI elements
-  --no-headless
-                                  Run with GUI elements  [default: no-headless]
+You can add custom fields by subclassing ``FileExtractor`` and defining methods
+named ``_extract_<fieldname>``:
 
-The initialisation process allows for the following configurations:
+.. code-block:: python
 
-- WebSweep instance folder location
-- Crawl source file (csv)
-- Remove raw files after data extraction
-- Usage of SQL or CSV database 
+   from pathlib import Path
+   import re
+   from websweep import Extractor
+   from websweep.extractor.extractor import FileExtractor
 
+   class ResearchFileExtractor(FileExtractor):
+       def _extract_fax(self) -> list:
+           pattern = re.compile(
+               r"(?is)\b(?:faxnumber|fax|f)\b[^0-9\+]{0,12}"
+               r"([\+]?[0-9][0-9\-\s\(\)]{7,20})\b"
+           )
+           return sorted({m.strip() for m in re.findall(pattern, str(self.soup))})
 
-Restore WebSweep Instance
-^^^^^^^^^^^^^^^^^^^^^^
+   extractor = Extractor(
+       target_folder_path=Path("./research_output"),
+       file_extractor=ResearchFileExtractor,
+   )
+   extractor.extract_urls()
 
-As mentioned, you may also configure WebSweep with an existing instance folder instead of creating a new one. When you restore a session, you should not initialise a new session with `init`. You can restore a session with the `restore` command:
+Repository add-on example:
 
-.. code-block:: bash
-
-   $ websweep restore
-
-Options:
-  --headless
-                                  Run without GUI elements
-  --no-headless
-                                  Run with GUI elements  [default: no-headless]
-
+- ``addons/firmbackbone_extractor.py``
 
 
-Reconfigure WebSweep
-^^^^^^^^^^^^^^^^^^^^^^
+URL Filtering Rules
+-------------------
 
-You may alter some configurations of the restored or created WebSweep instance. You can do this with the `config` command:
+Crawler URL filtering is configured by:
+
+- ``src/websweep/utils/default_regex.json``
+- ``classify_url(...)`` in ``src/websweep/utils/utils.py``
+
+Behavior summary:
+
+- level 0 seed URLs: always crawled
+- ``mailto:`` and ``tel:``: always skipped
+- blocked extensions: skipped
+- level 1: broad crawl
+- level 2: filtered by ``url.url_regex``
+- levels 3+: skipped by default
+
+CLI overrides:
 
 .. code-block:: bash
 
-   $ websweep config
-
-Options:
-  --delete-processed-files
-                                  Delete extractor processed raw files
-  --no-delete-processed-files
-                                  Not-Delete extractor processed raw files
-  --target-folder-path TEXT       Set new path for crawled data output
-  --source-file-path TEXT         Set new path for csv source file
+   websweep crawl --allow-extensions pdf,png
+   websweep crawl --block-extensions pdf,png,zip
+   websweep crawl --classification-file /path/to/rules.json
 
 
-Other configurations such as the usage of database type and instance location cannot be altered.
+CLI Workflow
+------------
 
-
-Inspect WebSweep Instance
-^^^^^^^^^^^^^^^^^^^^^^
-
-You can view the active WebSweep session. You can do this with the `instance` command:
+Initialize an instance:
 
 .. code-block:: bash
 
-   $ websweep instance
+   websweep init --headless
+
+Crawl and extract:
+
+.. code-block:: bash
+
+   websweep crawl
+   websweep extract
+
+Helpful flags:
+
+.. code-block:: bash
+
+   websweep crawl --overview-backend duckdb
+   websweep crawl --extract
+   websweep extract --workers 8
 
 
-Using WebSweep: Crawling 
-^^^^^^^^^^^^^^^^^^^^^^
+Troubleshooting Statuses
+------------------------
 
-Only when WebSweep is configured with a new or restored instance, the crawling functionality can be used.
-The `crawl` command will start the crawling process of the urls provided in the source file and outputs the crawled data to the WebSweep instance folder under `crawled_data`.
+``overview_urls.{duckdb|db|tsv}`` stores per-page crawl status values. Common
+non-``200`` values:
 
-Options:
-  --complement TEXT           Complement the folder with failed pages, takes
-                              the crawl date as argument
-  --sock-connect INTEGER      Timeout value (ms) for establishing a connection
-                              to remote server  [default: 120]
-  --extract                   Extract files directly after crawl instead of saving HTML
-  --no-extract                Save HTML  [default: no-extract]
-  --classification-file PATH  Use a custom classification file with page title
-                              terms (plain .txt with ';' delimitation)
+- ``DNS lookup failed``: domain resolution failed from current network.
+- ``Connection failed``: host resolved, but connection/SSL handshake failed.
+- ``Request timeout``: remote host did not respond within timeout.
+- ``Robots unavailable in __test_domain_robots``: robots check failed; crawler
+  continues with allow-all robots policy for that base URL.
 
-Using WebSweep: Extracting
-^^^^^^^^^^^^^^^^^^^^^^
-
-Only when WebSweep is configured with a new or restored instance and the instance folder is populated with crawled data, the extracting functionality can be used.
-The `extract` command will start the extracting process of the crawled html files and outputs the extracted data to the WebSweep instance folder under `extracted_data.
-
-Options:
-  --start-date TEXT  Date on which the files are retreieved and extracted
-                     should start extracting
-  --end-date TEXT    Date on which the files are retreieved and extractor
-                     should stop extracting
+For large historical URL lists, high failure rates are often expected because
+many domains are no longer online.

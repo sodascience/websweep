@@ -1,281 +1,284 @@
 
+
 <!DOCTYPE html>
+<html class="writer-html5" lang="en" data-content_root="./">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.18.1: http://docutils.sourceforge.net/" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>User Guide &mdash; WebSweep 0.0.0.post1.dev435 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=b86133f3" />
+      <link rel="stylesheet" type="text/css" href="_static/css/theme.css?v=9edc463e" />
 
-    <title>User’s Guide &#8212; WebSweep 1.0 documentation</title>
-    <link rel="stylesheet" type="text/css" href="_static/pygments.css" />
-    <link rel="stylesheet" type="text/css" href="_static/alabaster.css" />
-    <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
-    <script src="_static/doctools.js"></script>
-    <script src="_static/sphinx_highlight.js"></script>
+  
+      <script src="_static/jquery.js?v=5d32c60e"></script>
+      <script src="_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script src="_static/documentation_options.js?v=4368d9c6"></script>
+      <script src="_static/doctools.js?v=fd6eb6e6"></script>
+      <script src="_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="_static/js/theme.js"></script>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="Examples" href="examples.html" />
-    <link rel="prev" title="Installation" href="installation.html" />
-   
-  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
-  
-  
-  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+    <link rel="prev" title="Installation" href="installation.html" /> 
+</head>
 
-  </head><body>
-  <div class="document">
-    
-      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
-        <div class="sphinxsidebarwrapper">
-<h1 class="logo"><a href="index.html">WebSweep</a></h1>
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search"  style="background: #1f2937" >
 
-
-
-<p class="blurb">A powerful Python library for web scraping</p>
-
-
-
-
-
-
-<!-- contents.html -->
-<!-- _templates/github_button.html -->
-
-<iframe src="https://ghbtns.com/github-btn.html?user=sodascience&repo=websweep&type=watch&count=true&size=large&v=2" frameborder="0" scrolling="0" width="170" height="30" title="GitHub"></iframe>
-
-<h3>Contents</h3>
-<ul class="current">
-<li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a></li>
-<li class="toctree-l1 current"><a class="current reference internal" href="#">User’s Guide</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="#using-as-a-library">Using as a Library</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#command-line-interface-cli">Command Line Interface (CLI)</a></li>
+          
+          
+          <a href="index.html" class="icon icon-home">
+            WebSweep
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="installation.html">Installation</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="installation.html#requirements">Requirements</a></li>
+<li class="toctree-l2"><a class="reference internal" href="installation.html#install-from-pypi">Install from PyPI</a></li>
+<li class="toctree-l2"><a class="reference internal" href="installation.html#install-from-source-developers">Install from Source (Developers)</a></li>
 </ul>
 </li>
-<li class="toctree-l1"><a class="reference internal" href="examples.html">Examples</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">User Guide</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#pipeline-overview">Pipeline Overview</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#library-quickstart">Library Quickstart</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#custom-extraction-add-ons">Custom Extraction Add-ons</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#url-filtering-rules">URL Filtering Rules</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#cli-workflow">CLI Workflow</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#troubleshooting-statuses">Troubleshooting Statuses</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="examples.html">Examples</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="examples.html#featured-notebook">Featured notebook</a></li>
+<li class="toctree-l2"><a class="reference internal" href="examples.html#cli-examples">CLI Examples</a></li>
+<li class="toctree-l2"><a class="reference internal" href="examples.html#python-examples">Python Examples</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="modules.html">websweep</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="websweep.html">websweep package</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="websweep.html#subpackages">Subpackages</a></li>
+<li class="toctree-l3"><a class="reference internal" href="websweep.html#submodules">Submodules</a></li>
+<li class="toctree-l3"><a class="reference internal" href="websweep.html#module-websweep.config">websweep.config module</a></li>
+<li class="toctree-l3"><a class="reference internal" href="websweep.html#module-websweep.main">websweep.main module</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="contribute.html">Contribute</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="contribute.html#how-to-contribute">How to Contribute</a></li>
+<li class="toctree-l2"><a class="reference internal" href="contribute.html#developing-websweep">Developing WebSweep</a></li>
+<li class="toctree-l2"><a class="reference internal" href="contribute.html#contact-and-support">Contact and Support</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="contact.html">Contact Us</a></li>
 </ul>
 
-
-<!-- Add the title for the project links -->
-<h3>Project</h3>
-
-<ul>
-    
-    <li class="toctree-l1"><a href="contribute.html">Contribute</a></li>
-    
-    <li class="toctree-l1"><a href="contact.html">Contact</a></li>
-    
-    <li class="toctree-l1"><a href="https://pypi.org/project/websweep/">PyPI Releases</a></li>
-    
-    <li class="toctree-l1"><a href="https://github.com/sodascience/websweep">Source Code</a></li>
-    
-    <li class="toctree-l1"><a href="https://github.com/sodascience/websweep/issues">Issue Tracker</a></li>
-    
-</ul>
-
-
-<div id="searchbox" style="display: none" role="search">
-  <h3 id="searchlabel">Quick search</h3>
-    <div class="searchformwrapper">
-    <form class="search" action="search.html" method="get">
-      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
-      <input type="submit" value="Go" />
-    </form>
-    </div>
-</div>
-<script>document.getElementById('searchbox').style.display = "block"</script>
         </div>
       </div>
-      <div class="documentwrapper">
-        <div class="bodywrapper">
-          
+    </nav>
 
-          <div class="body" role="main">
-            
-  <section id="user-s-guide">
-<span id="userguide"></span><h1>User’s Guide<a class="headerlink" href="#user-s-guide" title="Permalink to this heading">¶</a></h1>
-<p>The <cite>websweep</cite> tool can be used as a Python library or through its command line interface (CLI). Below are the basic usage instructions for both methods.</p>
-<section id="using-as-a-library">
-<h2>Using as a Library<a class="headerlink" href="#using-as-a-library" title="Permalink to this heading">¶</a></h2>
-<p>To use <cite>websweep</cite> as a library, you can import it into your Python script and call its functions directly. Here is an example of how to use <cite>websweep</cite> in your code:</p>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Example Python code that uses websweep as a library</span>
-<span class="kn">from</span> <span class="nn">websweep</span> <span class="kn">import</span> <span class="n">Crawler</span>
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu"  style="background: #1f2937" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">WebSweep</a>
+      </nav>
 
-<span class="c1"># Initialize the Scraper</span>
-<span class="n">crawler</span> <span class="o">=</span> <span class="n">Crawler</span><span class="p">(</span><span class="n">target_folder_path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="s2">&quot;your/data/folder&quot;</span><span class="p">))</span>
-<span class="c1"># Use the Crawler to download HTML content</span>
-<span class="n">crawler</span><span class="o">.</span><span class="n">crawl_base_urls</span><span class="p">([</span><span class="s1">&#39;https://firmbackbone.nl&#39;</span><span class="p">,</span> <span class="s1">&#39;https://uu.nl/&#39;</span><span class="p">])</span>
-
-<span class="c1"># Process the content...</span>
-<span class="c1"># (your code here)</span>
-</pre></div>
+      <div class="wy-nav-content">
+        <div class="rst-content style-external-links">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">User Guide</li>
+      <li class="wy-breadcrumbs-aside">
+              <a href="https://github.com/sodascience/websweep/blob/main/docs/source/userguide.rst" class="fa fa-github"> Edit on GitHub</a>
+      </li>
+  </ul>
+  <hr/>
 </div>
-</section>
-<section id="command-line-interface-cli">
-<h2>Command Line Interface (CLI)<a class="headerlink" href="#command-line-interface-cli" title="Permalink to this heading">¶</a></h2>
-<p><cite>websweep</cite> also provides a command line interface for easy access to its features directly from your terminal.</p>
-<section id="options">
-<h3>Options<a class="headerlink" href="#options" title="Permalink to this heading">¶</a></h3>
-<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>-v, --version            Show the application&#39;s version and exit.
---install-completion     Install completion for the current shell.
---show-completion        Show completion for the current shell, to copy it or
-                         customize the installation.
---help                   Show this message and exit.
-</pre></div>
-</div>
-</section>
-<section id="commands">
-<h3>Commands<a class="headerlink" href="#commands" title="Permalink to this heading">¶</a></h3>
-<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>$ websweep config        Alter WebSweep configuration settings.
-$ websweep crawl         Start caching websites.
-$ websweep extract       Start extracting data from the fetched files.
-$ websweep init          Initialise a new WebSweep instance.
-$ websweep instance      Open configured WebSweep instance folder.
-$ websweep restore       Restore configuration of existing WebSweep instance.
-</pre></div>
-</div>
-</section>
-<section id="initialise-websweep">
-<h3>Initialise WebSweep<a class="headerlink" href="#initialise-websweep" title="Permalink to this heading">¶</a></h3>
-<p>Before using WebSweep, you need to initialize a new instance or you need to restore an instance. Note that only one instance can be active at any given time. However, you can switch between instances by restoring such sessions.
-To initialise a new instance, you can use the <cite>init</cite> command:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span>websweep<span class="w"> </span>init
-</pre></div>
-</div>
-<dl>
-<dt>Options:</dt><dd><dl class="option-list">
-<dt><kbd><span class="option">--headless</span></kbd></dt>
-<dd><p>Run without GUI elements</p>
-</dd>
-<dt><kbd><span class="option">--no-headless</span></kbd></dt>
-<dd><p>Run with GUI elements  [default: no-headless]</p>
-</dd>
-</dl>
-</dd>
-</dl>
-<p>The initialisation process allows for the following configurations:</p>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="user-guide">
+<span id="userguide"></span><h1>User Guide<a class="headerlink" href="#user-guide" title="Link to this heading"></a></h1>
+<p>WebSweep can be used in two ways:</p>
 <ul class="simple">
-<li><p>WebSweep instance folder location</p></li>
-<li><p>Crawl source file (csv)</p></li>
-<li><p>Remove raw files after data extraction</p></li>
-<li><p>Usage of SQL or CSV database</p></li>
+<li><p>Python library (recommended for reproducible research code)</p></li>
+<li><p>CLI (<cite>websweep …</cite>) for instance-based runs</p></li>
+</ul>
+<p>Input file format for CLI runs:</p>
+<ul class="simple">
+<li><p>CSV or TSV</p></li>
+<li><p>required column: <code class="docutils literal notranslate"><span class="pre">url</span></code> (or <code class="docutils literal notranslate"><span class="pre">website</span></code> / <code class="docutils literal notranslate"><span class="pre">domain</span></code>)</p></li>
+<li><p>optional column: <code class="docutils literal notranslate"><span class="pre">identifier</span></code> (or <code class="docutils literal notranslate"><span class="pre">id</span></code>)</p></li>
+</ul>
+<section id="pipeline-overview">
+<h2>Pipeline Overview<a class="headerlink" href="#pipeline-overview" title="Link to this heading"></a></h2>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>Input URLs
+  -&gt; Crawler
+     Output: crawled_data/*.zip + overview_urls.{duckdb|db|tsv}
+  -&gt; Extractor
+     Output: extracted_data/*.ndjson
+  -&gt; Consolidator
+     Output: consolidated_data/*.ndjson
+</pre></div>
+</div>
+<p>Disk-saving one-pass mode:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>Input URLs -&gt; Crawler(extract=True, save_html=False) -&gt; extracted_data/*.ndjson
+</pre></div>
+</div>
+</section>
+<section id="library-quickstart">
+<h2>Library Quickstart<a class="headerlink" href="#library-quickstart" title="Link to this heading"></a></h2>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">websweep</span><span class="w"> </span><span class="kn">import</span> <span class="n">Crawler</span><span class="p">,</span> <span class="n">Extractor</span>
+
+<span class="n">urls</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="s2">&quot;https://www.dggrootverbruik.nl/&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;https://www.gosliga.nl/&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;https://www.heeren2.nl/&quot;</span><span class="p">,</span>
+<span class="p">]</span>
+
+<span class="n">output_dir</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="s2">&quot;./research_output&quot;</span><span class="p">)</span>
+
+<span class="n">crawler</span> <span class="o">=</span> <span class="n">Crawler</span><span class="p">(</span><span class="n">target_folder_path</span><span class="o">=</span><span class="n">output_dir</span><span class="p">)</span>
+<span class="n">crawler</span><span class="o">.</span><span class="n">crawl_base_urls</span><span class="p">(</span><span class="n">urls</span><span class="p">)</span>
+
+<span class="n">extractor</span> <span class="o">=</span> <span class="n">Extractor</span><span class="p">(</span><span class="n">target_folder_path</span><span class="o">=</span><span class="n">output_dir</span><span class="p">)</span>
+<span class="n">extractor</span><span class="o">.</span><span class="n">extract_urls</span><span class="p">()</span>
+</pre></div>
+</div>
+</section>
+<section id="custom-extraction-add-ons">
+<h2>Custom Extraction Add-ons<a class="headerlink" href="#custom-extraction-add-ons" title="Link to this heading"></a></h2>
+<p>The core extractor is intentionally conservative. By default it keeps:</p>
+<ul class="simple">
+<li><p>metadata (<cite>meta_*</cite>)</p></li>
+<li><p>cleaned page text (<cite>text</cite>)</p></li>
+<li><p>zipcode/address (<cite>zipcode</cite>, <cite>address</cite>)</p></li>
+</ul>
+<p>It does not include <cite>phone</cite>, <cite>email</cite>, or <cite>fax</cite> unless you add them.</p>
+<p>You can add custom fields by subclassing <code class="docutils literal notranslate"><span class="pre">FileExtractor</span></code> and defining methods
+named <code class="docutils literal notranslate"><span class="pre">_extract_&lt;fieldname&gt;</span></code>:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">re</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">websweep</span><span class="w"> </span><span class="kn">import</span> <span class="n">Extractor</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">websweep.extractor.extractor</span><span class="w"> </span><span class="kn">import</span> <span class="n">FileExtractor</span>
+
+<span class="k">class</span><span class="w"> </span><span class="nc">ResearchFileExtractor</span><span class="p">(</span><span class="n">FileExtractor</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_extract_fax</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">:</span>
+        <span class="n">pattern</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span>
+            <span class="sa">r</span><span class="s2">&quot;(?is)\b(?:faxnumber|fax|f)\b[^0-9\+]{0,12}&quot;</span>
+            <span class="sa">r</span><span class="s2">&quot;([\+]?[0-9][0-9\-\s\(\)]{7,20})\b&quot;</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="nb">sorted</span><span class="p">({</span><span class="n">m</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span> <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">re</span><span class="o">.</span><span class="n">findall</span><span class="p">(</span><span class="n">pattern</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">soup</span><span class="p">))})</span>
+
+<span class="n">extractor</span> <span class="o">=</span> <span class="n">Extractor</span><span class="p">(</span>
+    <span class="n">target_folder_path</span><span class="o">=</span><span class="n">Path</span><span class="p">(</span><span class="s2">&quot;./research_output&quot;</span><span class="p">),</span>
+    <span class="n">file_extractor</span><span class="o">=</span><span class="n">ResearchFileExtractor</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="n">extractor</span><span class="o">.</span><span class="n">extract_urls</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>Repository add-on example:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">addons/firmbackbone_extractor.py</span></code></p></li>
 </ul>
 </section>
-<section id="restore-websweep-instance">
-<h3>Restore WebSweep Instance<a class="headerlink" href="#restore-websweep-instance" title="Permalink to this heading">¶</a></h3>
-<p>As mentioned, you may also configure WebSweep with an existing instance folder instead of creating a new one. When you restore a session, you should not initialise a new session with <cite>init</cite>. You can restore a session with the <cite>restore</cite> command:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span>websweep<span class="w"> </span>restore
-</pre></div>
-</div>
-<dl>
-<dt>Options:</dt><dd><dl class="option-list">
-<dt><kbd><span class="option">--headless</span></kbd></dt>
-<dd><p>Run without GUI elements</p>
-</dd>
-<dt><kbd><span class="option">--no-headless</span></kbd></dt>
-<dd><p>Run with GUI elements  [default: no-headless]</p>
-</dd>
-</dl>
-</dd>
-</dl>
-</section>
-<section id="reconfigure-websweep">
-<h3>Reconfigure WebSweep<a class="headerlink" href="#reconfigure-websweep" title="Permalink to this heading">¶</a></h3>
-<p>You may alter some configurations of the restored or created WebSweep instance. You can do this with the <cite>config</cite> command:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span>websweep<span class="w"> </span>config
-</pre></div>
-</div>
-<dl>
-<dt>Options:</dt><dd><dl class="option-list">
-<dt><kbd><span class="option">--delete-processed-files</span></kbd></dt>
-<dd><p>Delete extractor processed raw files</p>
-</dd>
-<dt><kbd><span class="option">--no-delete-processed-files</span></kbd></dt>
-<dd><p>Not-Delete extractor processed raw files</p>
-</dd>
-<dt><kbd><span class="option">--target-folder-path <var>TEXT</var></span></kbd></dt>
-<dd><p>Set new path for crawled data output</p>
-</dd>
-<dt><kbd><span class="option">--source-file-path <var>TEXT</var></span></kbd></dt>
-<dd><p>Set new path for csv source file</p>
-</dd>
-</dl>
-</dd>
-</dl>
-<p>Other configurations such as the usage of database type and instance location cannot be altered.</p>
-</section>
-<section id="inspect-websweep-instance">
-<h3>Inspect WebSweep Instance<a class="headerlink" href="#inspect-websweep-instance" title="Permalink to this heading">¶</a></h3>
-<p>You can view the active WebSweep session. You can do this with the <cite>instance</cite> command:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>$<span class="w"> </span>websweep<span class="w"> </span>instance
+<section id="url-filtering-rules">
+<h2>URL Filtering Rules<a class="headerlink" href="#url-filtering-rules" title="Link to this heading"></a></h2>
+<p>Crawler URL filtering is configured by:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">src/websweep/utils/default_regex.json</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">classify_url(...)</span></code> in <code class="docutils literal notranslate"><span class="pre">src/websweep/utils/utils.py</span></code></p></li>
+</ul>
+<p>Behavior summary:</p>
+<ul class="simple">
+<li><p>level 0 seed URLs: always crawled</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">mailto:</span></code> and <code class="docutils literal notranslate"><span class="pre">tel:</span></code>: always skipped</p></li>
+<li><p>blocked extensions: skipped</p></li>
+<li><p>level 1: broad crawl</p></li>
+<li><p>level 2: filtered by <code class="docutils literal notranslate"><span class="pre">url.url_regex</span></code></p></li>
+<li><p>levels 3+: skipped by default</p></li>
+</ul>
+<p>CLI overrides:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>websweep<span class="w"> </span>crawl<span class="w"> </span>--allow-extensions<span class="w"> </span>pdf,png
+websweep<span class="w"> </span>crawl<span class="w"> </span>--block-extensions<span class="w"> </span>pdf,png,zip
+websweep<span class="w"> </span>crawl<span class="w"> </span>--classification-file<span class="w"> </span>/path/to/rules.json
 </pre></div>
 </div>
 </section>
-<section id="using-websweep-crawling">
-<h3>Using WebSweep: Crawling<a class="headerlink" href="#using-websweep-crawling" title="Permalink to this heading">¶</a></h3>
-<p>Only when WebSweep is configured with a new or restored instance, the crawling functionality can be used.
-The <cite>crawl</cite> command will start the crawling process of the urls provided in the source file and outputs the crawled data to the WebSweep instance folder under <cite>crawled_data</cite>.</p>
-<dl>
-<dt>Options:</dt><dd><dl class="option-list">
-<dt><kbd><span class="option">--complement <var>TEXT</var></span></kbd></dt>
-<dd><p>Complement the folder with failed pages, takes
-the crawl date as argument</p>
-</dd>
-<dt><kbd><span class="option">--sock-connect <var>INTEGER</var></span></kbd></dt>
-<dd><p>Timeout value (ms) for establishing a connection
-to remote server  [default: 120]</p>
-</dd>
-<dt><kbd><span class="option">--extract</span></kbd></dt>
-<dd><p>Extract files directly after crawl instead of saving HTML</p>
-</dd>
-<dt><kbd><span class="option">--no-extract</span></kbd></dt>
-<dd><p>Save HTML  [default: no-extract]</p>
-</dd>
-<dt><kbd><span class="option">--classification-file <var>PATH</var></span></kbd></dt>
-<dd><p>Use a custom classification file with page title
-terms (plain .txt with ‘;’ delimitation)</p>
-</dd>
-</dl>
-</dd>
-</dl>
+<section id="cli-workflow">
+<h2>CLI Workflow<a class="headerlink" href="#cli-workflow" title="Link to this heading"></a></h2>
+<p>Initialize an instance:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>websweep<span class="w"> </span>init<span class="w"> </span>--headless
+</pre></div>
+</div>
+<p>Crawl and extract:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>websweep<span class="w"> </span>crawl
+websweep<span class="w"> </span>extract
+</pre></div>
+</div>
+<p>Helpful flags:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>websweep<span class="w"> </span>crawl<span class="w"> </span>--overview-backend<span class="w"> </span>duckdb
+websweep<span class="w"> </span>crawl<span class="w"> </span>--extract
+websweep<span class="w"> </span>extract<span class="w"> </span>--workers<span class="w"> </span><span class="m">8</span>
+</pre></div>
+</div>
 </section>
-<section id="using-websweep-extracting">
-<h3>Using WebSweep: Extracting<a class="headerlink" href="#using-websweep-extracting" title="Permalink to this heading">¶</a></h3>
-<p>Only when WebSweep is configured with a new or restored instance and the instance folder is populated with crawled data, the extracting functionality can be used.
-The <cite>extract</cite> command will start the extracting process of the crawled html files and outputs the extracted data to the WebSweep instance folder under <a href="#id1"><span class="problematic" id="id2">`</span></a>extracted_data.</p>
-<dl>
-<dt>Options:</dt><dd><dl class="option-list">
-<dt><kbd><span class="option">--start-date <var>TEXT</var></span></kbd></dt>
-<dd><p>Date on which the files are retreieved and extracted
-should start extracting</p>
-</dd>
-<dt><kbd><span class="option">--end-date <var>TEXT</var></span></kbd></dt>
-<dd><p>Date on which the files are retreieved and extractor
-should stop extracting</p>
-</dd>
-</dl>
-</dd>
-</dl>
-</section>
+<section id="troubleshooting-statuses">
+<h2>Troubleshooting Statuses<a class="headerlink" href="#troubleshooting-statuses" title="Link to this heading"></a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">overview_urls.{duckdb|db|tsv}</span></code> stores per-page crawl status values. Common
+non-<code class="docutils literal notranslate"><span class="pre">200</span></code> values:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">DNS</span> <span class="pre">lookup</span> <span class="pre">failed</span></code>: domain resolution failed from current network.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">Connection</span> <span class="pre">failed</span></code>: host resolved, but connection/SSL handshake failed.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">Request</span> <span class="pre">timeout</span></code>: remote host did not respond within timeout.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">Robots</span> <span class="pre">unavailable</span> <span class="pre">in</span> <span class="pre">__test_domain_robots</span></code>: robots check failed; crawler
+continues with allow-all robots policy for that base URL.</p></li>
+</ul>
+<p>For large historical URL lists, high failure rates are often expected because
+many domains are no longer online.</p>
 </section>
 </section>
 
 
+           </div>
           </div>
-          
-        </div>
-      </div>
-    <div class="clearer"></div>
-  </div>
-    <div class="footer">
-      &copy;2023, ODISSEI Social Data Science.
-      
-      |
-      <a href="_sources/userguide.rst.txt"
-          rel="nofollow">Page source</a>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="installation.html" class="btn btn-neutral float-left" title="Installation" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="examples.html" class="btn btn-neutral float-right" title="Examples" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
     </div>
 
-    
+  <hr/>
 
-    
-  </body>
+  <div role="contentinfo">
+    <p>&#169; Copyright 2026, ODISSEI Social Data Science.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
 </html>

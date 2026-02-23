@@ -9,7 +9,6 @@ This project is developed and maintained by the `ODISSEI Social Data Science (So
    :alt: SoDa logo
    :width: 200px
    :align: center
-.. _contribute:
 
 Any contributions you make to WebSweep are **greatly appreciated**.
 
@@ -28,4 +27,4 @@ For instructions on how to run WebSweep without installing it and how to install
 Contact and Support
 -------------------
 
-If you have any questions or need support, feel free to reach out. You can file an issue in our `issue tracker <https://github.com/sodascience/websweep/issues>`_ or contact the team directly through the `ODISSEI Social Data Science (SoDa) <https://odissei-data.nl/en/using-soda/>`_ contact form.
+If you have any questions or need support, feel free to reach out. You can file an issue in our `issue tracker <https://github.com/sodascience/websweep/issues>`_ or contact the team directly through the `ODISSEI SoDa contact form <https://odissei-data.nl/en/using-soda/>`_.
