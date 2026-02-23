@@ -1,26 +1,85 @@
-import sys
-import os
+from pathlib import Path
+import time
 
-sys.path.append( os.path.join(os.path.dirname( __file__ ), '..', 'src', 'websweep', 'extractor'))
-from extractor import FileExtractor
-unit = FileExtractor(["https://aaschroefpalen.nl", 00000000, 0, "https://aaschroefpalen.nl", "2023-06-12 20:53:59", os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets", "crawled_data", "aaschroefpalen.nl/aaschroefpalen.nl/2023-06-20/aaschroefpalen.nl")])
-unit.extracting()
+import pytest
 
-def test_addition():
-    assert 2 + 2 == 4
+pytest.importorskip("bs4")
 
-def test__extract_phone(): 
-    assert unit._extract_phone() == ["+31243782888"]
-    
-def test__extract_email(): 
-    assert unit._extract_email() == ["info@aaschroefpalen.nl"]
+from websweep.extractor.extractor import Extractor, FileExtractor
+try:
+    import re2 as re
+except Exception:
+    import regex as re
 
-def test__extract_fax(): 
-    assert unit._extract_fax() == ['024 - 378 28 88', '024 - 378 07 77'] or ['024 - 378 07 77', '024 - 378 28 88']
 
-def test__extract_zipcode(): 
-    assert unit._extract_zipcode() == ["6581 KZ"]
+def _sample_info():
+    base = Path(__file__).resolve().parent / "assets" / "crawled_data"
+    archived_page = (
+        base
+        / "aaschroefpalen.nl"
+        / "aaschroefpalen.nl"
+        / "2023-06-20"
+        / "aaschroefpalen.nl"
+    )
+    return [
+        "https://aaschroefpalen.nl",
+        "00000000",
+        0,
+        "https://aaschroefpalen.nl",
+        "2023-06-12 20:53:59",
+        str(archived_page),
+    ]
 
-def test__extract_address(): 
-    assert unit._extract_address() == ["Steiger 10"]
-    
+
+def test_file_extractor_default_fields_do_not_include_contact_data():
+    unit = FileExtractor(_sample_info())
+    metadata = unit.extracting()
+
+    assert set(metadata["zipcode"]) == {"6581 KZ"}
+    assert set(metadata["address"]) == {"Steiger 10"}
+    assert "phone" not in metadata
+    assert "email" not in metadata
+    assert "fax" not in metadata
+
+
+class FaxAddonExtractor(FileExtractor):
+    def _extract_fax(self) -> list:
+        pattern = re.compile(
+            r"(?is)\b(?:faxnumber|fax|f)\b[^0-9\+]{0,12}"
+            r"([\+]?[0-9][0-9\-\s\(\)]{7,20})\b"
+        )
+        faxs = set(re.findall(pattern, str(self.soup)))
+        return list(set([_.strip() for _ in faxs]))
+
+
+def test_file_extractor_custom_addon_method_extracts_fax():
+    unit = FaxAddonExtractor(_sample_info())
+    metadata = unit.extracting()
+    assert "024 - 378 07 77" in set(metadata["fax"])
+
+
+class SlowExtractor(FileExtractor):
+    def extracting(self):
+        time.sleep(2.0)
+        return super().extracting()
+
+
+def test_process_level_timeout_marks_timeout(tmp_path):
+    extractor = Extractor(
+        target_folder_path=tmp_path,
+        workers=1,
+        extract_timeout_seconds=1,
+        file_extractor=SlowExtractor,
+    )
+    result = list(extractor._iter_chunk_results([_sample_info()]))
+    assert len(result) == 1
+    assert result[0]["path"] == "Timeout extracting"
+
+
+def test_firmbackbone_addon_outside_core_package():
+    from addons.firmbackbone_extractor import FirmBackBoneFileExtractor
+
+    unit = FirmBackBoneFileExtractor(_sample_info())
+    metadata = unit.extracting()
+    assert "email" in metadata
+    assert "phone" in metadata

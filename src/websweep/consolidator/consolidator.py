@@ -2,14 +2,31 @@
 import dataclasses
 from collections import Counter
 from typing import List, Generator, Dict, Any
-import orjson
-import re2 as re
-import tldextract
 from itertools import islice
 from pathlib import Path
-from tqdm import tqdm
-from gevent import monkey, Timeout
-monkey.patch_all(thread=False)
+from urllib.parse import urlparse
+
+try:
+    import tldextract
+except Exception:
+    tldextract = None
+try:
+    from tqdm import tqdm
+except Exception:
+    def tqdm(iterable, **_kwargs):
+        return iterable
+
+try:
+    from json_io import json_dumps, json_loads
+    from public_suffix import build_tldextract_extractor
+except Exception:
+    from ..utils.json_io import json_dumps, json_loads
+    from ..utils.public_suffix import build_tldextract_extractor
+
+if tldextract is not None:
+    _TLD_EXTRACTOR = build_tldextract_extractor(tldextract)
+else:
+    _TLD_EXTRACTOR = None
 
 # Constants
 COLUMNS_KEEP = [
@@ -93,7 +110,18 @@ class Domain:
         Returns:
             Dict[str, Any]: A dictionary representation of the Domain object.
         """
-        return dataclasses.asdict(self)
+        return {
+            "domain": self.domain,
+            "identifier": self.identifier,
+            "phone": dict(self.phone),
+            "email": dict(self.email),
+            "fax": dict(self.fax),
+            "zipcode": dict(self.zipcode),
+            "address": dict(self.address),
+            "kvk": dict(self.kvk),
+            "btw": dict(self.btw),
+            "text": self.text,
+        }
 
     @classmethod
     def from_dict(cls, d: Dict[str, Any]):
@@ -110,12 +138,10 @@ class Domain:
 
 class Consolidator:
     """
-    A class to process domain information from ndjson files.
+    Process domain-level information from NDJSON files.
 
-    Methods:
-        read_ndjson_in_chunks: Reads ndjson file in chunks.
-        create_domain_info: Creates domain information from sorted chunks.
-        merge_sorted_files: Merges sorted files line by line.
+    The consolidator reads extracted page-level records in chunks, aggregates
+    values per domain, and writes a merged domain-level output file.
     """
     
     def __init__(self, input_file: str, chunk_size: int = 10000):
@@ -126,7 +152,7 @@ class Consolidator:
             input_file (str): The path to the input ndjson file.
             chunk_size (int, optional): The size of each chunk to be read from the file. Default is 10000.
         """
-        self.input_file = input_file
+        self.input_file = str(input_file)
         self.chunk_size = chunk_size
 
     
@@ -141,7 +167,7 @@ class Consolidator:
             Dict[str, Any]: A dictionary representing the line.
         """
         try:
-            return orjson.loads(line)
+            return json_loads(line)
         except Exception:
             return None
 
@@ -163,7 +189,7 @@ class Consolidator:
 
     def create_domain_info(self, chunk: List[Dict[str, Any]], output_file: str):
         """
-        Creates domain information from sorted chunks and writes to an output file with a maximum of 1 second per domain processing using gevent.
+        Creates domain information from sorted chunks and writes to an output file.
 
         Args:
             chunk (List[Dict[str, Any]]): A list of dictionaries, each representing a domain.
@@ -173,7 +199,7 @@ class Consolidator:
         domain_info = None
 
         with open(output_file, "wb") as f:
-            for site in tqdm(sorted(chunk, key=lambda d: self._clean_domain(d["domain"]))):
+            for site in tqdm(sorted(chunk, key=lambda d: self._clean_domain(d.get("domain", "")))):
                 new_domain = self._clean_domain(site["domain"])
                 
                 if domain is None or new_domain != domain:
@@ -200,20 +226,27 @@ class Consolidator:
             input_files (List[str]): A list of file paths to be merged.
             final_output (str): Path to the final output file.
         """
+        final_output_path = Path(final_output)
+        final_output_path.parent.mkdir(parents=True, exist_ok=True)
+
+        if not input_files:
+            final_output_path.write_bytes(b"")
+            return
+
         files = [open(file, "rb") for file in input_files]
-        domains_objects = [Domain.from_dict(orjson.loads(file.readline())) for file in files]
+        domains_objects = [Domain.from_dict(json_loads(file.readline())) for file in files]
         domains = [domain.domain for domain in domains_objects]
         smallest_value = "__first_domain"
         d = None
 
-        with open(final_output, "wb") as f:
+        with final_output_path.open("wb") as f:
             while domains:
                 new_smallest_value = min(domains)
                 indexes = [i for i, x in enumerate(domains) if x == new_smallest_value]
 
                 if new_smallest_value != smallest_value:
                     if smallest_value != "__first_domain":
-                        f.write(orjson.dumps(d) + b"\n")
+                        f.write(json_dumps(d.to_dict()) + b"\n")
                         
                     smallest_value = new_smallest_value
                     
@@ -232,7 +265,7 @@ class Consolidator:
                 for i in indexes[::-1]:
                     line = files[i].readline()
                     if line:
-                        domains_objects[i] = Domain.from_dict(orjson.loads(line))
+                        domains_objects[i] = Domain.from_dict(json_loads(line))
                         domains[i] = domains_objects[i].domain
                     else:
                         domains.pop(i)
@@ -240,7 +273,7 @@ class Consolidator:
                         files[i].close()
                         files.pop(i)
                                 
-            f.write(orjson.dumps(d) + b"\n")
+            f.write(json_dumps(d.to_dict()) + b"\n")
 
         # # Delete temporary files
         for file in input_files:
@@ -248,12 +281,16 @@ class Consolidator:
 
 
     def consolidate(self, final_output: str):
+        """Run full consolidation: chunk, aggregate per chunk, then merge chunks."""
         # Read NDJSON in chunks and organize per domain
+        chunk_files = []
         for i, chunk in enumerate(self.read_ndjson_in_chunks()):
-            self.create_domain_info(chunk, f"temp_chunk{i}.ndjson")
+            chunk_file = f"temp_chunk{i}.ndjson"
+            self.create_domain_info(chunk, chunk_file)
+            chunk_files.append(chunk_file)
 
         # Merge sorted files
-        self.merge_domain_files([f"temp_chunk{_}.ndjson" for _ in range(i+1)], final_output=final_output)
+        self.merge_domain_files(chunk_files, final_output=final_output)
 
 
     def _clean_domain(self, domain: str) -> str:
@@ -267,7 +304,23 @@ class Consolidator:
             str: The cleaned domain name.
         """
         
-        return tldextract.extract(domain).registered_domain
+        if _TLD_EXTRACTOR is not None:
+            extracted = _TLD_EXTRACTOR(domain)
+            registered = (
+                getattr(extracted, "top_domain_under_public_suffix", None)
+                or getattr(extracted, "registered_domain", "")
+            )
+            if registered:
+                return registered
+
+        host = urlparse(domain).netloc or str(domain)
+        host = host.split("/", 1)[0].split(":", 1)[0].lower().replace("www.", "")
+        parts = [part for part in host.split(".") if part]
+        if parts and all(part.isdigit() for part in parts):
+            return ".".join(parts)
+        if len(parts) >= 2:
+            return ".".join(parts[-2:])
+        return host
         
     
     def _initialize_domain_counters(self, site: Dict[str, Any]) -> Domain:
@@ -282,7 +335,7 @@ class Consolidator:
         """
         
         return Domain(
-            domain=self._clean_domain(site["domain"]), #TODO: Make sure it works for domains such as .co.uk
+            domain=self._clean_domain(site["domain"]),
             identifier=site["identifier"],
             phone=Counter(),
             email=Counter(),
@@ -302,15 +355,15 @@ class Consolidator:
             domain (Domain): The Domain object to update.
             site (Dict[str, Any]): A dictionary representing a site.
         """
-        domain.phone.update(site["phone"])
-        domain.email.update(site["email"])
-        domain.fax.update(site["fax"])
-        domain.zipcode.update(site["zipcode"])
-        domain.address.update(site["address"])
-        domain.address.update(site["btw"])
-        domain.address.update(site["kvk"])
-        
-        domain.text += " " + site["text"]
+        domain.phone.update(site.get("phone") or [])
+        domain.email.update(site.get("email") or [])
+        domain.fax.update(site.get("fax") or [])
+        domain.zipcode.update(site.get("zipcode") or [])
+        domain.address.update(site.get("address") or [])
+        domain.btw.update(site.get("btw") or [])
+        domain.kvk.update(site.get("kvk") or [])
+
+        domain.text += " " + (site.get("text") or "")
 
     def _dump_domain_to_file(self, domain: Domain, file_object):
         """
@@ -320,5 +373,4 @@ class Consolidator:
             domain (Domain): The Domain object to write to the file.
             file_object: The file object to write to.
         """
-        file_object.write(orjson.dumps(domain) + b"\n")
-
+        file_object.write(json_dumps(domain.to_dict()) + b"\n")

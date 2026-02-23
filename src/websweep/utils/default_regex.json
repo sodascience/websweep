@@ -1,17 +1,14 @@
 {
-  "negative": 
-  {
-    "negative_regex": "png$|jpg$|jpeg$|pdf$|collections|email-protection|product|aanbod|assortiment|voorraad|koop|shop|artikelen|merken|wintersport|bouw|zoeken|search",
+  "negative": {
+    "negative_regex": "collections|email-protection|product|aanbod|assortiment|voorraad|koop|shop|artikelen|merken|wintersport|bouw|zoeken|search",
     "negative_keywords": []
   },
-  "url": 
-  {
+  "url": {
     "url_regex": "over-ons|contact|duurzaamheid|index\\.php|algemene-voorwaarden|vacatures|disclaimer|klantenservice|privacy-policy|cookie-policy|cookies|cookie|cookie-beleid|over|overons|blogs|privacyverklaring|about|about-us",
     "url_keywords": []
   },
-  "report": 
-  {
-    "report_regex": "financiele.?rapportage|annual.?report|jaarrekening|jaar.?verslag|jaarrapport|boekhouding.?rapportage|boekhouding.?rapport|financial.?performance|investor.?relations|investeerder.?relaties|financial.?results|financial.?statement",
-    "report_keywords": []
+  "files": {
+    "blocked_extensions": ["pdf", "png", "jpg", "jpeg"],
+    "allowed_extensions": []
   }
 }

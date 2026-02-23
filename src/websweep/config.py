@@ -1,8 +1,5 @@
 """This module provides the WebSweep config functionality."""
 import configparser
-import os
-import sys
-from datetime import datetime
 from pathlib import Path
 
 import typer
@@ -12,10 +9,9 @@ from websweep import DIR_ERROR, FILE_ERROR, SUCCESS, __app_name__
 CONFIG_DIR_PATH = Path(typer.get_app_dir(__app_name__))
 CONFIG_FILE_PATH = CONFIG_DIR_PATH / "config.ini"
 
-# TODO: Provide comments
-
 
 def _truncate_section(config_file: Path, section: str) -> None:
+    """Remove a section from an INI file when it exists."""
     config_parser = configparser.ConfigParser()
 
     with open(config_file, "r") as f:
@@ -26,7 +22,7 @@ def _truncate_section(config_file: Path, section: str) -> None:
     try:
         with config_file.open("w") as file:
             config_parser.write(file)
-    except:
+    except OSError:
         pass
 
 
@@ -36,7 +32,7 @@ def current_websweep_instance() -> Path:
         config_parser = configparser.ConfigParser()
         config_parser.read(CONFIG_FILE_PATH)
         return Path(config_parser["Instance"]["location"])
-    except:
+    except (KeyError, configparser.Error):
         return CONFIG_DIR_PATH
 
 
@@ -78,6 +74,7 @@ def init_app(
 
 
 def _init_application_config_file(location: Path) -> int:
+    """Create/update the global config file and store active instance location."""
     try:
         CONFIG_DIR_PATH.mkdir(exist_ok=True, parents=True)
     except OSError:
@@ -100,6 +97,7 @@ def _init_application_config_file(location: Path) -> int:
 
 
 def _init_target_folder(target_folder_path: Path) -> int:
+    """Initialize instance folders and write the local ``settings.ini`` pointer."""
     try:
         (target_folder_path / "crawled_data").mkdir(exist_ok=True, parents=True)
     except OSError:
@@ -118,6 +116,7 @@ def _init_target_folder(target_folder_path: Path) -> int:
 
 
 def _create_settings_file() -> int:
+    """Ensure the active instance has a ``settings.ini`` file."""
     try:
         Path(current_websweep_instance() / "settings.ini").touch(exist_ok=True)
     except OSError:
@@ -142,7 +141,7 @@ def restore_app(target_folder_path: Path) -> int:
         get_target_folder_path()
         get_source_file_path()
         get_extractor_delete()
-    except:
+    except Exception:
         return FILE_ERROR
 
     return SUCCESS
@@ -158,6 +157,7 @@ def get_target_folder_path(
 
 
 def _save_source_file(source_file_path: Path) -> int:
+    """Persist the source URL file path in ``settings.ini``."""
     _truncate_section(current_websweep_instance() / "settings.ini", "Source")
     config_parser = configparser.ConfigParser()
     config_parser.add_section("Source")
@@ -178,11 +178,26 @@ def get_source_file_path(
         config_parser = configparser.ConfigParser()
         config_parser.read(config_file)
         return Path(config_parser["Source"]["source_file"])
-    except:
+    except (KeyError, configparser.Error):
         return None
 
 
+def _parse_bool(value, default: bool) -> bool:
+    """Parse flexible string/boolean config values with a default fallback."""
+    if isinstance(value, bool):
+        return value
+    if value is None:
+        return default
+    normalized = str(value).strip().lower()
+    if normalized in {"1", "true", "yes", "on"}:
+        return True
+    if normalized in {"0", "false", "no", "off"}:
+        return False
+    return default
+
+
 def _save_extractor_delete(extractor_delete_files: bool) -> int:
+    """Persist extractor cleanup preference in ``settings.ini``."""
     _truncate_section(current_websweep_instance() / "settings.ini", "Extractor")
     config_parser = configparser.ConfigParser()
     config_parser.add_section("Extractor")
@@ -206,11 +221,12 @@ def get_extractor_delete(
     """
     config_parser = configparser.ConfigParser()
     config_parser.read(config_file)
-    return eval(config_parser["Extractor"]["extractor_delete_files"])
+    value = config_parser.get("Extractor", "extractor_delete_files", fallback=None)
+    return _parse_bool(value, default=False)
 
 
-#TODO: @Bjorn, this 3 function was removed in the last merge, but I think they are needed
 def _save_use_database(use_database: bool) -> int:
+    """Persist whether crawl overview data should use a DB backend."""
     _truncate_section(current_websweep_instance() / "settings.ini", "Database")
     config_parser = configparser.ConfigParser()
     config_parser.add_section('Database')
@@ -232,4 +248,5 @@ def get_use_database(
     """
     config_parser = configparser.ConfigParser()
     config_parser.read(config_file)
-    return eval(config_parser["Database"]["use_database"])
+    value = config_parser.get("Database", "use_database", fallback=None)
+    return _parse_bool(value, default=True)

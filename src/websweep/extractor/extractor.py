@@ -1,21 +1,60 @@
 """This module provides the Extracter model-controller."""
 import os
-import re2 as re
 import shutil
 import sqlite3 as sql
 import time
 import unicodedata
+from collections import deque
 from datetime import date as datelib
 from pathlib import Path
+from typing import Optional
 
-import orjsonl
 import zipfile
-import tqdm
-import typer
 from bs4 import BeautifulSoup
-from multiprocess import Pool
-from gevent import monkey, Timeout
-monkey.patch_all(thread=False, select=False)
+try:
+    from multiprocess import Pool
+except Exception:
+    from multiprocessing import Pool
+
+try:
+    import tqdm
+except Exception:
+    class _NoOpProgress:
+        def __init__(self, total=None, **_kwargs):
+            self.total = total
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+        def update(self, *_args, **_kwargs):
+            return None
+
+    class _NoOpTqdmModule:
+        @staticmethod
+        def tqdm(*_args, **kwargs):
+            return _NoOpProgress(total=kwargs.get("total"))
+
+    tqdm = _NoOpTqdmModule()
+
+try:
+    from json_io import append_jsonl
+    from backend import resolve_overview_backend
+except Exception:
+    from ..utils.json_io import append_jsonl
+    from ..utils.backend import resolve_overview_backend
+
+try:
+    import re2 as re
+except Exception:
+    import regex as re
+
+ADDRESS_PATTERN = re.compile(
+    r"\b([ a-zA-ZÀ-ÿ\-]+\s+[\s0-9-_a-zA-Z]{1,9})[\s\-,\|]{0,5}"
+)
+ADDRESS_NOISE_PATTERN = re.compile(r"(?i)\b(?:gevestigd|aan|te)\b")
 
 class FileExtractor:
     """
@@ -65,6 +104,7 @@ class FileExtractor:
                     self.soup = BeautifulSoup(self.text, "lxml")
 
     def extracting(self):
+        """Extract text and metadata for one page and return a record dictionary."""
         # Get metadata
         self.metadata.update(self._extract_metadata()) #future self.metadata |= self._extract_metadata()
 
@@ -83,63 +123,18 @@ class FileExtractor:
         return self.metadata
 
     def extract_default_metadata(self):
-        # Extract the default data, these are all the modular extract methods
-        self.metadata["phone"] = self._extract_phone()
-        self.metadata["email"] = self._extract_email()
-        self.metadata["fax"] = self._extract_fax()
+        """Populate the built-in default metadata fields."""
+        # Core defaults are intentionally conservative.
+        # Contact fields (phone/email/fax) are opt-in via custom _extract_* methods.
         self.metadata["zipcode"] = self._extract_zipcode()
         self.metadata["address"] = self._extract_address()
 
     def extract_custom_metadata(self):
+        """Run ``_extract_*`` methods defined by custom subclasses."""
         # Execute all the methods that start with "_extract_" in the name in the child class
 
         for method in self.child_methods:
             self.metadata[method.split("_extract_")[1]] = getattr(self, method)()
-
-
-    def _extract_phone(self) -> list:
-        """
-        Extract the phone number from the input file, and add found phone numbers to self.phone in set form
-
-        """
-        pattern = re.compile(
-            r'(?s)(?i)(?:tel:|telefoon:|t:|t\s|t\.)[\s|&nbsp;|\/]{0,4}'
-            r'([\+|\"]?[\d|\s|\(|\)|-]{9,15})\b'
-        )
-        # Phone numbers can be indicated by a variety of different ways, this regex tries to incorporate all of those as a possibillity
-        phone = set(re.findall(pattern, str(self.soup)))
-        
-
-        return list(phone)
-
-    def _extract_email(self) -> list:
-        """
-        Extract the Email adress from the input file, and adds the found email adress to self.email in set form
-        """
-        undesired_extensions = {
-            "png", "jpg", "jpeg", "gif", "pdf", "doc", "docx", "xls", "xlsx", 
-            "txt", "rtf", "zip", "mp3", "mp4", "wav", "avi", "mov", "psd", "tif", "tiff"
-        }
-        pattern = re.compile(r"([A-Za-z0-9\.\+_-]+@[a-zA-Z0-9-_\.]{1,25}\.[a-zA-Z-]{1,7})")
-        # Find all potential email matches
-        potential_emails = pattern.findall(str(self.soup))
-        emails = [email for email in set(potential_emails) if email.split('.')[-1].lower() not in undesired_extensions]
-
-
-        return emails
-
-    def _extract_fax(self) -> list:
-        """
-        Extract the fax number from the input file, and add found fax numbers to self.fax in set form
-
-        """
-        pattern = re.compile(
-                            r"(?s)(?i)\b(?:fax|faxnumber|f):[\s|&nbsp;|\/]{0,4}"
-                            r"([\+|\"]?[\d|\s|\(|\)|-]{9,15})\b"
-        )
-
-        faxs = set(re.findall(pattern, str(self.soup)))
-        return list(set([_.strip() for _ in faxs]))
 
 
     def _extract_zipcode(self) -> list:
@@ -158,15 +153,9 @@ class FileExtractor:
     def _extract_address(self) -> list:
         """
         Extract the adres from the input file, and add found adres to self.adres in set form(
-        TODO: Compile patterns available to all (in utils?). 
 
         """
         add_found = []
-        pattern = re.compile(
-            r"\b([ a-zA-ZÀ-ÿ\-]+\s+[\s0-9-_a-zA-Z]{1,9})" + #address part
-            r"[\s\-,\|]{0,5}"
-        )
-
 
         for zipcode in self.metadata["zipcode"]:
             add, *_ = self.text.partition(zipcode)
@@ -179,10 +168,10 @@ class FileExtractor:
             else:
                 add = add[-1] 
 
-            matches = re.findall(pattern, add.strip())
+            matches = re.findall(ADDRESS_PATTERN, add.strip())
             if len(matches) > 0:
                 # Remove unwanted words from matches
-                filtered_matches = [re.sub(r"(?i)\b(?:gevestigd|aan|te)\b", "", match) for match in matches]
+                filtered_matches = [re.sub(ADDRESS_NOISE_PATTERN, "", match) for match in matches]
                 filtered_matches = [match.strip() for match in filtered_matches if match.strip()]
                 if filtered_matches:
                     add_found.append(filtered_matches[-1])
@@ -219,6 +208,7 @@ class FileExtractor:
         return metadata
 
     def _clean_html(self) -> str:
+        """Return plain normalized text extracted from BeautifulSoup HTML."""
         text = self.soup.get_text(separator="\n", strip=True)
         return unicodedata.normalize("NFKD", text)
 
@@ -230,8 +220,9 @@ class Extractor:
     Parameters:
         target_folder_path: str
             The path to the folder where the extracted data is stored.
-        use_sqlite: bool, optional
-            Whether or not to use SQLite to store the extracted data. Default is False.
+        use_database: bool, optional
+            Whether or not to use a database backend (duckdb/sqlite) for the overview file.
+            If False, TSV is used. Default is True.
         extractor_delete_files: bool, optional
             Whether or not to delete the original files after extracting data. Default is False.
         file_extractor: FileExtractor, optional
@@ -245,50 +236,177 @@ class Extractor:
     """
 
     def __init__(
-        self, target_folder_path, use_sqlite=True, extractor_delete_files=False, start_date="0000-01-01", end_date="9999-01-01", file_extractor: FileExtractor=None
+        self,
+        target_folder_path,
+        use_database=True,
+        extractor_delete_files=False,
+        start_date="0000-01-01",
+        end_date="9999-01-01",
+        file_extractor: FileExtractor = None,
+        overview_backend: Optional[str] = None,
+        workers: Optional[int] = None,
+        imap_chunksize: int = 50,
+        maxtasksperchild: int = 1000,
+        extract_timeout_seconds: int = 10,
+        **kwargs,
     ):
-        self.target_folder_path = target_folder_path
-        self.use_sqlite = use_sqlite
+        self.target_folder_path = Path(target_folder_path)
+        legacy_use_sqlite = kwargs.pop("use_sqlite", None)
+        if kwargs:
+            raise TypeError(f"Unexpected keyword argument(s): {', '.join(kwargs.keys())}")
+        if legacy_use_sqlite is not None:
+            use_database = bool(legacy_use_sqlite)
+        self.use_database = bool(use_database)
+
+        self.overview_backend = resolve_overview_backend(
+            base_folder=self.target_folder_path,
+            use_database=self.use_database,
+            override_backend=overview_backend,
+        )
         self.extractor_delete_files = extractor_delete_files
         self.file_extractor = file_extractor
-        self.start_date = start_date
-        self.end_date = end_date
+        self.start_date = str(start_date)
+        self.end_date = str(end_date)
         self.number_error = 0
+        self.workers = max(1, int(workers)) if workers is not None else max(1, (os.cpu_count() or 1))
+        self.imap_chunksize = max(1, int(imap_chunksize))
+        self.maxtasksperchild = max(1, int(maxtasksperchild))
+        self.extract_timeout_seconds = max(1, int(extract_timeout_seconds))
+
+    def _connect_overview_db(self):
+        """Open a connection to the configured overview backend database."""
+        if self.overview_backend == "duckdb":
+            try:
+                import duckdb
+            except Exception as exc:
+                raise RuntimeError(
+                    "DuckDB backend requested, but dependency 'duckdb' is not installed."
+                ) from exc
+            return duckdb.connect(os.path.join(self.target_folder_path, "overview_urls.duckdb"))
+        return sql.connect(os.path.join(self.target_folder_path, "overview_urls.db"))
+
+    @staticmethod
+    def _error_metadata(path, reason="Error extracting"):
+        """Build a minimal metadata record for failed extraction attempts."""
+        domain, identifier, level, url, date, _ = path
+        return {
+            "domain": domain,
+            "identifier": identifier,
+            "level": level,
+            "website": url,
+            "date": date,
+            "path": reason,
+        }
+
+    @staticmethod
+    def _is_error_metadata(metadata: dict) -> bool:
+        """Return whether a metadata record represents an extraction failure."""
+        return metadata.get("path") in {"Error extracting", "Timeout extracting"}
 
     def _create_results(self, path):
-        [domain, identifier, level, url, date, path] = path
-                
-        metadata = None
-        with Timeout(10, False):
-            try:
-                if self.file_extractor is not None:
-                    metadata = self.file_extractor([domain, identifier, level, url, date, path]).extracting()
-                else:
-                    metadata = FileExtractor([domain, identifier, level, url, date, path]).extracting()
-            except Exception:
-                pass # Handled later
+        """Extract one result record from a crawled page metadata tuple."""
+        [domain, identifier, level, url, date, stored_path] = path
 
-        if metadata is None:
-            metadata = {"domain": domain, "identifier": identifier, "level": level, "website": url, "date": date, "path": "Error extracting"}
-            self.number_error += 1
+        try:
+            extractor_class = self.file_extractor or FileExtractor
+            metadata = extractor_class(
+                [domain, identifier, level, url, date, stored_path]
+            ).extracting()
+            if metadata is None:
+                return self._error_metadata(path)
+            return metadata
+        except Exception:
+            return self._error_metadata(path)
 
-        return metadata
+    def _iter_chunk_results(self, chunk):
+        """Yield extracted records for a chunk with per-task timeout enforcement."""
+        if not chunk:
+            return
+
+        pending = {}
+        to_submit = deque(chunk)
+        pool = None
+
+        try:
+            pool = Pool(
+                processes=self.workers,
+                maxtasksperchild=self.maxtasksperchild,
+            )
+
+            while to_submit or pending:
+                while to_submit and len(pending) < self.workers:
+                    item = to_submit.popleft()
+                    async_result = pool.apply_async(self._create_results, (item,))
+                    pending[async_result] = (item, time.monotonic())
+
+                yielded_result = False
+                for async_result, (item, _) in list(pending.items()):
+                    if not async_result.ready():
+                        continue
+
+                    try:
+                        metadata = async_result.get()
+                    except Exception:
+                        metadata = self._error_metadata(item)
+
+                    del pending[async_result]
+                    yield metadata
+                    yielded_result = True
+
+                if yielded_result:
+                    continue
+
+                now = time.monotonic()
+                timed_out = [
+                    async_result
+                    for async_result, (_, started_at) in pending.items()
+                    if (now - started_at) > self.extract_timeout_seconds
+                ]
+                if timed_out:
+                    timed_out_set = set(timed_out)
+                    survivors = []
+                    for async_result, (item, _) in list(pending.items()):
+                        if async_result in timed_out_set:
+                            yield self._error_metadata(item, reason="Timeout extracting")
+                        else:
+                            survivors.append(item)
+                        del pending[async_result]
+
+                    # Reset the worker pool to reliably kill stuck tasks and keep
+                    # processing the remaining queue without global monkey patching.
+                    pool.terminate()
+                    pool.join()
+                    pool = Pool(
+                        processes=self.workers,
+                        maxtasksperchild=self.maxtasksperchild,
+                    )
+
+                    for item in reversed(survivors):
+                        to_submit.appendleft(item)
+                    continue
+
+                time.sleep(0.01)
+        finally:
+            if pool is not None:
+                try:
+                    pool.close()
+                except Exception:
+                    pool.terminate()
+                pool.join()
 
     
     def extract_urls(self):
+        """Extract all successful crawl rows for the configured date window."""
         start = time.time()
 
-        if self.use_sqlite:
-            connection = sql.connect(
-                os.path.join(self.target_folder_path, "overview_urls.db")
-            )
+        if self.overview_backend in {"sqlite", "duckdb"}:
+            connection = self._connect_overview_db()
             cursor = connection.cursor()
-            results = cursor.execute(
-                f"""SELECT domain, identifier, level, url, session_date, path FROM Overview 
-                            WHERE (session_date >= '{self.start_date}') 
-                            AND (session_date <= '{self.end_date}') 
-                            AND (status == "200")"""
-            ).fetchall()
+            query = (
+                "SELECT domain, identifier, level, url, session_date, path "
+                "FROM Overview WHERE (session_date >= ?) AND (session_date <= ?) AND (status == '200')"
+            )
+            results = cursor.execute(query, (self.start_date, self.end_date)).fetchall()
             connection.close()
         else:
             with open(os.path.join(self.target_folder_path, "overview_urls.tsv")) as f:
@@ -303,44 +421,33 @@ class Extractor:
                     ):
                         results.append([domain, identifier, level, url, date, path.strip()])
         
+        if len(results) == 0:
+            print("Extracted data from 0 pages (0 errors) in 0.0 seconds.")
+            return
+
         # chunking in 1M files
         n = 1000000
 
-        # Parallelize loop
-        with Pool() as pool:
-            with tqdm.tqdm(total=len(results), leave=True, miniters=1) as pbar:
-                # chunk output in files of n lines
-                for i in range(0, len(results), n):
-                    file_res = (
-                        self.target_folder_path
-                        / "extracted_data"
-                        / (
-                            "extracted_data_"
-                            + str(datelib.today())
-                            + f"_{i}-{i+n}.ndjson"
-                        )
+        with tqdm.tqdm(total=len(results), leave=True, miniters=1) as pbar:
+            # chunk output in files of n lines
+            for i in range(0, len(results), n):
+                file_res = (
+                    self.target_folder_path
+                    / "extracted_data"
+                    / (
+                        "extracted_data_"
+                        + str(datelib.today())
+                        + f"_{i}-{i+n}.ndjson"
                     )
-                    Path(file_res).parent.mkdir(parents=True, exist_ok=True)
+                )
+                Path(file_res).parent.mkdir(parents=True, exist_ok=True)
 
-                    # file_rep = (
-                    #     self.target_folder_path
-                    #     / "extracted_data"
-                    #     / ("annual_report_" 
-                    #        + str(datelib.today()) 
-                    #        + ".ndjson")
-                    # )
-                    # Path(file_rep).parent.mkdir(parents=True, exist_ok=True)
-
-                    for json_dict in pool.imap_unordered(self._create_results, results[i : i + n]):
-                        orjsonl.append(file_res, [json_dict])#, compression_level = 9, compression_format = "gz")
-                        
-                        # try:
-                        #     if json_dict["annual_report"] != []:
-                        #         orjsonl.append(file_rep, [json_dict["annual_report"]])# compression_level = 9, compression_format = "gz")
-                        # except Exception:
-                        #     pass
-
-                        pbar.update()
+                chunk = results[i : i + n]
+                for json_dict in self._iter_chunk_results(chunk):
+                    if self._is_error_metadata(json_dict):
+                        self.number_error += 1
+                    append_jsonl(file_res, [json_dict])
+                    pbar.update()
 
         if self.extractor_delete_files:
             # Loop through all subdirectories in the given folder
