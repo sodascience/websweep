@@ -5,17 +5,37 @@ It is designed to stay simple for beginners while still handling large URL lists
 The primary objective is to run effectively on a single computer (laptop or workstation),
 without requiring cloud infrastructure or distributed orchestration.
 
+<b>Real-World Use Cases</b>
+- Tracking Corporate Climate Responsibility: With a list of corporate websites, you can use WebSweep to efficiently analyze how frequently and positively they mention green energies, helping you gauge their commitment to climate responsibility.
+- Analyzing Academic Collaboration Networks: WebSweep can be utilized to extract data from university websites and research databases, allowing you to identify patterns in academic collaboration, map research networks, and discover emerging interdisciplinary research fields.
+- Tracking Public Health Information: By scraping data from government websites, health organizations, and medical journals, WebSweep can help you monitor the spread of diseases, evaluate the effectiveness of public health campaigns, and analyze the impact of healthcare policies on population health.
+
+## Side-by-side comparison of WebSweep and Scrapy
+ 
+- Are you looking to download lots of information from one domain --> You may want to use [Scrapy](https://github.com/scrapy/scrapy)
+- Are you looking to download information from websites that require JavaScript --> You may want to use [selenium](https://pypi.org/project/selenium/)
+- Are you looking to download and analyze HTML code from many pages --> WebSweep is for you
+
+
+|                                       | WebSweep                                         | Scrapy                                                        |
+|---------------------------------------|-----------------------------------------------------|---------------------------------------------------------------|
+| Main use case                         | Download full HTML of many (up to 10,000,000) sites | Download specific elements of few websites (e.g. crawl Ebay)  |
+| Intended use                          | Research                                            | Any                                                           |
+| Use as beginner                    | Simple                                              | Complicated                                                   |
+| Processing of HTML                    | During or after crawling                            | Typically during crawling                                     |
+| Asynchronous                          |  Yes                                                | Yes                                                           |
+| Speed (consumer laptop/home internet) | ~50,000 pages/hour                           | ?                                                             |
+| JavaScript allowed                    | No                                                  | No (but extensions exist)                                     |
+| Consolidates results at domain level  | Yes                                                 | No                                                            |
+
+
+
 ## Install
 
 ```bash
 pip install websweep
 ```
 
-`pip install websweep` uses `google-re2` on supported Python versions (3.10+),
-with automatic fallback to `regex` when unavailable.
-WebSweep also installs and uses `lxml` as the default HTML parser for faster
-page parsing in crawling/extraction, with fallback to Python's built-in
-`html.parser` if `lxml` is unavailable at runtime.
 
 ## What You Need
 
@@ -23,16 +43,14 @@ WebSweep needs a list of URLs.
 
 - CLI mode: CSV or TSV file with header (`url`, optional `identifier`)
 - Library mode: Python list of URLs or `(url, identifier)` tuples
-- If your source file is an old `overview_urls.*` export (with a `level`
-  column), WebSweep automatically keeps only `level == 0` base URLs and
-  drops exact duplicate `(url, identifier)` rows before crawling.
+
 
 Example CSV:
 
 ```csv
 url,identifier
 https://example.com,example
-https://example.org,example_org
+https://example2.org,example_org
 ```
 
 ## Choose Your Mode
@@ -48,13 +66,14 @@ https://example.org,example_org
 Input URLs
   -> Crawler
      In:  URL list + crawl settings
-     Out: crawled_data/*.zip + overview_urls.{duckdb|db|tsv}
+     Out: 
+        crawled_data/*.zip (a zipped file with the downloaded pages)  overview_urls.{duckdb|db|tsv} (database keeping track of what has been downloaded)
   -> Extractor
      In:  overview file + crawled_data/*.zip
-     Out: extracted_data/*.ndjson
+     Out: extracted_data/*.ndjson (extracted data per web page)
   -> Consolidator
      In:  extracted_data/*.ndjson
-     Out: consolidated_data/*.ndjson
+     Out: consolidated_data/*.ndjson (consolidated to domain level)
 ```
 
 One-pass mode (lower disk usage):
@@ -73,10 +92,9 @@ Input URLs -> Crawler(extract=True, save_html=False) -> extracted_data/*.ndjson
   reads crawled pages and extracts structured page-level fields such as cleaned
   text (`text`), metadata (`meta_*`), and location fields (`zipcode`, `address`).
 - `Consolidator`:
-  merges page-level records back to one record per domain, keeping aggregated
-  postcode information (`zipcode` frequencies, where the most frequent can be
-  treated as the main postcode and others as additional postcodes) and
-  concatenated domain text.
+  merges page-level records back to one record per domain, keeping concatenated domain text and aggregated information (e.g., `zipcode` frequencies, where the most frequent can be
+  treated as the main postcode and others as additional postcodes)
+
 
 ## Quickstart (Python)
 
@@ -99,8 +117,7 @@ Crawler(target_folder_path=out).crawl_base_urls(urls)
 Extractor(target_folder_path=out).extract_urls()
 
 # 3) Consolidate
-input_file = sorted((out / "extracted_data").glob("*.ndjson"))[0]
-Consolidator(str(input_file)).consolidate(str(out / "consolidated_data" / "consolidated.ndjson"))
+Consolidator(target_folder_path=out).consolidate()
 ```
 
 ## Quickstart (CLI)
@@ -133,9 +150,19 @@ Most users only need these options:
   - `start_date`, `end_date`: session-date window for extraction
   - `file_extractor`: custom extractor subclass for add-on fields
 - `Consolidator(...)`
+  - `target_folder_path`: use default extracted input and standard consolidated output
   - `chunk_size`: consolidation chunk size for large extracted files
 
 Advanced parameters are available in the API docs and User Guide.
+
+Advanced example (explicit files):
+
+```python
+Consolidator(
+    input_file=out / "extracted_data" / "extracted_data_2026-02-23_0-1000000.ndjson",
+    output_file=out / "consolidated_data" / "custom_consolidated.ndjson",
+).consolidate()
+```
 
 ## Custom Extraction Add-ons
 
@@ -244,22 +271,6 @@ websweep extract --start-date 2026-02-01 --end-date 2026-02-28
 These filters apply to `session_date` in `overview_urls.*` and include only
 successful crawl rows (`status == 200`). The date flags are per-run CLI
 arguments and are not persisted automatically in `settings.ini`.
-
-## Expected Throughput (Pages/Hour)
-
-On a single machine, expected **downloaded pages/hour** (not domains) varies
-mainly with how many domains are still online and reachable.
-
-- Healthy list (mostly reachable domains): typically `~1,000-6,000` pages/hour
-- Mixed historical list (many dead/blocked domains): typically `~70-900` pages/hour
-
-Observed on the SIDN-style benchmark list after source normalization:
-
-- around `~700` downloaded pages/hour in the first 100-row sample
-- around `~70` downloaded pages/hour in a 20-row sample with many dead domains
-
-Use DuckDB for larger runs and keep the input as base URLs (one row per site)
-to maximize sustained throughput and reduce avoidable DNS errors.
 
 ## Documentation
 

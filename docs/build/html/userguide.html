@@ -197,11 +197,7 @@ domain text.</p></li>
 
 <span class="n">Crawler</span><span class="p">(</span><span class="n">target_folder_path</span><span class="o">=</span><span class="n">out</span><span class="p">)</span><span class="o">.</span><span class="n">crawl_base_urls</span><span class="p">(</span><span class="n">urls</span><span class="p">)</span>
 <span class="n">Extractor</span><span class="p">(</span><span class="n">target_folder_path</span><span class="o">=</span><span class="n">out</span><span class="p">)</span><span class="o">.</span><span class="n">extract_urls</span><span class="p">()</span>
-
-<span class="n">extracted</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">((</span><span class="n">out</span> <span class="o">/</span> <span class="s2">&quot;extracted_data&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="s2">&quot;*.ndjson&quot;</span><span class="p">))[</span><span class="mi">0</span><span class="p">]</span>
-<span class="n">Consolidator</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">extracted</span><span class="p">))</span><span class="o">.</span><span class="n">consolidate</span><span class="p">(</span>
-    <span class="nb">str</span><span class="p">(</span><span class="n">out</span> <span class="o">/</span> <span class="s2">&quot;consolidated_data&quot;</span> <span class="o">/</span> <span class="s2">&quot;consolidated.ndjson&quot;</span><span class="p">)</span>
-<span class="p">)</span>
+<span class="n">Consolidator</span><span class="p">(</span><span class="n">target_folder_path</span><span class="o">=</span><span class="n">out</span><span class="p">)</span><span class="o">.</span><span class="n">consolidate</span><span class="p">()</span>
 </pre></div>
 </div>
 <p>One-pass run (crawl + extract together, less disk usage):</p>
@@ -230,9 +226,17 @@ domain text.</p></li>
 - <code class="docutils literal notranslate"><span class="pre">start_date</span></code> and <code class="docutils literal notranslate"><span class="pre">end_date</span></code>: extract only selected crawl sessions
 - <code class="docutils literal notranslate"><span class="pre">file_extractor</span></code>: custom add-on extraction fields</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">Consolidator(...)</span></code>
+- <code class="docutils literal notranslate"><span class="pre">target_folder_path</span></code>: use default extracted input and standard consolidated output
 - <code class="docutils literal notranslate"><span class="pre">chunk_size</span></code>: memory/performance tradeoff for large inputs</p></li>
 </ul>
 <p>Full constructor signatures remain available in the API reference.</p>
+<p>Explicit-file example (advanced):</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="n">Consolidator</span><span class="p">(</span>
+    <span class="n">input_file</span><span class="o">=</span><span class="n">out</span> <span class="o">/</span> <span class="s2">&quot;extracted_data&quot;</span> <span class="o">/</span> <span class="s2">&quot;extracted_data_2026-02-23_0-1000000.ndjson&quot;</span><span class="p">,</span>
+    <span class="n">output_file</span><span class="o">=</span><span class="n">out</span> <span class="o">/</span> <span class="s2">&quot;consolidated_data&quot;</span> <span class="o">/</span> <span class="s2">&quot;custom_consolidated.ndjson&quot;</span><span class="p">,</span>
+<span class="p">)</span><span class="o">.</span><span class="n">consolidate</span><span class="p">()</span>
+</pre></div>
+</div>
 </section>
 </section>
 <section id="cli-workflow-detailed">

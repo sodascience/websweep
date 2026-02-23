@@ -1,9 +1,10 @@
 """This module provides the Consolidator model-controller."""
 import dataclasses
 from collections import Counter
-from typing import List, Generator, Dict, Any
+from typing import List, Generator, Dict, Any, Optional, Union
 from itertools import islice
 from pathlib import Path
+import tempfile
 from urllib.parse import urlparse
 
 try:
@@ -144,16 +145,79 @@ class Consolidator:
     values per domain, and writes a merged domain-level output file.
     """
     
-    def __init__(self, input_file: str, chunk_size: int = 10000):
+    def __init__(
+        self,
+        input_file: Optional[Union[str, Path]] = None,
+        target_folder_path: Optional[Union[str, Path]] = None,
+        output_file: Optional[Union[str, Path]] = None,
+        chunk_size: int = 10000,
+    ):
         """
-        Initializes the DomainProcessor with an input file path and chunk size.
+        Initialize consolidator path settings.
 
         Args:
-            input_file (str): The path to the input ndjson file.
-            chunk_size (int, optional): The size of each chunk to be read from the file. Default is 10000.
+            input_file: Optional extracted NDJSON path. If omitted, the latest
+                file in ``<target_folder_path>/extracted_data`` is used.
+            target_folder_path: Optional project output folder. Used to resolve
+                default input/output locations.
+            output_file: Optional consolidated NDJSON path. If omitted, defaults
+                to ``<target_folder_path>/consolidated_data/consolidated.ndjson``.
+            chunk_size: Number of extracted rows processed per chunk.
         """
-        self.input_file = str(input_file)
-        self.chunk_size = chunk_size
+        self.input_file = Path(input_file) if input_file is not None else None
+        self.target_folder_path = (
+            Path(target_folder_path) if target_folder_path is not None else None
+        )
+        self.output_file = Path(output_file) if output_file is not None else None
+        self.chunk_size = max(1, int(chunk_size))
+
+    def _resolve_input_file(self) -> Path:
+        """Resolve the extracted NDJSON input path."""
+        if self.input_file is not None:
+            input_path = Path(self.input_file)
+            if not input_path.exists() or not input_path.is_file():
+                raise FileNotFoundError(f"Input extracted NDJSON does not exist: {input_path}")
+            return input_path
+
+        if self.target_folder_path is None:
+            raise ValueError(
+                "Consolidator requires either input_file or target_folder_path."
+            )
+
+        extracted_dir = self.target_folder_path / "extracted_data"
+        extracted_files = sorted(
+            extracted_dir.glob("*.ndjson"),
+            key=lambda p: p.stat().st_mtime,
+        )
+        if not extracted_files:
+            raise FileNotFoundError(
+                f"No extracted NDJSON files found in: {extracted_dir}"
+            )
+        return extracted_files[-1]
+
+    def _resolve_output_file(
+        self,
+        input_path: Path,
+        final_output: Optional[Union[str, Path]] = None,
+    ) -> Path:
+        """Resolve the consolidated NDJSON output path."""
+        if final_output is not None:
+            return Path(final_output)
+        if self.output_file is not None:
+            return Path(self.output_file)
+
+        # Preferred default: target folder consolidated output.
+        if self.target_folder_path is not None:
+            return self.target_folder_path / "consolidated_data" / "consolidated.ndjson"
+
+        # Backward-compatible fallback when only input_file was provided.
+        # Expected input structure: <target_folder>/extracted_data/*.ndjson
+        if input_path.parent.name == "extracted_data":
+            return input_path.parent.parent / "consolidated_data" / "consolidated.ndjson"
+
+        raise ValueError(
+            "Consolidator could not infer output path. Provide output_file or final_output."
+        )
 
     
     def save_orjson_loads(self, line: str) -> Dict[str, Any]:
@@ -178,7 +242,8 @@ class Consolidator:
         Yields:
             Generator[List[Dict[str, Any]], None, None]: A generator that yields lists of dictionaries, each representing a line in the ndjson file.
         """
-        with open(self.input_file, 'rb') as f:
+        input_file = self._resolve_input_file()
+        with input_file.open('rb') as f:
             while True:
                 lines_gen = list(islice(f, self.chunk_size))
                 if not lines_gen:
@@ -280,17 +345,22 @@ class Consolidator:
             Path(file).unlink()
 
 
-    def consolidate(self, final_output: str):
+    def consolidate(self, final_output: Optional[Union[str, Path]] = None):
         """Run full consolidation: chunk, aggregate per chunk, then merge chunks."""
-        # Read NDJSON in chunks and organize per domain
-        chunk_files = []
-        for i, chunk in enumerate(self.read_ndjson_in_chunks()):
-            chunk_file = f"temp_chunk{i}.ndjson"
-            self.create_domain_info(chunk, chunk_file)
-            chunk_files.append(chunk_file)
+        input_path = self._resolve_input_file()
+        output_path = self._resolve_output_file(input_path, final_output=final_output)
+        output_path.parent.mkdir(parents=True, exist_ok=True)
 
-        # Merge sorted files
-        self.merge_domain_files(chunk_files, final_output=final_output)
+        chunk_files: List[str] = []
+        with tempfile.TemporaryDirectory(prefix="websweep_consolidator_") as tmpdir:
+            # Read NDJSON in chunks and organize per domain
+            for i, chunk in enumerate(self.read_ndjson_in_chunks()):
+                chunk_file = str(Path(tmpdir) / f"temp_chunk_{i}.ndjson")
+                self.create_domain_info(chunk, chunk_file)
+                chunk_files.append(chunk_file)
+
+            # Merge sorted files
+            self.merge_domain_files(chunk_files, final_output=str(output_path))
 
 
     def _clean_domain(self, domain: str) -> str:

@@ -85,11 +85,7 @@ Standard 3-step run:
 
    Crawler(target_folder_path=out).crawl_base_urls(urls)
    Extractor(target_folder_path=out).extract_urls()
-
-   extracted = sorted((out / "extracted_data").glob("*.ndjson"))[0]
-   Consolidator(str(extracted)).consolidate(
-       str(out / "consolidated_data" / "consolidated.ndjson")
-   )
+   Consolidator(target_folder_path=out).consolidate()
 
 One-pass run (crawl + extract together, less disk usage):
 
@@ -120,9 +116,19 @@ For most projects, these are the key options to learn first:
   - ``start_date`` and ``end_date``: extract only selected crawl sessions
   - ``file_extractor``: custom add-on extraction fields
 - ``Consolidator(...)``
+  - ``target_folder_path``: use default extracted input and standard consolidated output
   - ``chunk_size``: memory/performance tradeoff for large inputs
 
 Full constructor signatures remain available in the API reference.
+
+Explicit-file example (advanced):
+
+.. code-block:: python
+
+   Consolidator(
+       input_file=out / "extracted_data" / "extracted_data_2026-02-23_0-1000000.ndjson",
+       output_file=out / "consolidated_data" / "custom_consolidated.ndjson",
+   ).consolidate()
 
 
 CLI Workflow (Detailed)

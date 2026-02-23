@@ -105,3 +105,57 @@ def test_consolidate_creates_missing_output_parent_directory(tmp_path):
 
     assert output_file.parent.exists()
     assert output_file.exists()
+
+
+def test_consolidator_defaults_to_latest_extracted_and_standard_output(tmp_path):
+    target_folder = tmp_path / "research_output"
+    extracted_dir = target_folder / "extracted_data"
+    extracted_dir.mkdir(parents=True, exist_ok=True)
+
+    old_file = extracted_dir / "extracted_data_2026-01-01_0-1000000.ndjson"
+    latest_file = extracted_dir / "extracted_data_2026-02-01_0-1000000.ndjson"
+
+    old_file.write_bytes(
+        b'{"domain":"old.example.com","identifier":"old","phone":[],"email":[],"fax":[],"zipcode":[],"address":[],"kvk":[],"btw":[],"text":"old"}\n'
+    )
+    latest_file.write_bytes(
+        b'{"domain":"latest.example.com","identifier":"latest","phone":[],"email":[],"fax":[],"zipcode":[],"address":[],"kvk":[],"btw":[],"text":"latest"}\n'
+    )
+
+    # Ensure deterministic "latest" ordering by mtime.
+    old_mtime = 1_700_000_000
+    latest_mtime = old_mtime + 10
+    old_file.touch()
+    latest_file.touch()
+    old_file.chmod(0o644)
+    latest_file.chmod(0o644)
+    import os
+    os.utime(old_file, (old_mtime, old_mtime))
+    os.utime(latest_file, (latest_mtime, latest_mtime))
+
+    consolidator = Consolidator(target_folder_path=target_folder, chunk_size=1)
+    consolidator.consolidate()
+
+    output_file = target_folder / "consolidated_data" / "consolidated.ndjson"
+    assert output_file.exists()
+
+    rows = [json.loads(line.decode("utf-8")) for line in output_file.read_bytes().splitlines() if line]
+    assert len(rows) == 1
+    assert rows[0]["domain"] == "example.com"
+    assert rows[0]["identifier"] == "latest"
+
+
+def test_consolidator_infers_output_from_input_file_parent(tmp_path):
+    target_folder = tmp_path / "research_output"
+    extracted_dir = target_folder / "extracted_data"
+    extracted_dir.mkdir(parents=True, exist_ok=True)
+    input_file = extracted_dir / "extracted_data_2026-02-01_0-1000000.ndjson"
+    input_file.write_bytes(
+        b'{"domain":"www.example.com","identifier":"example","phone":[],"email":[],"fax":[],"zipcode":[],"address":[],"kvk":[],"btw":[],"text":"page"}\n'
+    )
+
+    consolidator = Consolidator(input_file=input_file, chunk_size=1)
+    consolidator.consolidate()
+
+    inferred_output = target_folder / "consolidated_data" / "consolidated.ndjson"
+    assert inferred_output.exists()

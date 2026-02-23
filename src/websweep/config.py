@@ -118,7 +118,9 @@ def _init_target_folder(target_folder_path: Path) -> int:
 def _create_settings_file() -> int:
     """Ensure the active instance has a ``settings.ini`` file."""
     try:
-        Path(current_websweep_instance() / "settings.ini").touch(exist_ok=True)
+        instance_path = current_websweep_instance()
+        instance_path.mkdir(exist_ok=True, parents=True)
+        Path(instance_path / "settings.ini").touch(exist_ok=True)
     except OSError:
         return FILE_ERROR
     return SUCCESS
@@ -148,9 +150,11 @@ def restore_app(target_folder_path: Path) -> int:
 
 
 def get_target_folder_path(
-    config_file: Path = (current_websweep_instance() / "settings.ini"),
+    config_file: Path = None,
 ) -> Path:
     """Return the current WebSweep instance location path"""
+    if config_file is None:
+        config_file = current_websweep_instance() / "settings.ini"
     config_parser = configparser.ConfigParser()
     config_parser.read(config_file)
     return Path(config_parser["Instance"]["location"])
@@ -171,9 +175,11 @@ def _save_source_file(source_file_path: Path) -> int:
 
 
 def get_source_file_path(
-    config_file: Path = (current_websweep_instance() / "settings.ini"),
+    config_file: Path = None,
 ) -> Path:
     """Return the current source file path"""
+    if config_file is None:
+        config_file = current_websweep_instance() / "settings.ini"
     try:
         config_parser = configparser.ConfigParser()
         config_parser.read(config_file)
@@ -213,12 +219,14 @@ def _save_extractor_delete(extractor_delete_files: bool) -> int:
 
 
 def get_extractor_delete(
-    config_file: Path = (current_websweep_instance() / "settings.ini"),
+    config_file: Path = None,
 ) -> bool:
     """
     Return whether to delete processed raw files
     
     """
+    if config_file is None:
+        config_file = current_websweep_instance() / "settings.ini"
     config_parser = configparser.ConfigParser()
     config_parser.read(config_file)
     value = config_parser.get("Extractor", "extractor_delete_files", fallback=None)
@@ -240,12 +248,14 @@ def _save_use_database(use_database: bool) -> int:
 
 
 def get_use_database(
-    config_file: Path = (current_websweep_instance() / "settings.ini"),
+    config_file: Path = None,
 ) -> bool:
     """
     Return whether to use an SQL database raw files
 
     """
+    if config_file is None:
+        config_file = current_websweep_instance() / "settings.ini"
     config_parser = configparser.ConfigParser()
     config_parser.read(config_file)
     value = config_parser.get("Database", "use_database", fallback=None)

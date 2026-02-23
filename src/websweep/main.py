@@ -191,11 +191,16 @@ def init(headless: bool = typer.Option(HEADLESS, help="Run without GUI elements"
     time.sleep(0.5)
     
     ask_use_sql = typer.confirm(
-        "SELECT do you want to use a SQL (Y) or CSV (n) database?\n"
+        "SELECT overview storage backend:\n"
+        "- Database (Y): DuckDB by default, SQLite fallback if DuckDB is unavailable\n"
+        "- CSV/TSV file (n)\n",
+        default=True,
     )
     
     typer.secho(
-        f"A SQL database will be used: {ask_use_sql}\n", fg=typer.colors.YELLOW
+        f"Database mode enabled: {ask_use_sql}"
+        + (" (DuckDB preferred, SQLite fallback)\n" if ask_use_sql else " (CSV/TSV mode)\n"),
+        fg=typer.colors.YELLOW,
     )
 
     time.sleep(0.5)
@@ -626,9 +631,12 @@ def consolidate(
     typer.secho(f"- output file: {output_file}", fg=typer.colors.YELLOW)
     typer.secho(f"- chunk size: {chunk_size}\n", fg=typer.colors.YELLOW)
 
-    Consolidator(str(input_file), chunk_size=max(1, int(chunk_size))).consolidate(
-        str(output_file)
-    )
+    Consolidator(
+        input_file=input_file,
+        target_folder_path=target_folder,
+        output_file=output_file,
+        chunk_size=max(1, int(chunk_size)),
+    ).consolidate()
 
     typer.secho("Consolidator finished successfully\n", fg=typer.colors.GREEN)
         
