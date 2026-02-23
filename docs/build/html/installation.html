@@ -52,10 +52,18 @@
 </li>
 <li class="toctree-l1"><a class="reference internal" href="userguide.html">User Guide</a><ul>
 <li class="toctree-l2"><a class="reference internal" href="userguide.html#quickstart">Quickstart</a></li>
+<li class="toctree-l2"><a class="reference internal" href="userguide.html#what-each-component-does">What each component does</a></li>
 <li class="toctree-l2"><a class="reference internal" href="userguide.html#library-quickstart">Library Quickstart</a></li>
-<li class="toctree-l2"><a class="reference internal" href="userguide.html#library-workflow-detailed">Library Workflow (Detailed)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="userguide.html#library-workflow-detailed">Library Workflow (Detailed)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="userguide.html#common-library-options-most-used">Common library options (most used)</a></li>
+</ul>
+</li>
 <li class="toctree-l2"><a class="reference internal" href="userguide.html#cli-workflow-detailed">CLI Workflow (Detailed)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="userguide.html#backend-setup-done-during-init">Backend setup (done during <code class="docutils literal notranslate"><span class="pre">init</span></code>)</a></li>
 <li class="toctree-l3"><a class="reference internal" href="userguide.html#how-cli-configuration-works">How CLI configuration works</a></li>
+<li class="toctree-l3"><a class="reference internal" href="userguide.html#cli-commands-and-common-options">CLI commands and common options</a></li>
+<li class="toctree-l3"><a class="reference internal" href="userguide.html#extractor-date-windows-how-dates-are-used">Extractor date windows (how dates are used)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="userguide.html#recurring-cli-pattern-every-x-months">Recurring CLI pattern (every X months)</a></li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="userguide.html#custom-extraction-add-ons">Custom Extraction Add-ons</a></li>
@@ -133,7 +141,8 @@
 <p>By default, <code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span> <span class="pre">websweep</span></code> installs <code class="docutils literal notranslate"><span class="pre">google-re2</span></code> on supported
 Python versions (3.10+). If unavailable, WebSweep falls back to <code class="docutils literal notranslate"><span class="pre">regex</span></code>.
 WebSweep also installs and uses <code class="docutils literal notranslate"><span class="pre">lxml</span></code> as the default HTML parser for faster
-crawling/extraction parsing.</p>
+crawling/extraction parsing, with runtime fallback to <code class="docutils literal notranslate"><span class="pre">html.parser</span></code> when
+<code class="docutils literal notranslate"><span class="pre">lxml</span></code> is unavailable.</p>
 <p>Verify installation:</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>websweep<span class="w"> </span>--version
 </pre></div>

@@ -54,9 +54,16 @@
 <li class="toctree-l2"><a class="reference internal" href="userguide.html#quickstart">Quickstart</a></li>
 <li class="toctree-l2"><a class="reference internal" href="userguide.html#what-each-component-does">What each component does</a></li>
 <li class="toctree-l2"><a class="reference internal" href="userguide.html#library-quickstart">Library Quickstart</a></li>
-<li class="toctree-l2"><a class="reference internal" href="userguide.html#library-workflow-detailed">Library Workflow (Detailed)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="userguide.html#library-workflow-detailed">Library Workflow (Detailed)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="userguide.html#common-library-options-most-used">Common library options (most used)</a></li>
+</ul>
+</li>
 <li class="toctree-l2"><a class="reference internal" href="userguide.html#cli-workflow-detailed">CLI Workflow (Detailed)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="userguide.html#backend-setup-done-during-init">Backend setup (done during <code class="docutils literal notranslate"><span class="pre">init</span></code>)</a></li>
 <li class="toctree-l3"><a class="reference internal" href="userguide.html#how-cli-configuration-works">How CLI configuration works</a></li>
+<li class="toctree-l3"><a class="reference internal" href="userguide.html#cli-commands-and-common-options">CLI commands and common options</a></li>
+<li class="toctree-l3"><a class="reference internal" href="userguide.html#extractor-date-windows-how-dates-are-used">Extractor date windows (how dates are used)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="userguide.html#recurring-cli-pattern-every-x-months">Recurring CLI pattern (every X months)</a></li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="userguide.html#custom-extraction-add-ons">Custom Extraction Add-ons</a></li>
@@ -137,12 +144,26 @@
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>websweep<span class="w"> </span>extract
 </pre></div>
 </div>
-<p>Backend and filtering controls:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>websweep<span class="w"> </span>crawl<span class="w"> </span>--overview-backend<span class="w"> </span>duckdb
-websweep<span class="w"> </span>crawl<span class="w"> </span>--allow-extensions<span class="w"> </span>pdf,png
+<p>Consolidate:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>websweep<span class="w"> </span>consolidate
+</pre></div>
+</div>
+<p>Recurring cycle example (e.g., monthly):</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>websweep<span class="w"> </span>crawl
+websweep<span class="w"> </span>extract<span class="w"> </span>--start-date<span class="w"> </span><span class="m">2026</span>-04-01<span class="w"> </span>--end-date<span class="w"> </span><span class="m">2026</span>-04-30
+websweep<span class="w"> </span>consolidate
+</pre></div>
+</div>
+<p>Filtering controls:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>websweep<span class="w"> </span>crawl<span class="w"> </span>--allow-extensions<span class="w"> </span>pdf,png
 websweep<span class="w"> </span>crawl<span class="w"> </span>--block-extensions<span class="w"> </span>pdf,png,zip
 </pre></div>
 </div>
+<p>Backend note:</p>
+<ul class="simple">
+<li><p>choose SQL vs TSV during <code class="docutils literal notranslate"><span class="pre">websweep</span> <span class="pre">init</span></code> (stored in <code class="docutils literal notranslate"><span class="pre">settings.ini</span></code>)</p></li>
+<li><p>in SQL mode, WebSweep auto-picks DuckDB (preferred) or SQLite fallback</p></li>
+</ul>
 </section>
 <section id="featured-notebook-parsed">
 <h2>Featured Notebook (Parsed)<a class="headerlink" href="#featured-notebook-parsed" title="Link to this heading"></a></h2>

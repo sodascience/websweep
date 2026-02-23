@@ -17,7 +17,8 @@ Install from PyPI
 By default, ``pip install websweep`` installs ``google-re2`` on supported
 Python versions (3.10+). If unavailable, WebSweep falls back to ``regex``.
 WebSweep also installs and uses ``lxml`` as the default HTML parser for faster
-crawling/extraction parsing.
+crawling/extraction parsing, with runtime fallback to ``html.parser`` when
+``lxml`` is unavailable.
 
 Verify installation:
 

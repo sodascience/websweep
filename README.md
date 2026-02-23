@@ -14,7 +14,8 @@ pip install websweep
 `pip install websweep` uses `google-re2` on supported Python versions (3.10+),
 with automatic fallback to `regex` when unavailable.
 WebSweep also installs and uses `lxml` as the default HTML parser for faster
-page parsing in crawling/extraction.
+page parsing in crawling/extraction, with fallback to Python's built-in
+`html.parser` if `lxml` is unavailable at runtime.
 
 ## What You Need
 
@@ -33,6 +34,13 @@ url,identifier
 https://example.com,example
 https://example.org,example_org
 ```
+
+## Choose Your Mode
+
+- **CLI mode** (`websweep ...`): easiest way to run repeatable instance-based
+  crawls from a CSV/TSV source file.
+- **Library mode** (`from websweep import ...`): best when you need custom
+  Python logic (custom extractors, analysis loops, notebooks).
 
 ## Workflow
 
@@ -101,7 +109,33 @@ Consolidator(str(input_file)).consolidate(str(out / "consolidated_data" / "conso
 websweep init --headless
 websweep crawl
 websweep extract
+websweep consolidate
 ```
+
+For lower disk usage:
+
+```bash
+websweep crawl --extract
+websweep consolidate
+```
+
+## Core Options (Library)
+
+Most users only need these options:
+
+- `Crawler(...)`
+  - `max_level`: depth of within-domain link following (default `3`)
+  - `max_pages_per_domain`: cap pages per domain
+  - `extract=True` and `save_html=False`: one-pass crawl+extract mode
+  - `allow_extensions` / `block_extensions`: file type filtering
+- `Extractor(...)`
+  - `workers`: extraction process count
+  - `start_date`, `end_date`: session-date window for extraction
+  - `file_extractor`: custom extractor subclass for add-on fields
+- `Consolidator(...)`
+  - `chunk_size`: consolidation chunk size for large extracted files
+
+Advanced parameters are available in the API docs and User Guide.
 
 ## Custom Extraction Add-ons
 
@@ -170,11 +204,46 @@ Overview storage backends:
 - SQLite
 - TSV
 
-You can force a backend:
+Choose backend mode during `websweep init`:
+
+- `use_database = True` (SQL mode in `settings.ini`) uses DuckDB when available
+  and falls back to SQLite if needed.
+- `use_database = False` uses TSV.
+
+WebSweep also reuses any existing overview file in the instance
+(`overview_urls.duckdb`, `overview_urls.db`, or `overview_urls.tsv`), so backend
+selection is instance-level setup, not a required `websweep crawl` argument.
+
+## Recurring CLI Runs (Every X Months)
+
+For periodic updates, keep one instance and run:
 
 ```bash
-websweep crawl --overview-backend duckdb
+websweep crawl
+websweep extract --start-date 2026-04-01 --end-date 2026-04-30
+websweep consolidate
 ```
+
+This keeps crawling simple and lets you extract only the new crawl sessions.
+
+To retry failed base URLs from a specific crawl session date:
+
+```bash
+websweep crawl --complement 2026-04-01
+```
+
+## Extractor Date Windows (CLI)
+
+Use date filters when extracting to limit processing to specific crawl
+sessions:
+
+```bash
+websweep extract --start-date 2026-02-01 --end-date 2026-02-28
+```
+
+These filters apply to `session_date` in `overview_urls.*` and include only
+successful crawl rows (`status == 200`). The date flags are per-run CLI
+arguments and are not persisted automatically in `settings.ini`.
 
 ## Expected Throughput (Pages/Hour)
 

@@ -105,6 +105,25 @@ One-pass run (crawl + extract together, less disk usage):
        extract=True,
    ).crawl_base_urls(urls)
 
+Common library options (most used)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+For most projects, these are the key options to learn first:
+
+- ``Crawler(...)``
+  - ``max_level``: how deep within-domain links are followed (default ``3``)
+  - ``max_pages_per_domain``: cap per-domain crawl volume
+  - ``extract=True`` with ``save_html=False``: one-pass crawl+extract
+  - ``allow_extensions`` / ``block_extensions``: file filtering
+- ``Extractor(...)``
+  - ``workers``: number of extraction worker processes
+  - ``start_date`` and ``end_date``: extract only selected crawl sessions
+  - ``file_extractor``: custom add-on extraction fields
+- ``Consolidator(...)``
+  - ``chunk_size``: memory/performance tradeoff for large inputs
+
+Full constructor signatures remain available in the API reference.
+
 
 CLI Workflow (Detailed)
 -----------------------
@@ -120,6 +139,25 @@ Initialize an instance:
 .. code-block:: bash
 
    websweep init --headless
+
+Backend setup (done during ``init``)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+During ``websweep init``, the CLI asks whether to use a SQL backend or TSV
+(``use_database`` in ``settings.ini``):
+
+- ``use_database = True``: database overview storage
+- ``use_database = False``: TSV overview storage
+
+When database mode is enabled, WebSweep resolves the concrete backend
+automatically per instance:
+
+- if an overview file already exists, it reuses that backend
+  (``overview_urls.duckdb`` / ``overview_urls.db`` / ``overview_urls.tsv``)
+- otherwise it prefers DuckDB, with SQLite fallback if DuckDB is unavailable
+
+This means backend choice is configured at init/config level for the instance,
+not as a required per-run ``websweep crawl`` argument.
 
 How CLI configuration works
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -161,20 +199,87 @@ You can inspect or update these values with:
 
    websweep config
 
-Crawl and extract:
+CLI commands and common options
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Core workflow:
 
 .. code-block:: bash
 
    websweep crawl
    websweep extract
+   websweep consolidate
 
-Helpful flags:
+Common options by command:
+
+- ``websweep init --headless``
+  Run setup without GUI prompts.
+- ``websweep config --source-file-path /path/to/urls.tsv``
+  Point the active instance to a new source file.
+- ``websweep config --delete-processed-files`` / ``--no-delete-processed-files``
+  Toggle whether extractor removes crawled HTML after processing.
+- ``websweep crawl --extract``
+  Run crawl + extract in one pass (lower disk usage).
+- ``websweep crawl --classification-file /path/to/rules.json``
+  Use custom URL/file filtering rules.
+- ``websweep crawl --allow-extensions pdf,png``
+  Allow specific file extensions.
+- ``websweep crawl --block-extensions pdf,png,zip``
+  Block specific file extensions.
+- ``websweep crawl --sock-connect 180``
+  Change connection timeout.
+- ``websweep crawl --target-temp-folder-path /tmp/websweep_tmp``
+  Use a temporary crawl/output staging folder.
+- ``websweep crawl --complement 2026-02-20``
+  Re-crawl failed base URLs from a prior crawl date.
+- ``websweep extract --workers 8``
+  Use 8 extraction worker processes.
+- ``websweep extract --start-date YYYY-MM-DD --end-date YYYY-MM-DD``
+  Extract only successful pages from crawl sessions in that date window.
+- ``websweep consolidate --input-file /path/to/extracted.ndjson``
+  Consolidate a specific extracted file.
+- ``websweep consolidate --output-file /path/to/consolidated.ndjson``
+  Write consolidated output to a custom destination.
+- ``websweep consolidate --chunk-size 20000``
+  Set consolidation chunk size.
+
+Extractor date windows (how dates are used)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 .. code-block:: bash
 
-   websweep crawl --overview-backend duckdb
-   websweep crawl --extract
-   websweep extract --workers 8
+   websweep extract --start-date 2026-02-01 --end-date 2026-02-28
+
+Date filters are applied against ``session_date`` in
+``overview_urls.{duckdb|db|tsv}`` and include only rows with ``status == 200``.
+
+- ``session_date`` is the crawl run date (one date per crawl session)
+- only pages from sessions inside the given window are extracted
+
+Important: ``--start-date`` and ``--end-date`` are per-run options. They are
+not persisted to ``settings.ini`` automatically. If you want to avoid
+re-extracting older crawl sessions, pass the date window each time (or run
+one-pass ``websweep crawl --extract``).
+
+Recurring CLI pattern (every X months)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Keep one configured instance and run the same sequence on each update cycle:
+
+.. code-block:: bash
+
+   websweep crawl
+   websweep extract --start-date 2026-04-01 --end-date 2026-04-30
+   websweep consolidate
+
+This pattern keeps recrawling simple while limiting extraction to the target
+time window.
+
+To retry previously failed base URLs from a specific crawl date:
+
+.. code-block:: bash
+
+   websweep crawl --complement 2026-04-01
 
 
 Custom Extraction Add-ons

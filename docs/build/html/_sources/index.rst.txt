@@ -11,6 +11,11 @@ from many websites with a simple pipeline:
      -> Extractor
      -> Consolidator
 
+You can use WebSweep as either:
+
+- a Python library (best for notebooks/custom research code), or
+- a CLI (best for repeatable instance-based runs and periodic recrawls).
+
 You can also run crawler + extractor in one pass to save disk space:
 ``Crawler(extract=True, save_html=False)``.
 

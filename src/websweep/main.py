@@ -47,8 +47,6 @@ def _parse_iso_date(value: str, option_name: str):
         return None
 
 
-# Wrapping function (decorator) for operating application commands
-# Verifies whether the application is ready to receive various operational commands such as crawling and extracting as the application should first be configured
 def operate():
     """Validate active instance configuration before running operational commands."""
     def deco_operate(f):
@@ -114,11 +112,6 @@ def operate():
     return deco_operate
 
 
-# Set up a new websweep instance
-# Creates system application websweep folder and creates config.ini file therein
-# Stores new websweep instance location in the system's application config.ini file
-# Stores a newly created settings.ini file in the websweep folder
-# Can be run at any time and does not need the operation verification
 @app.command(name="init")
 def init(headless: bool = typer.Option(HEADLESS, help="Run without GUI elements")) -> None:
     """
@@ -221,7 +214,6 @@ def init(headless: bool = typer.Option(HEADLESS, help="Run without GUI elements"
         )
 
 
-# Helper method for main callback of Typer app
 def _version_callback(value: bool) -> None:
     """Print version and exit when ``--version`` is requested."""
     if value:
@@ -229,7 +221,6 @@ def _version_callback(value: bool) -> None:
         raise typer.Exit()
 
 
-# Main Typer app callback
 @app.callback()
 def main(
     version: Optional[bool] = typer.Option(
@@ -245,11 +236,6 @@ def main(
     return
 
 
-# Restores an existing websweep instance as the active instance which can be worked on
-# Creates system application websweep folder and creates config.ini file therein
-# Stores the existing websweep instance location in the system's application config.ini file and overwrites any previous ones
-# Verifies whether the expected values are within the settings.ini file
-# Can be run at any time and does not need the operation verification
 @app.command(name="restore")
 def restore(headless: bool = typer.Option(HEADLESS, help="Run without GUI elements")) -> None:
     """
@@ -311,8 +297,6 @@ def restore(headless: bool = typer.Option(HEADLESS, help="Run without GUI elemen
         )
 
 
-# Allows for the modification of the settings.ini file in the active working websweep instance folder
-# Allows modification of the source file and target folder locations + whether extracted documents are deleted
 @app.command(name="config")
 def cli_config(
     delete_processed_files: bool = typer.Option(
@@ -365,8 +349,6 @@ def cli_config(
         typer.secho("Config settings saved", fg=typer.colors.GREEN)
 
 
-# Opens the current websweep working folder that is stored in the system's application config.ini file
-# Does not work in headless operation mode as it involves GUI commands
 @app.command(name="instance")
 @operate()
 def websweep_address() -> None:
@@ -380,10 +362,6 @@ def websweep_address() -> None:
         typer.secho("Could not open WebSweep instance folder\n", fg=typer.colors.RED)
 
 
-# Starts the crawling of targets from the set source file in the settings.ini file in the active working websweep instance settings folder
-# Calls a Crawl instance which handles the crawling procedure
-# Crawled documents are stored in the active working websweep instance folder under 'data'
-# Can only be run when the application has been initialised
 @app.command(name="crawl")
 @operate()
 def crawl(
@@ -393,7 +371,7 @@ def crawl(
     ),
     sock_connect: int = typer.Option(
         120,
-        help="Timeout value (ms) for establishing a connection to remote server",
+        help="Timeout in seconds for establishing a connection to remote server.",
     ),
     extract: bool = typer.Option(
         False,
@@ -415,14 +393,10 @@ def crawl(
         None,
         help="Set new path for temporary storage of crawled data",
     ),
-    overview_backend: Optional[str] = typer.Option(
-        None,
-        help="Overview storage backend: sqlite, csv/tsv, or duckdb. Defaults to duckdb for >10000 URLs.",
-    ),
 
 ) -> None:
     """
-    Start caching websites
+    Start crawling websites.
     
     """
     typer.secho("Crawler is started with instructions:", fg=typer.colors.GREEN)
@@ -452,7 +426,7 @@ def crawl(
         resolved_backend = resolve_overview_backend(
             base_folder=Path(overview_folder),
             use_database=config.get_use_database(),
-            override_backend=overview_backend,
+            override_backend=None,
         )
         worker = Crawler(
             target_folder_path=config.get_target_folder_path(),
@@ -495,7 +469,7 @@ def crawl(
         resolved_backend = resolve_overview_backend(
             base_folder=Path(overview_folder),
             use_database=config.get_use_database(),
-            override_backend=overview_backend,
+            override_backend=None,
             urls_count=len(urls),
         )
         typer.secho(
@@ -520,25 +494,16 @@ def crawl(
 
     typer.secho("Crawler finished successfully\n", fg=typer.colors.GREEN)
 
-# Starts the extracting of files in the active working websweep instance folder
-# Calls an Extractor instance which handles the extracting procedure
-# Extracted data is stored in the active working websweep instance folder under 'crawled_data'
-# Can only be run when the application has been initialised
-# Can only be run when the crawl function has been called before and there are extractable documents in the 'data' folder
 @app.command(name="extract")
 @operate()
 def extract(
     start_date: str = typer.Option(
         None,
-        help="Date on which the files are retreieved and extracted should start extracting",
+        help="Start date (YYYY-MM-DD) for crawl sessions to extract.",
     ),
     end_date: str = typer.Option(
         None,
-        help="Date on which the files are retreieved and extractor should stop extracting",
-    ),
-    overview_backend: Optional[str] = typer.Option(
-        None,
-        help="Overview storage backend: sqlite, csv/tsv, or duckdb. Auto-detected by default.",
+        help="End date (YYYY-MM-DD) for crawl sessions to extract.",
     ),
     workers: int = typer.Option(
         None,
@@ -546,7 +511,7 @@ def extract(
     ),
 ) -> None:
     """
-    Start extracting data from the fetched files
+    Start extracting data from fetched files.
     
     """
 
@@ -561,7 +526,7 @@ def extract(
     resolved_backend = resolve_overview_backend(
         base_folder=Path(config.get_target_folder_path()),
         use_database=config.get_use_database(),
-        override_backend=overview_backend,
+        override_backend=None,
     )
     typer.secho(
         f"- overview backend: {resolved_backend}\n",

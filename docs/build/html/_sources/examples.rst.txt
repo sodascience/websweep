@@ -30,13 +30,31 @@ Extract:
 
    websweep extract
 
-Backend and filtering controls:
+Consolidate:
 
 .. code-block:: bash
 
-   websweep crawl --overview-backend duckdb
+   websweep consolidate
+
+Recurring cycle example (e.g., monthly):
+
+.. code-block:: bash
+
+   websweep crawl
+   websweep extract --start-date 2026-04-01 --end-date 2026-04-30
+   websweep consolidate
+
+Filtering controls:
+
+.. code-block:: bash
+
    websweep crawl --allow-extensions pdf,png
    websweep crawl --block-extensions pdf,png,zip
+
+Backend note:
+
+- choose SQL vs TSV during ``websweep init`` (stored in ``settings.ini``)
+- in SQL mode, WebSweep auto-picks DuckDB (preferred) or SQLite fallback
 
 Featured Notebook (Parsed)
 --------------------------

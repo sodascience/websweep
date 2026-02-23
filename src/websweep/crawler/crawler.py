@@ -78,6 +78,14 @@ _TLD_EXTRACTOR = None
 _TLD_EXTRACTOR_READY = False
 
 
+def _parse_html(markup: str) -> BeautifulSoup:
+    """Parse HTML with lxml when available, otherwise fall back to html.parser."""
+    try:
+        return BeautifulSoup(markup, "lxml")
+    except Exception:
+        return BeautifulSoup(markup, "html.parser")
+
+
 def _needs_public_suffix_resolution(parts: List[str]) -> bool:
     """Return whether a host likely needs PSL-aware domain extraction."""
     # Most domains can be resolved with the last two labels.
@@ -448,7 +456,7 @@ class Crawler:
         contents = r.decode("utf-8", "ignore")
         
         # parse
-        soup = BeautifulSoup(contents, "lxml")
+        soup = _parse_html(contents)
         
         # extract urls from html code in beautiful soup
         # <a href="http://www.google.com/">Google</a>

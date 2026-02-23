@@ -56,6 +56,14 @@ ADDRESS_PATTERN = re.compile(
 )
 ADDRESS_NOISE_PATTERN = re.compile(r"(?i)\b(?:gevestigd|aan|te)\b")
 
+
+def _parse_html(markup: str) -> BeautifulSoup:
+    """Parse HTML with lxml when available, otherwise fall back to html.parser."""
+    try:
+        return BeautifulSoup(markup, "lxml")
+    except Exception:
+        return BeautifulSoup(markup, "html.parser")
+
 class FileExtractor:
     """
     A class for extracting data from one specific file.
@@ -101,7 +109,7 @@ class FileExtractor:
             with zipfile.ZipFile(self.metadata["path"][:next_slash] + ".zip", 'r') as zip_file:
                 with zip_file.open(self.metadata["path"][next_slash + 1:]) as file:
                     self.text = file.read().decode("utf-8", "ignore")
-                    self.soup = BeautifulSoup(self.text, "lxml")
+                    self.soup = _parse_html(self.text)
 
     def extracting(self):
         """Extract text and metadata for one page and return a record dictionary."""

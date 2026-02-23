@@ -54,9 +54,16 @@
 <li class="toctree-l2"><a class="reference internal" href="#quickstart">Quickstart</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#what-each-component-does">What each component does</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#library-quickstart">Library Quickstart</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#library-workflow-detailed">Library Workflow (Detailed)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#library-workflow-detailed">Library Workflow (Detailed)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#common-library-options-most-used">Common library options (most used)</a></li>
+</ul>
+</li>
 <li class="toctree-l2"><a class="reference internal" href="#cli-workflow-detailed">CLI Workflow (Detailed)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#backend-setup-done-during-init">Backend setup (done during <code class="docutils literal notranslate"><span class="pre">init</span></code>)</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#how-cli-configuration-works">How CLI configuration works</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#cli-commands-and-common-options">CLI commands and common options</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#extractor-date-windows-how-dates-are-used">Extractor date windows (how dates are used)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#recurring-cli-pattern-every-x-months">Recurring CLI pattern (every X months)</a></li>
 </ul>
 </li>
 <li class="toctree-l2"><a class="reference internal" href="#custom-extraction-add-ons">Custom Extraction Add-ons</a></li>
@@ -209,6 +216,24 @@ domain text.</p></li>
 <span class="p">)</span><span class="o">.</span><span class="n">crawl_base_urls</span><span class="p">(</span><span class="n">urls</span><span class="p">)</span>
 </pre></div>
 </div>
+<section id="common-library-options-most-used">
+<h3>Common library options (most used)<a class="headerlink" href="#common-library-options-most-used" title="Link to this heading"></a></h3>
+<p>For most projects, these are the key options to learn first:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">Crawler(...)</span></code>
+- <code class="docutils literal notranslate"><span class="pre">max_level</span></code>: how deep within-domain links are followed (default <code class="docutils literal notranslate"><span class="pre">3</span></code>)
+- <code class="docutils literal notranslate"><span class="pre">max_pages_per_domain</span></code>: cap per-domain crawl volume
+- <code class="docutils literal notranslate"><span class="pre">extract=True</span></code> with <code class="docutils literal notranslate"><span class="pre">save_html=False</span></code>: one-pass crawl+extract
+- <code class="docutils literal notranslate"><span class="pre">allow_extensions</span></code> / <code class="docutils literal notranslate"><span class="pre">block_extensions</span></code>: file filtering</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">Extractor(...)</span></code>
+- <code class="docutils literal notranslate"><span class="pre">workers</span></code>: number of extraction worker processes
+- <code class="docutils literal notranslate"><span class="pre">start_date</span></code> and <code class="docutils literal notranslate"><span class="pre">end_date</span></code>: extract only selected crawl sessions
+- <code class="docutils literal notranslate"><span class="pre">file_extractor</span></code>: custom add-on extraction fields</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">Consolidator(...)</span></code>
+- <code class="docutils literal notranslate"><span class="pre">chunk_size</span></code>: memory/performance tradeoff for large inputs</p></li>
+</ul>
+<p>Full constructor signatures remain available in the API reference.</p>
+</section>
 </section>
 <section id="cli-workflow-detailed">
 <h2>CLI Workflow (Detailed)<a class="headerlink" href="#cli-workflow-detailed" title="Link to this heading"></a></h2>
@@ -222,6 +247,24 @@ domain text.</p></li>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>websweep<span class="w"> </span>init<span class="w"> </span>--headless
 </pre></div>
 </div>
+<section id="backend-setup-done-during-init">
+<h3>Backend setup (done during <code class="docutils literal notranslate"><span class="pre">init</span></code>)<a class="headerlink" href="#backend-setup-done-during-init" title="Link to this heading"></a></h3>
+<p>During <code class="docutils literal notranslate"><span class="pre">websweep</span> <span class="pre">init</span></code>, the CLI asks whether to use a SQL backend or TSV
+(<code class="docutils literal notranslate"><span class="pre">use_database</span></code> in <code class="docutils literal notranslate"><span class="pre">settings.ini</span></code>):</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">use_database</span> <span class="pre">=</span> <span class="pre">True</span></code>: database overview storage</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">use_database</span> <span class="pre">=</span> <span class="pre">False</span></code>: TSV overview storage</p></li>
+</ul>
+<p>When database mode is enabled, WebSweep resolves the concrete backend
+automatically per instance:</p>
+<ul class="simple">
+<li><p>if an overview file already exists, it reuses that backend
+(<code class="docutils literal notranslate"><span class="pre">overview_urls.duckdb</span></code> / <code class="docutils literal notranslate"><span class="pre">overview_urls.db</span></code> / <code class="docutils literal notranslate"><span class="pre">overview_urls.tsv</span></code>)</p></li>
+<li><p>otherwise it prefers DuckDB, with SQLite fallback if DuckDB is unavailable</p></li>
+</ul>
+<p>This means backend choice is configured at init/config level for the instance,
+not as a required per-run <code class="docutils literal notranslate"><span class="pre">websweep</span> <span class="pre">crawl</span></code> argument.</p>
+</section>
 <section id="how-cli-configuration-works">
 <h3>How CLI configuration works<a class="headerlink" href="#how-cli-configuration-works" title="Link to this heading"></a></h3>
 <p>When you run <code class="docutils literal notranslate"><span class="pre">websweep</span> <span class="pre">init</span></code>, WebSweep writes two configuration files:</p>
@@ -254,15 +297,77 @@ stores where the active instance lives.</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>websweep<span class="w"> </span>config
 </pre></div>
 </div>
-<p>Crawl and extract:</p>
+</section>
+<section id="cli-commands-and-common-options">
+<h3>CLI commands and common options<a class="headerlink" href="#cli-commands-and-common-options" title="Link to this heading"></a></h3>
+<p>Core workflow:</p>
 <div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>websweep<span class="w"> </span>crawl
 websweep<span class="w"> </span>extract
+websweep<span class="w"> </span>consolidate
 </pre></div>
 </div>
-<p>Helpful flags:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>websweep<span class="w"> </span>crawl<span class="w"> </span>--overview-backend<span class="w"> </span>duckdb
-websweep<span class="w"> </span>crawl<span class="w"> </span>--extract
-websweep<span class="w"> </span>extract<span class="w"> </span>--workers<span class="w"> </span><span class="m">8</span>
+<p>Common options by command:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">websweep</span> <span class="pre">init</span> <span class="pre">--headless</span></code>
+Run setup without GUI prompts.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">websweep</span> <span class="pre">config</span> <span class="pre">--source-file-path</span> <span class="pre">/path/to/urls.tsv</span></code>
+Point the active instance to a new source file.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">websweep</span> <span class="pre">config</span> <span class="pre">--delete-processed-files</span></code> / <code class="docutils literal notranslate"><span class="pre">--no-delete-processed-files</span></code>
+Toggle whether extractor removes crawled HTML after processing.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">websweep</span> <span class="pre">crawl</span> <span class="pre">--extract</span></code>
+Run crawl + extract in one pass (lower disk usage).</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">websweep</span> <span class="pre">crawl</span> <span class="pre">--classification-file</span> <span class="pre">/path/to/rules.json</span></code>
+Use custom URL/file filtering rules.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">websweep</span> <span class="pre">crawl</span> <span class="pre">--allow-extensions</span> <span class="pre">pdf,png</span></code>
+Allow specific file extensions.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">websweep</span> <span class="pre">crawl</span> <span class="pre">--block-extensions</span> <span class="pre">pdf,png,zip</span></code>
+Block specific file extensions.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">websweep</span> <span class="pre">crawl</span> <span class="pre">--sock-connect</span> <span class="pre">180</span></code>
+Change connection timeout.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">websweep</span> <span class="pre">crawl</span> <span class="pre">--target-temp-folder-path</span> <span class="pre">/tmp/websweep_tmp</span></code>
+Use a temporary crawl/output staging folder.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">websweep</span> <span class="pre">crawl</span> <span class="pre">--complement</span> <span class="pre">2026-02-20</span></code>
+Re-crawl failed base URLs from a prior crawl date.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">websweep</span> <span class="pre">extract</span> <span class="pre">--workers</span> <span class="pre">8</span></code>
+Use 8 extraction worker processes.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">websweep</span> <span class="pre">extract</span> <span class="pre">--start-date</span> <span class="pre">YYYY-MM-DD</span> <span class="pre">--end-date</span> <span class="pre">YYYY-MM-DD</span></code>
+Extract only successful pages from crawl sessions in that date window.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">websweep</span> <span class="pre">consolidate</span> <span class="pre">--input-file</span> <span class="pre">/path/to/extracted.ndjson</span></code>
+Consolidate a specific extracted file.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">websweep</span> <span class="pre">consolidate</span> <span class="pre">--output-file</span> <span class="pre">/path/to/consolidated.ndjson</span></code>
+Write consolidated output to a custom destination.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">websweep</span> <span class="pre">consolidate</span> <span class="pre">--chunk-size</span> <span class="pre">20000</span></code>
+Set consolidation chunk size.</p></li>
+</ul>
+</section>
+<section id="extractor-date-windows-how-dates-are-used">
+<h3>Extractor date windows (how dates are used)<a class="headerlink" href="#extractor-date-windows-how-dates-are-used" title="Link to this heading"></a></h3>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>websweep<span class="w"> </span>extract<span class="w"> </span>--start-date<span class="w"> </span><span class="m">2026</span>-02-01<span class="w"> </span>--end-date<span class="w"> </span><span class="m">2026</span>-02-28
+</pre></div>
+</div>
+<p>Date filters are applied against <code class="docutils literal notranslate"><span class="pre">session_date</span></code> in
+<code class="docutils literal notranslate"><span class="pre">overview_urls.{duckdb|db|tsv}</span></code> and include only rows with <code class="docutils literal notranslate"><span class="pre">status</span> <span class="pre">==</span> <span class="pre">200</span></code>.</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">session_date</span></code> is the crawl run date (one date per crawl session)</p></li>
+<li><p>only pages from sessions inside the given window are extracted</p></li>
+</ul>
+<p>Important: <code class="docutils literal notranslate"><span class="pre">--start-date</span></code> and <code class="docutils literal notranslate"><span class="pre">--end-date</span></code> are per-run options. They are
+not persisted to <code class="docutils literal notranslate"><span class="pre">settings.ini</span></code> automatically. If you want to avoid
+re-extracting older crawl sessions, pass the date window each time (or run
+one-pass <code class="docutils literal notranslate"><span class="pre">websweep</span> <span class="pre">crawl</span> <span class="pre">--extract</span></code>).</p>
+</section>
+<section id="recurring-cli-pattern-every-x-months">
+<h3>Recurring CLI pattern (every X months)<a class="headerlink" href="#recurring-cli-pattern-every-x-months" title="Link to this heading"></a></h3>
+<p>Keep one configured instance and run the same sequence on each update cycle:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>websweep<span class="w"> </span>crawl
+websweep<span class="w"> </span>extract<span class="w"> </span>--start-date<span class="w"> </span><span class="m">2026</span>-04-01<span class="w"> </span>--end-date<span class="w"> </span><span class="m">2026</span>-04-30
+websweep<span class="w"> </span>consolidate
+</pre></div>
+</div>
+<p>This pattern keeps recrawling simple while limiting extraction to the target
+time window.</p>
+<p>To retry previously failed base URLs from a specific crawl date:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>websweep<span class="w"> </span>crawl<span class="w"> </span>--complement<span class="w"> </span><span class="m">2026</span>-04-01
 </pre></div>
 </div>
 </section>
