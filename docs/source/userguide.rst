@@ -242,6 +242,10 @@ Common options by command:
   Use 8 extraction worker processes.
 - ``websweep extract --start-date YYYY-MM-DD --end-date YYYY-MM-DD``
   Extract only successful pages from crawl sessions in that date window.
+- ``websweep init`` (prompt: custom extractor add-on file)
+  Set optional add-on path once per instance (default: None).
+  The selected file is copied into the instance folder (next to
+  ``settings.ini``) to avoid accidental loss from external file moves/deletes.
 - ``websweep consolidate --input-file /path/to/extracted.ndjson``
   Consolidate a specific extracted file.
 - ``websweep consolidate --output-file /path/to/consolidated.ndjson``
@@ -326,6 +330,23 @@ named ``_extract_<fieldname>``:
 Repository add-on example:
 
 - ``addons/firmbackbone_extractor.py``
+
+CLI usage with add-on file path:
+
+.. code-block:: bash
+
+   websweep init
+   # when prompted for "custom extractor add-on file", set:
+   # addons/firmbackbone_extractor.py
+
+For one-pass mode:
+
+.. code-block:: bash
+
+   websweep crawl --extract
+
+Once configured in the instance, the add-on is applied automatically by both
+``websweep extract`` and one-pass ``websweep crawl --extract``.
 
 
 URL Filtering Rules

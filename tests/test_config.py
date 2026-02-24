@@ -35,6 +35,7 @@ def test_init_app_creates_target_folder_and_settings_file(monkeypatch, tmp_path)
     settings_parser.read(target_folder / "settings.ini")
     assert settings_parser["Instance"]["location"] == str(target_folder)
     assert settings_parser["Source"]["source_file"] == str(source_file)
+    assert settings_parser["Extractor"]["extractor_addon_file"] == ""
 
 
 def test_restore_app_switches_active_instance(monkeypatch, tmp_path):
@@ -56,3 +57,54 @@ def test_restore_app_switches_active_instance(monkeypatch, tmp_path):
     assert cfg.current_websweep_instance() == instance_b
     assert cfg.restore_app(instance_a) == SUCCESS
     assert cfg.current_websweep_instance() == instance_a
+
+
+def test_init_app_persists_extractor_addon_file(monkeypatch, tmp_path):
+    app_config_dir = tmp_path / "app_config"
+    app_config_file = app_config_dir / "config.ini"
+    target_folder = tmp_path / "instance"
+    source_file = tmp_path / "urls.csv"
+    addon_file = tmp_path / "addon.py"
+    source_file.write_text("url,identifier\nhttps://example.com,example\n", encoding="utf-8")
+    addon_file.write_text("from websweep.extractor.extractor import FileExtractor\n", encoding="utf-8")
+
+    monkeypatch.setattr(cfg, "CONFIG_DIR_PATH", app_config_dir)
+    monkeypatch.setattr(cfg, "CONFIG_FILE_PATH", app_config_file)
+
+    code = cfg.init_app(
+        target_folder_path=str(target_folder),
+        source_file_path=str(source_file),
+        extractor_delete_files=False,
+        use_database=True,
+        extractor_addon_file=addon_file,
+    )
+    assert code == SUCCESS
+    copied_addon = target_folder / "extractor_addon.py"
+    assert cfg.get_extractor_addon_file(target_folder / "settings.ini") == copied_addon
+    assert copied_addon.exists()
+    assert copied_addon.read_text(encoding="utf-8") == addon_file.read_text(encoding="utf-8")
+
+
+def test_save_extractor_delete_preserves_addon_path(monkeypatch, tmp_path):
+    app_config_dir = tmp_path / "app_config"
+    app_config_file = app_config_dir / "config.ini"
+    target_folder = tmp_path / "instance"
+    source_file = tmp_path / "urls.csv"
+    addon_file = tmp_path / "addon.py"
+    source_file.write_text("url,identifier\nhttps://example.com,example\n", encoding="utf-8")
+    addon_file.write_text("from websweep.extractor.extractor import FileExtractor\n", encoding="utf-8")
+
+    monkeypatch.setattr(cfg, "CONFIG_DIR_PATH", app_config_dir)
+    monkeypatch.setattr(cfg, "CONFIG_FILE_PATH", app_config_file)
+
+    assert cfg.init_app(
+        target_folder_path=str(target_folder),
+        source_file_path=str(source_file),
+        extractor_delete_files=False,
+        use_database=True,
+        extractor_addon_file=addon_file,
+    ) == SUCCESS
+
+    assert cfg._save_extractor_delete(True) == SUCCESS
+    assert cfg.get_extractor_delete(target_folder / "settings.ini") is True
+    assert cfg.get_extractor_addon_file(target_folder / "settings.ini") == (target_folder / "extractor_addon.py")

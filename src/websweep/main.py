@@ -1,4 +1,6 @@
 import datetime
+import importlib.util
+import inspect
 import os
 import sys
 import time
@@ -9,7 +11,7 @@ from pathlib import Path
 from typing import Optional
 
 from websweep import ERRORS, __app_name__, __status__, __version__, config
-from .extractor.extractor import Extractor
+from .extractor.extractor import Extractor, FileExtractor
 from .crawler.crawler import Crawler
 from .consolidator.consolidator import Consolidator
 from .utils.backend import resolve_overview_backend
@@ -45,6 +47,61 @@ def _parse_iso_date(value: str, option_name: str):
             fg=typer.colors.RED,
         )
         return None
+
+
+def _load_file_extractor_class(addon_file: Optional[Path]):
+    """Load one custom ``FileExtractor`` subclass from a Python file path."""
+    if addon_file is None:
+        return None
+
+    addon_path = Path(addon_file).expanduser().resolve()
+    if not addon_path.exists() or not addon_path.is_file():
+        typer.secho(
+            f"Extractor add-on file does not exist: {addon_path}",
+            fg=typer.colors.RED,
+        )
+        return None
+
+    try:
+        spec = importlib.util.spec_from_file_location("websweep_cli_extractor_addon", addon_path)
+        if spec is None or spec.loader is None:
+            raise RuntimeError("Could not load module specification.")
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+    except Exception as exc:
+        typer.secho(
+            f"Could not import extractor add-on file '{addon_path}': {exc}",
+            fg=typer.colors.RED,
+        )
+        return None
+
+    extractor_classes = []
+    for _, obj in inspect.getmembers(module, inspect.isclass):
+        if obj is FileExtractor:
+            continue
+        try:
+            if issubclass(obj, FileExtractor):
+                extractor_classes.append(obj)
+        except TypeError:
+            continue
+
+    if not extractor_classes:
+        typer.secho(
+            "Extractor add-on file must define a class that subclasses FileExtractor.",
+            fg=typer.colors.RED,
+        )
+        return None
+
+    if len(extractor_classes) > 1:
+        names = ", ".join(sorted(cls.__name__ for cls in extractor_classes))
+        typer.secho(
+            "Extractor add-on file defines multiple FileExtractor subclasses. "
+            f"Keep only one class in the file. Found: {names}",
+            fg=typer.colors.RED,
+        )
+        return None
+
+    return extractor_classes[0]
 
 
 def operate():
@@ -205,7 +262,36 @@ def init(headless: bool = typer.Option(HEADLESS, help="Run without GUI elements"
 
     time.sleep(0.5)
 
-    app_init_error = config.init_app(str(folder), str(file), ask_delete_files, ask_use_sql)
+    ask_use_extractor_addon = typer.confirm(
+        "SELECT a custom extractor add-on file?\n",
+        default=False,
+    )
+    extractor_addon_file = None
+    if ask_use_extractor_addon:
+        addon_candidate = typer.prompt("ENTER extractor add-on Python file PATH\n")
+        addon_candidate_path = Path(addon_candidate).expanduser().resolve()
+        addon_extractor_class = _load_file_extractor_class(addon_candidate_path)
+        if addon_extractor_class is None:
+            typer.secho("Initialisation stopped (invalid extractor add-on file).", fg=typer.colors.RED)
+            raise typer.Exit(1)
+        extractor_addon_file = addon_candidate_path
+        typer.secho(
+            "Extractor add-on source selected: "
+            f"{extractor_addon_file} (it will be copied into the instance folder)\n",
+            fg=typer.colors.YELLOW,
+        )
+    else:
+        typer.secho("Extractor add-on configured: None\n", fg=typer.colors.YELLOW)
+
+    time.sleep(0.5)
+
+    app_init_error = config.init_app(
+        str(folder),
+        str(file),
+        ask_delete_files,
+        ask_use_sql,
+        extractor_addon_file=extractor_addon_file,
+    )
     if app_init_error:
         typer.secho(
             f'Creating config file failed with "{ERRORS[app_init_error]}"',
@@ -213,6 +299,11 @@ def init(headless: bool = typer.Option(HEADLESS, help="Run without GUI elements"
         )
         raise typer.Exit(1)
     else:
+        if extractor_addon_file is not None:
+            typer.secho(
+                f"Extractor add-on copied to: {config.get_extractor_addon_file()}",
+                fg=typer.colors.YELLOW,
+            )
         typer.secho(
             "WebSweep is initialised and ready to use \nUse the --help command for instructions\n ",
             fg=typer.colors.GREEN,
@@ -342,6 +433,10 @@ def cli_config(
             f"- delete extracted files: {config.get_extractor_delete()}\n",
             fg=typer.colors.YELLOW,
         )
+        typer.secho(
+            f"- extractor add-on file: {config.get_extractor_addon_file()}",
+            fg=typer.colors.YELLOW,
+        )
     else:
         if delete_processed_files is not None:
             if delete_processed_files:
@@ -419,6 +514,22 @@ def crawl(
             fg=typer.colors.RED,
         )
         return
+
+    addon_extractor_class = None
+    addon_file = config.get_extractor_addon_file()
+    if extract and addon_file is not None:
+        addon_extractor_class = _load_file_extractor_class(addon_file)
+        if addon_extractor_class is None:
+            typer.secho(
+                "Configured extractor add-on file is invalid. "
+                "Fix it by running websweep init again with a valid path.",
+                fg=typer.colors.RED,
+            )
+            return
+        typer.secho(
+            f"- extractor add-on class: {addon_extractor_class.__name__}",
+            fg=typer.colors.YELLOW,
+        )
     
     if classification_file is not None and not Path.exists(classification_file):
         typer.secho(
@@ -443,6 +554,7 @@ def crawl(
             overview_backend=resolved_backend,
             sock_connect=sock_connect,
             extract=extract,
+            file_extractor=addon_extractor_class,
             save_html=not extract,
         )
 
@@ -492,6 +604,7 @@ def crawl(
             overview_backend=resolved_backend,
             sock_connect=sock_connect,
             extract=extract,
+            file_extractor=addon_extractor_class,
             save_html=not extract,
         )
 
@@ -538,6 +651,21 @@ def extract(
         fg=typer.colors.YELLOW,
     )
 
+    addon_file = config.get_extractor_addon_file()
+    addon_extractor_class = _load_file_extractor_class(addon_file)
+    if addon_file is not None and addon_extractor_class is None:
+        typer.secho(
+            "Configured extractor add-on file is invalid. "
+            "Fix it by running websweep init again with a valid path.",
+            fg=typer.colors.RED,
+        )
+        return
+    if addon_extractor_class is not None:
+        typer.secho(
+            f"- extractor add-on class: {addon_extractor_class.__name__}\n",
+            fg=typer.colors.YELLOW,
+        )
+
     if start_date is None and end_date is None:
         worker = Extractor(
             target_folder_path=config.get_target_folder_path(),
@@ -545,6 +673,7 @@ def extract(
             overview_backend=resolved_backend,
             extractor_delete_files=config.get_extractor_delete(),
             workers=workers,
+            file_extractor=addon_extractor_class,
 
         )
         worker.extract_urls()
@@ -575,6 +704,7 @@ def extract(
             start_date=parsed_start_date,
             end_date=parsed_end_date,
             workers=workers,
+            file_extractor=addon_extractor_class,
         )
         worker.extract_urls()
     

@@ -1,6 +1,8 @@
 """This module provides the WebSweep config functionality."""
 import configparser
+import shutil
 from pathlib import Path
+from typing import Optional
 
 import typer
 
@@ -38,7 +40,11 @@ def current_websweep_instance() -> Path:
 
 
 def init_app(
-    target_folder_path: str, source_file_path: str, extractor_delete_files: bool, use_database: bool,
+    target_folder_path: str,
+    source_file_path: str,
+    extractor_delete_files: bool,
+    use_database: bool,
+    extractor_addon_file: Optional[Path] = None,
 ) -> int:
     """Initialize the application."""
 
@@ -62,7 +68,18 @@ def init_app(
     if source_file_code != SUCCESS:
         return source_file_code
 
-    extractor_delete_files_code = _save_extractor_delete(extractor_delete_files)
+    copied_extractor_addon_file = None
+    if extractor_addon_file is not None:
+        copied_extractor_addon_file = _copy_extractor_addon_to_instance(
+            Path(extractor_addon_file)
+        )
+        if copied_extractor_addon_file is None:
+            return FILE_ERROR
+
+    extractor_delete_files_code = _save_extractor_settings(
+        extractor_delete_files=extractor_delete_files,
+        extractor_addon_file=copied_extractor_addon_file,
+    )
     if extractor_delete_files_code != SUCCESS:
         return extractor_delete_files_code
 
@@ -143,6 +160,7 @@ def restore_app(target_folder_path: Path) -> int:
         get_target_folder_path()
         get_source_file_path()
         get_extractor_delete()
+        get_extractor_addon_file()
     except Exception:
         return FILE_ERROR
 
@@ -202,13 +220,21 @@ def _parse_bool(value, default: bool) -> bool:
     return default
 
 
-def _save_extractor_delete(extractor_delete_files: bool) -> int:
-    """Persist extractor cleanup preference in ``settings.ini``."""
+def _save_extractor_settings(
+    extractor_delete_files: bool,
+    extractor_addon_file: Optional[Path] = None,
+) -> int:
+    """Persist extractor-related settings in the ``Extractor`` section."""
     _truncate_section(current_websweep_instance() / "settings.ini", "Extractor")
     config_parser = configparser.ConfigParser()
     config_parser.add_section("Extractor")
     config_parser.set(
         "Extractor", "extractor_delete_files", str(extractor_delete_files)
+    )
+    config_parser.set(
+        "Extractor",
+        "extractor_addon_file",
+        "" if extractor_addon_file is None else str(Path(extractor_addon_file)),
     )
     try:
         with (current_websweep_instance() / "settings.ini").open("a") as file:
@@ -216,6 +242,29 @@ def _save_extractor_delete(extractor_delete_files: bool) -> int:
     except OSError:
         return FILE_ERROR
     return SUCCESS
+
+
+def _copy_extractor_addon_to_instance(extractor_addon_file: Path) -> Optional[Path]:
+    """Copy add-on extractor file into the active instance folder."""
+    source = Path(extractor_addon_file).expanduser().resolve()
+    if not source.exists() or not source.is_file():
+        return None
+
+    destination = current_websweep_instance() / "extractor_addon.py"
+    try:
+        if source != destination:
+            shutil.copy2(source, destination)
+    except OSError:
+        return None
+    return destination
+
+
+def _save_extractor_delete(extractor_delete_files: bool) -> int:
+    """Persist extractor cleanup preference in ``settings.ini``."""
+    return _save_extractor_settings(
+        extractor_delete_files=extractor_delete_files,
+        extractor_addon_file=get_extractor_addon_file(),
+    )
 
 
 def get_extractor_delete(
@@ -231,6 +280,29 @@ def get_extractor_delete(
     config_parser.read(config_file)
     value = config_parser.get("Extractor", "extractor_delete_files", fallback=None)
     return _parse_bool(value, default=False)
+
+
+def _save_extractor_addon_file(extractor_addon_file: Optional[Path] = None) -> int:
+    """Persist optional extractor add-on file path in ``settings.ini``."""
+    return _save_extractor_settings(
+        extractor_delete_files=get_extractor_delete(),
+        extractor_addon_file=extractor_addon_file,
+    )
+
+
+def get_extractor_addon_file(
+    config_file: Path = None,
+) -> Optional[Path]:
+    """Return the configured extractor add-on file path or ``None``."""
+    if config_file is None:
+        config_file = current_websweep_instance() / "settings.ini"
+    config_parser = configparser.ConfigParser()
+    config_parser.read(config_file)
+    raw_value = config_parser.get("Extractor", "extractor_addon_file", fallback="")
+    value = str(raw_value).strip()
+    if value == "":
+        return None
+    return Path(value)
 
 
 def _save_use_database(use_database: bool) -> int:

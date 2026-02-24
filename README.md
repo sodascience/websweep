@@ -136,6 +136,12 @@ websweep crawl --extract
 websweep consolidate
 ```
 
+Optional extractor add-on file (CLI):
+set it during `websweep init` when prompted for a custom extractor add-on path.
+Leave it empty/No for the default (`None`).
+When provided, WebSweep copies the add-on into the instance folder (next to
+`settings.ini`) so extraction does not depend on the original source location.
+
 ## Core Options (Library)
 
 Most users only need these options:
@@ -201,6 +207,19 @@ Extractor(
 Repository add-on example:
 
 - `addons/firmbackbone_extractor.py`
+
+CLI usage with the same add-on:
+
+```bash
+websweep init --headless
+# answer the add-on question with:
+# addons/firmbackbone_extractor.py
+websweep extract
+```
+
+The add-on path is optional and defaults to `None` (no add-on extractor).
+Once configured in the instance, `websweep extract` and one-pass
+`websweep crawl --extract` use it automatically.
 
 ## Choosing Which Files to Block/Allow
 
