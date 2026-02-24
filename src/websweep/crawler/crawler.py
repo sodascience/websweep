@@ -235,7 +235,6 @@ class Crawler:
         max_concurrency_per_domain: int = 2,
         overview_create_indexes: Optional[bool] = None,
         duckdb_deduplicate: bool = False,
-        storage_path: Optional[Path] = None,
         **kwargs,
     ):
         self.target_folder_path = Path(target_folder_path)
@@ -247,21 +246,10 @@ class Crawler:
         
         self.base_path = self.target_folder_path / "crawled_data"
         self.base_temp_path = self.target_temp_folder_path / "crawled_data"
-        self.storage_path = (
-            Path(storage_path).expanduser().resolve()
-            if storage_path is not None
-            else None
-        )
-        self.base_archive_path = (
-            self.storage_path / "crawled_data"
-            if self.storage_path is not None
-            else self.base_path
-        )
 
         if save_html:
             Path(self.base_path).mkdir(parents=True, exist_ok=True)
             Path(self.base_temp_path).mkdir(parents=True, exist_ok=True)
-            Path(self.base_archive_path).mkdir(parents=True, exist_ok=True)
         else:
             Path(self.base_path).parent.mkdir(parents=True, exist_ok=True)
             Path(self.base_temp_path).parent.mkdir(parents=True, exist_ok=True)
@@ -630,15 +618,13 @@ class Crawler:
         return rel.replace(" ", "_")
 
     def _archive_domain_folder_sync(self, domain: str) -> None:
-        """Zip one domain folder from fast storage and archive the zip to final storage."""
+        """Zip one domain folder from temp storage into the instance crawled_data folder."""
         base_url_folder = self.base_temp_path / domain
         if not base_url_folder.exists():
             return
 
         zip_fast = self.base_path / f"{domain}.zip"
-        zip_archive = self.base_archive_path / f"{domain}.zip"
         zip_fast.parent.mkdir(parents=True, exist_ok=True)
-        zip_archive.parent.mkdir(parents=True, exist_ok=True)
 
         with zipfile.ZipFile(zip_fast, "w", zipfile.ZIP_LZMA, allowZip64=True) as zf:
             for dirname, _subdirs, files in os.walk(base_url_folder):
@@ -648,15 +634,6 @@ class Crawler:
                     zf.write(file_path, arcname)
 
         shutil.rmtree(base_url_folder)
-
-        if zip_fast.resolve() != zip_archive.resolve():
-            try:
-                if zip_archive.exists():
-                    zip_archive.unlink()
-                shutil.move(str(zip_fast), str(zip_archive))
-            except Exception:
-                # Keep local zip when archive move fails to avoid data loss.
-                pass
 
 
     def __get_current_date(self, fmt="%Y-%m-%d"):
@@ -862,7 +839,7 @@ class Crawler:
                             url=url,
                             current_date=self.__get_current_date(),
                         )
-                        path = str(self.base_archive_path / rel)
+                        path = str(self.base_path / rel)
                         temp_path = str(self.base_temp_path / rel)
                         # Save raw contents through the IO executor to avoid
                         # blocking the event loop with filesystem writes.

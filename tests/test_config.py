@@ -108,26 +108,3 @@ def test_save_extractor_delete_preserves_addon_path(monkeypatch, tmp_path):
     assert cfg._save_extractor_delete(True) == SUCCESS
     assert cfg.get_extractor_delete(target_folder / "settings.ini") is True
     assert cfg.get_extractor_addon_file(target_folder / "settings.ini") == (target_folder / "extractor_addon.py")
-
-
-def test_init_app_persists_storage_path(monkeypatch, tmp_path):
-    app_config_dir = tmp_path / "app_config"
-    app_config_file = app_config_dir / "config.ini"
-    target_folder = tmp_path / "instance"
-    source_file = tmp_path / "urls.csv"
-    storage_folder = tmp_path / "archive_storage"
-    source_file.write_text("url,identifier\nhttps://example.com,example\n", encoding="utf-8")
-    storage_folder.mkdir(parents=True, exist_ok=True)
-
-    monkeypatch.setattr(cfg, "CONFIG_DIR_PATH", app_config_dir)
-    monkeypatch.setattr(cfg, "CONFIG_FILE_PATH", app_config_file)
-
-    code = cfg.init_app(
-        target_folder_path=str(target_folder),
-        source_file_path=str(source_file),
-        extractor_delete_files=False,
-        use_database=True,
-        storage_path=storage_folder,
-    )
-    assert code == SUCCESS
-    assert cfg.get_storage_path(target_folder / "settings.ini") == storage_folder

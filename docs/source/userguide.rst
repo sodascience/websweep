@@ -149,7 +149,7 @@ Initialize an instance:
 Backend setup (done during ``init``)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-During ``websweep init``, the CLI asks whether to use a SQL backend or TSV
+During ``websweep init``, the CLI asks whether to use a database backend or TSV
 (``use_database`` in ``settings.ini``):
 
 - ``use_database = True``: database overview storage
@@ -222,8 +222,6 @@ Common options by command:
   Run setup without GUI prompts.
 - ``websweep config --source-file-path /path/to/urls.tsv``
   Point the active instance to a new source file.
-- ``websweep config --storage-path /path/to/archive``
-  Set large storage path where completed domain ``.zip`` crawl files reside (optional).
 - ``websweep config --delete-processed-files`` / ``--no-delete-processed-files``
   Toggle whether extractor removes crawled HTML after processing.
 - ``websweep crawl --extract``
@@ -237,8 +235,8 @@ Common options by command:
 - ``websweep crawl --sock-connect 180``
   Change connection timeout.
 - ``websweep crawl --target-temp-folder-path /tmp/websweep_tmp``
-  Use a temporary crawl/output staging folder for in-progress raw files.
-  Overview DB/TSV remains in the instance folder.
+  Use a temporary crawl staging folder for in-progress raw files.
+  Final domain ``.zip`` files and overview DB/TSV remain in the instance folder.
 - ``websweep crawl --complement 2026-02-20``
   Re-crawl failed base URLs from a prior crawl date.
 - ``websweep extract --workers 8``
@@ -249,11 +247,19 @@ Common options by command:
   Set optional add-on path once per instance (default: None).
   The selected file is copied into the instance folder (next to
   ``settings.ini``) to avoid accidental loss from external file moves/deletes.
-- ``websweep init`` (prompt: storage path)
-  Optional two-tier storage setup:
-  ``target_folder_path`` keeps DB/final outputs; completed domain archives are
-  moved to the large storage path. When ``--target-temp-folder-path`` is used,
-  in-progress raw files are staged there during crawl.
+
+How ``target_temp_folder_path`` works
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+``target_temp_folder_path`` is a staging location, not the final output location.
+
+- In-progress raw pages are written to ``<target_temp_folder_path>/crawled_data/...``
+- When a domain finishes, crawler creates ``<target_folder_path>/crawled_data/<domain>.zip``
+- Staged raw domain files are removed from the temp folder after zipping
+- ``overview_urls.{duckdb|db|tsv}`` always stays in ``target_folder_path``
+
+This lets you use a small fast local disk for active crawling while keeping the
+final outputs in one stable instance folder.
 - ``websweep consolidate --input-file /path/to/extracted.ndjson``
   Consolidate a specific extracted file.
 - ``websweep consolidate --output-file /path/to/consolidated.ndjson``

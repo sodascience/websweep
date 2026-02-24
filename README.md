@@ -66,8 +66,9 @@ https://example2.org,example_org
 Input URLs
   -> Crawler
      In:  URL list + crawl settings
-     Out: 
-        crawled_data/*.zip (a zipped file with the downloaded pages)  overview_urls.{duckdb|db|tsv} (database keeping track of what has been downloaded)
+     Out:
+        crawled_data/*.zip (zipped pages per domain)
+        overview_urls.{duckdb|db|tsv} (per-page crawl status overview)
   -> Extractor
      In:  overview file + crawled_data/*.zip
      Out: extracted_data/*.ndjson (extracted data per web page)
@@ -142,15 +143,15 @@ Leave it empty/No for the default (`None`).
 When provided, WebSweep copies the add-on into the instance folder (next to
 `settings.ini`) so extraction does not depend on the original source location.
 
-`target_folder_path` + `storage_path` mode (CLI):
-- During `websweep init`, you can set an optional `storage path`.
-- WebSweep keeps overview DB and default output in the instance folder
-  (`target_folder_path`).
-- If you pass `--target-temp-folder-path` during crawl, in-progress raw files
-  are staged there.
-- Completed domain `.zip` crawl files are moved to the large storage path
-  where archived files reside.
-- If unset, all files stay in the instance folder (default behavior).
+Using `target_temp_folder_path` (CLI and library):
+
+- Use this when you want in-progress crawl files on a fast local disk.
+- Raw page files are staged under `target_temp_folder_path/crawled_data/...`
+  while crawling.
+- Final domain zip files are written to `target_folder_path/crawled_data/*.zip`.
+- The overview file (`overview_urls.duckdb` / `.db` / `.tsv`) is always kept in
+  `target_folder_path`.
+- After each domain is archived, staged raw files are removed from the temp path.
 
 ## Core Options (Library)
 
@@ -161,7 +162,7 @@ Most users only need these options:
   - `max_pages_per_domain`: cap pages per domain
   - `extract=True` and `save_html=False`: one-pass crawl+extract mode
   - `allow_extensions` / `block_extensions`: file type filtering
-  - `storage_path`: optional large-storage location for completed `.zip` files
+  - `target_temp_folder_path`: optional temp folder for in-progress raw crawl files
 - `Extractor(...)`
   - `workers`: extraction process count
   - `start_date`, `end_date`: session-date window for extraction
@@ -263,7 +264,7 @@ Overview storage backends:
 
 Choose backend mode during `websweep init`:
 
-- `use_database = True` (SQL mode in `settings.ini`) uses DuckDB when available
+- `use_database = True` (database mode in `settings.ini`) uses DuckDB when available
   and falls back to SQLite if needed.
 - `use_database = False` uses TSV.
 

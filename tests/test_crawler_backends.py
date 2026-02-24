@@ -233,9 +233,8 @@ def test_duckdb_deduplicate_option_preserves_unique_behavior(tmp_path):
     assert total_rows == 1
 
 
-def test_archive_domain_folder_moves_zip_to_storage_path(tmp_path):
-    fast_root = tmp_path / "fast"
-    storage_root = tmp_path / "archive"
+def test_archive_domain_folder_writes_zip_to_instance_crawled_data(tmp_path):
+    fast_root = tmp_path / "instance"
     crawler = Crawler(
         target_folder_path=fast_root,
         target_temp_folder_path=fast_root,
@@ -243,7 +242,6 @@ def test_archive_domain_folder_moves_zip_to_storage_path(tmp_path):
         extract=False,
         use_database=False,
         overview_backend="csv",
-        storage_path=storage_root,
     )
 
     domain = "example.com"
@@ -261,8 +259,7 @@ def test_archive_domain_folder_moves_zip_to_storage_path(tmp_path):
     crawler._archive_domain_folder_sync(domain)
 
     assert not (fast_root / "crawled_data" / domain / domain / "2026-02-24" / "index").exists()
-    assert not (fast_root / "crawled_data" / f"{domain}.zip").exists()
-    assert (storage_root / "crawled_data" / f"{domain}.zip").exists()
+    assert (fast_root / "crawled_data" / f"{domain}.zip").exists()
 
 
 def test_overview_file_stays_in_instance_folder_when_temp_folder_differs(tmp_path):

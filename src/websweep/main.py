@@ -27,15 +27,11 @@ except Exception:
 app = typer.Typer()
 
 
-def _has_crawled_data(target_folder: Path, storage_path: Optional[Path] = None) -> bool:
-    """Return ``True`` when local or configured storage has crawl artifacts."""
-    candidates = [Path(target_folder) / "crawled_data"]
-    if storage_path is not None:
-        candidates.append(Path(storage_path) / "crawled_data")
-
-    for crawled_data in candidates:
-        if crawled_data.exists() and crawled_data.is_dir() and any(crawled_data.iterdir()):
-            return True
+def _has_crawled_data(target_folder: Path) -> bool:
+    """Return ``True`` when the instance has crawl artifacts."""
+    crawled_data = Path(target_folder) / "crawled_data"
+    if crawled_data.exists() and crawled_data.is_dir() and any(crawled_data.iterdir()):
+        return True
     return False
 
 
@@ -106,23 +102,6 @@ def _load_file_extractor_class(addon_file: Optional[Path]):
     return extractor_classes[0]
 
 
-def _extractor_archive_paths():
-    """Build archive search roots for extractor zip resolution."""
-    roots = [config.get_target_folder_path(), config.get_storage_path()]
-    deduped = []
-    seen = set()
-    for root in roots:
-        if root is None:
-            continue
-        root_path = Path(root)
-        key = str(root_path)
-        if key in seen:
-            continue
-        seen.add(key)
-        deduped.append(root_path)
-    return deduped
-
-
 def operate():
     """Validate active instance configuration before running operational commands."""
     def deco_operate(f):
@@ -164,10 +143,10 @@ def operate():
 
                 if (
                     f.__name__ == "extract"
-                    and not _has_crawled_data(target_folder, config.get_storage_path())
+                    and not _has_crawled_data(target_folder)
                 ):
                     typer.secho(
-                        'There are no crawled files to extract from (target folder or configured storage path). '
+                        'There are no crawled files to extract from the target folder. '
                         'Please start crawling using "crawl" or use websweep --help',
                         fg=typer.colors.RED,
                     )
@@ -219,7 +198,7 @@ def init(headless: bool = typer.Option(HEADLESS, help="Run without GUI elements"
 
     if not headless:
         ask_continue_folder = typer.confirm(
-            "SELECT a configuration and WebSweep output storage folder \nContinue?\n"
+            "SELECT a configuration and WebSweep output folder \nContinue?\n"
         )
         if not ask_continue_folder:
             typer.secho("Initalisation stopped\n", fg=typer.colors.RED)
@@ -267,7 +246,7 @@ def init(headless: bool = typer.Option(HEADLESS, help="Run without GUI elements"
 
     time.sleep(0.5)
     
-    ask_use_sql = typer.confirm(
+    ask_use_database = typer.confirm(
         "SELECT overview storage backend:\n"
         "- Database (Y): DuckDB by default, SQLite fallback if DuckDB is unavailable\n"
         "- CSV/TSV file (n)\n",
@@ -275,8 +254,8 @@ def init(headless: bool = typer.Option(HEADLESS, help="Run without GUI elements"
     )
     
     typer.secho(
-        f"Database mode enabled: {ask_use_sql}"
-        + (" (DuckDB preferred, SQLite fallback)\n" if ask_use_sql else " (CSV/TSV mode)\n"),
+        f"Database mode enabled: {ask_use_database}"
+        + (" (DuckDB preferred, SQLite fallback)\n" if ask_use_database else " (CSV/TSV mode)\n"),
         fg=typer.colors.YELLOW,
     )
 
@@ -305,38 +284,12 @@ def init(headless: bool = typer.Option(HEADLESS, help="Run without GUI elements"
 
     time.sleep(0.5)
 
-    ask_use_storage = typer.confirm(
-        "SELECT a LARGE storage path where completed .zip crawl files reside?\n",
-        default=False,
-    )
-    storage_path = None
-    if ask_use_storage:
-        storage_candidate = typer.prompt(
-            "ENTER large storage folder PATH (for archived .zip crawl files)\n"
-        )
-        storage_candidate_path = Path(storage_candidate).expanduser().resolve()
-        try:
-            storage_candidate_path.mkdir(parents=True, exist_ok=True)
-        except OSError:
-            typer.secho("Initialisation stopped (invalid storage path).", fg=typer.colors.RED)
-            raise typer.Exit(1)
-        storage_path = storage_candidate_path
-        typer.secho(
-            f"Large storage path configured: {storage_path}\n",
-            fg=typer.colors.YELLOW,
-        )
-    else:
-        typer.secho("Large storage path configured: None\n", fg=typer.colors.YELLOW)
-
-    time.sleep(0.5)
-
     app_init_error = config.init_app(
         str(folder),
         str(file),
         ask_delete_files,
-        ask_use_sql,
+        ask_use_database,
         extractor_addon_file=extractor_addon_file,
-        storage_path=storage_path,
     )
     if app_init_error:
         typer.secho(
@@ -450,11 +403,6 @@ def cli_config(
     source_file_path: str = typer.Option(
         None, "--source-file-path", help="Set new path for csv source file"
     ),
-    storage_path: str = typer.Option(
-        None,
-        "--storage-path",
-        help="Set large storage path where completed crawl .zip files reside (optional).",
-    ),
 ) -> None:
 
     """
@@ -466,7 +414,6 @@ def cli_config(
         delete_processed_files is None
         # and target_folder_path is None
         and source_file_path is None
-        and storage_path is None
     ):
         typer.secho("WebSweep is configured:", fg=typer.colors.YELLOW)
         typer.secho(
@@ -489,10 +436,6 @@ def cli_config(
             f"- extractor add-on file: {config.get_extractor_addon_file()}",
             fg=typer.colors.YELLOW,
         )
-        typer.secho(
-            f"- storage path (large storage for archived .zip files): {config.get_storage_path()}",
-            fg=typer.colors.YELLOW,
-        )
     else:
         if delete_processed_files is not None:
             if delete_processed_files:
@@ -501,8 +444,6 @@ def cli_config(
                 config._save_extractor_delete(False)
         if source_file_path is not None:
             config._save_source_file(source_file_path)
-        if storage_path is not None:
-            config._save_storage_path(Path(storage_path).expanduser().resolve())
 
         typer.secho("Config settings saved", fg=typer.colors.GREEN)
 
@@ -549,7 +490,10 @@ def crawl(
     ),
     target_temp_folder_path: Path = typer.Option(
         None,
-        help="Set new path for temporary storage of crawled data",
+        help=(
+            "Path for temporary in-progress crawl files. "
+            "Final .zip archives and overview DB/TSV remain in target folder."
+        ),
     ),
 
 ) -> None:
@@ -565,8 +509,13 @@ def crawl(
     typer.secho(
         f"- target folder: {config.get_target_folder_path()}\n", fg=typer.colors.YELLOW
     )
+    effective_temp_folder = (
+        Path(target_temp_folder_path).expanduser().resolve()
+        if target_temp_folder_path is not None
+        else Path(config.get_target_folder_path()).expanduser().resolve()
+    )
     typer.secho(
-        f"- storage path (large storage for archived .zip files): {config.get_storage_path()}",
+        f"- temp crawl folder (staging): {effective_temp_folder}\n",
         fg=typer.colors.YELLOW,
     )
 
@@ -617,7 +566,6 @@ def crawl(
             sock_connect=sock_connect,
             extract=extract,
             file_extractor=addon_extractor_class,
-            storage_path=config.get_storage_path(),
             save_html=not extract,
         )
 
@@ -657,22 +605,38 @@ def crawl(
             fg=typer.colors.YELLOW,
         )
 
-        worker = Crawler(
-            target_folder_path=config.get_target_folder_path(),
-            target_temp_folder_path=target_temp_folder_path,
-            classification_file_path=classification_file,
-            allow_extensions=allow_extensions,
-            block_extensions=block_extensions,
-            use_database=config.get_use_database(),
-            overview_backend=resolved_backend,
-            sock_connect=sock_connect,
-            extract=extract,
-            file_extractor=addon_extractor_class,
-            storage_path=config.get_storage_path(),
-            save_html=not extract,
-        )
+        def _build_crawler_worker():
+            return Crawler(
+                target_folder_path=config.get_target_folder_path(),
+                target_temp_folder_path=target_temp_folder_path,
+                classification_file_path=classification_file,
+                allow_extensions=allow_extensions,
+                block_extensions=block_extensions,
+                use_database=config.get_use_database(),
+                overview_backend=resolved_backend,
+                sock_connect=sock_connect,
+                extract=extract,
+                file_extractor=addon_extractor_class,
+                save_html=not extract,
+            )
 
+        worker = _build_crawler_worker()
         worker.crawl_base_urls(urls)
+        if worker.count_downloads == 0 and len(urls) > 0:
+            typer.secho(
+                "0 pages were downloaded in this crawl run. "
+                "This can happen during transient DNS/network outages. Retrying once...",
+                fg=typer.colors.YELLOW,
+            )
+            time.sleep(2)
+            worker = _build_crawler_worker()
+            worker.crawl_base_urls(urls)
+            if worker.count_downloads == 0:
+                typer.secho(
+                    "Retry also downloaded 0 pages. Check network/DNS connectivity "
+                    "or input URL availability.",
+                    fg=typer.colors.RED,
+                )
 
     typer.secho("Crawler finished successfully\n", fg=typer.colors.GREEN)
 
@@ -738,7 +702,6 @@ def extract(
             extractor_delete_files=config.get_extractor_delete(),
             workers=workers,
             file_extractor=addon_extractor_class,
-            archive_paths=_extractor_archive_paths(),
 
         )
         worker.extract_urls()
@@ -770,7 +733,6 @@ def extract(
             end_date=parsed_end_date,
             workers=workers,
             file_extractor=addon_extractor_class,
-            archive_paths=_extractor_archive_paths(),
         )
         worker.extract_urls()
     
