@@ -231,3 +231,52 @@ def test_duckdb_deduplicate_option_preserves_unique_behavior(tmp_path):
     finally:
         con.close()
     assert total_rows == 1
+
+
+def test_archive_domain_folder_moves_zip_to_storage_path(tmp_path):
+    fast_root = tmp_path / "fast"
+    storage_root = tmp_path / "archive"
+    crawler = Crawler(
+        target_folder_path=fast_root,
+        target_temp_folder_path=fast_root,
+        save_html=True,
+        extract=False,
+        use_database=False,
+        overview_backend="csv",
+        storage_path=storage_root,
+    )
+
+    domain = "example.com"
+    page_file = (
+        fast_root
+        / "crawled_data"
+        / domain
+        / domain
+        / "2026-02-24"
+        / "index"
+    )
+    page_file.parent.mkdir(parents=True, exist_ok=True)
+    page_file.write_text("<html>ok</html>", encoding="utf-8")
+
+    crawler._archive_domain_folder_sync(domain)
+
+    assert not (fast_root / "crawled_data" / domain / domain / "2026-02-24" / "index").exists()
+    assert not (fast_root / "crawled_data" / f"{domain}.zip").exists()
+    assert (storage_root / "crawled_data" / f"{domain}.zip").exists()
+
+
+def test_overview_file_stays_in_instance_folder_when_temp_folder_differs(tmp_path):
+    instance_root = tmp_path / "instance"
+    temp_root = tmp_path / "temp"
+    crawler = Crawler(
+        target_folder_path=instance_root,
+        target_temp_folder_path=temp_root,
+        save_html=False,
+        extract=False,
+        use_database=False,
+        overview_backend="csv",
+    )
+
+    assert crawler.overview_path == str(instance_root / "overview_urls.tsv")
+    assert (instance_root / "overview_urls.tsv").exists()
+    assert not (temp_root / "overview_urls.tsv").exists()

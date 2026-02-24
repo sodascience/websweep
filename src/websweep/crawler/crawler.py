@@ -168,6 +168,18 @@ def _status_is_success(status) -> bool:
         return value == "200"
 
 
+def _status_is_permanent_not_found(status) -> bool:
+    """Return whether a level-0 failure strongly indicates a dead/non-existing site."""
+    value = str(status).strip().lower()
+    if not value:
+        return False
+    return value in {
+        "dns lookup failed",
+        "website not found in __test_domain_robots",
+        "website not found",
+    }
+
+
 def _normalize_base_url(raw_url: str) -> Optional[str]:
     """
     Normalize a base URL before crawling.
@@ -223,6 +235,7 @@ class Crawler:
         max_concurrency_per_domain: int = 2,
         overview_create_indexes: Optional[bool] = None,
         duckdb_deduplicate: bool = False,
+        storage_path: Optional[Path] = None,
         **kwargs,
     ):
         self.target_folder_path = Path(target_folder_path)
@@ -234,10 +247,21 @@ class Crawler:
         
         self.base_path = self.target_folder_path / "crawled_data"
         self.base_temp_path = self.target_temp_folder_path / "crawled_data"
+        self.storage_path = (
+            Path(storage_path).expanduser().resolve()
+            if storage_path is not None
+            else None
+        )
+        self.base_archive_path = (
+            self.storage_path / "crawled_data"
+            if self.storage_path is not None
+            else self.base_path
+        )
 
         if save_html:
             Path(self.base_path).mkdir(parents=True, exist_ok=True)
             Path(self.base_temp_path).mkdir(parents=True, exist_ok=True)
+            Path(self.base_archive_path).mkdir(parents=True, exist_ok=True)
         else:
             Path(self.base_path).parent.mkdir(parents=True, exist_ok=True)
             Path(self.base_temp_path).parent.mkdir(parents=True, exist_ok=True)
@@ -250,16 +274,16 @@ class Crawler:
         self.use_database = bool(use_database)
 
         self.overview_backend = resolve_overview_backend(
-            base_folder=self.target_temp_folder_path,
+            base_folder=self.target_folder_path,
             use_database=self.use_database,
             override_backend=overview_backend,
         )
         if self.overview_backend == "sqlite":
-            self.overview_path = f"{self.target_temp_folder_path}/overview_urls.db"
+            self.overview_path = f"{self.target_folder_path}/overview_urls.db"
         elif self.overview_backend == "duckdb":
-            self.overview_path = f"{self.target_temp_folder_path}/overview_urls.duckdb"
+            self.overview_path = f"{self.target_folder_path}/overview_urls.duckdb"
         else:
-            self.overview_path = f"{self.target_temp_folder_path}/overview_urls.tsv"
+            self.overview_path = f"{self.target_folder_path}/overview_urls.tsv"
 
         # Storage knobs:
         # - DuckDB defaults to append-only inserts (no dedupe query, no secondary indexes)
@@ -287,6 +311,7 @@ class Crawler:
         self._duckdb_cursor = None
         self._duckdb_batch = []
         self._duckdb_batch_size = 500
+        self.io_executor = None
 
         self.save_html = save_html
         self.max_level = max_level
@@ -590,6 +615,49 @@ class Crawler:
         with open(path, "wb") as f:
             f.write(contents)
 
+    @staticmethod
+    def _build_page_relative_path(domain: str, url: str, current_date: str) -> str:
+        """Build a stable relative path for one crawled page within its domain zip."""
+        parsed = urlparse(url)
+        netloc = parsed.netloc.replace("www.", "")
+        if url.endswith("/"):
+            leaf = url[:-1].split("/")[-1]
+        else:
+            leaf = url.split("/")[-1]
+        if leaf == "":
+            leaf = "index"
+        rel = f"{domain}/{netloc}/{current_date}/{leaf}"
+        return rel.replace(" ", "_")
+
+    def _archive_domain_folder_sync(self, domain: str) -> None:
+        """Zip one domain folder from fast storage and archive the zip to final storage."""
+        base_url_folder = self.base_temp_path / domain
+        if not base_url_folder.exists():
+            return
+
+        zip_fast = self.base_path / f"{domain}.zip"
+        zip_archive = self.base_archive_path / f"{domain}.zip"
+        zip_fast.parent.mkdir(parents=True, exist_ok=True)
+        zip_archive.parent.mkdir(parents=True, exist_ok=True)
+
+        with zipfile.ZipFile(zip_fast, "w", zipfile.ZIP_LZMA, allowZip64=True) as zf:
+            for dirname, _subdirs, files in os.walk(base_url_folder):
+                for filename in files:
+                    file_path = os.path.join(dirname, filename)
+                    arcname = os.path.relpath(file_path, base_url_folder)
+                    zf.write(file_path, arcname)
+
+        shutil.rmtree(base_url_folder)
+
+        if zip_fast.resolve() != zip_archive.resolve():
+            try:
+                if zip_archive.exists():
+                    zip_archive.unlink()
+                shutil.move(str(zip_fast), str(zip_archive))
+            except Exception:
+                # Keep local zip when archive move fails to avoid data loss.
+                pass
+
 
     def __get_current_date(self, fmt="%Y-%m-%d"):
         # return current day in format "YYYY-MM-DD"
@@ -789,15 +857,19 @@ class Crawler:
                         self.cpu_executor, functools.partial(self.get_urls, r, url, domain, level, identifier))
                     
                     if self.save_html:
-                        # create path www.google.com/something/ --> something
-                        if url[-1] == "/":
-                            path = f"{self.base_temp_path}/{domain}/{urlparse(url).netloc.replace('www.','')}/{self.__get_current_date()}/{url[:-1].split('/')[-1]}"
-                        else:  # Create path www.google.com/something --> something
-                            path = f"{self.base_temp_path}/{domain}/{urlparse(url).netloc.replace('www.','')}/{self.__get_current_date()}/{url.split('/')[-1]}"
-                        path = path.replace(" ", "_")
-
-                        # save raw contents to file
-                        self.__save_to_disk(path, r)
+                        rel = self._build_page_relative_path(
+                            domain=domain,
+                            url=url,
+                            current_date=self.__get_current_date(),
+                        )
+                        path = str(self.base_archive_path / rel)
+                        temp_path = str(self.base_temp_path / rel)
+                        # Save raw contents through the IO executor to avoid
+                        # blocking the event loop with filesystem writes.
+                        await self.loop.run_in_executor(
+                            self.io_executor,
+                            functools.partial(self.__save_to_disk, temp_path, r),
+                        )
                     else:
                         path = ""
 
@@ -957,18 +1029,11 @@ class Crawler:
                     level += 1
                 
                 if self.save_html:
-                    # zip the folder
-                    base_url_folder = self.base_temp_path  / f'{domain}'
-                    zip_url_folder = self.base_path /  f'{domain}.zip'
-
-                    zf = zipfile.ZipFile(zip_url_folder, "w", zipfile.ZIP_LZMA, allowZip64=True)
-                    for dirname, subdirs, files in os.walk(base_url_folder):
-                        for filename in files:
-                            file_path = os.path.join(dirname, filename)
-                            arcname = os.path.relpath(file_path, base_url_folder)
-                            zf.write(file_path, arcname)
-                    zf.close()
-                    shutil.rmtree(base_url_folder)
+                    # Zip/archive on executor to avoid blocking the event loop.
+                    await self.loop.run_in_executor(
+                        self.io_executor,
+                        functools.partial(self._archive_domain_folder_sync, domain),
+                    )
 
                 self.errors_website.pop(state_key, None)
 
@@ -1082,7 +1147,7 @@ class Crawler:
         start = time()
         self._open_duckdb_overview_writer()
         try:
-            with ThreadPoolExecutor(max_workers=self.threads_bs4) as self.cpu_executor:
+            with ThreadPoolExecutor(max_workers=self.threads_bs4) as self.cpu_executor, ThreadPoolExecutor(max_workers=4) as self.io_executor:
                 try:
                     running_loop = asyncio.get_running_loop()
                 except RuntimeError:
@@ -1096,6 +1161,7 @@ class Crawler:
                     self._run_fetch_loop(urls)
         finally:
             self._close_duckdb_overview_writer()
+            self.io_executor = None
 
         # Move last results file
         if (self.count_downloads > 0) and (self.extractor_unit is not None):
@@ -1123,12 +1189,18 @@ class Crawler:
             if self.overview_backend == "duckdb" and self._duckdb_connection is not None:
                 self._flush_duckdb_overview_batch(force=True)
                 cursor = self._duckdb_connection.cursor()
-                cursor.execute("SELECT url FROM Overview WHERE level = 0 AND session_date > ?;", (min_date,))
+                cursor.execute(
+                    "SELECT url FROM Overview WHERE level = 0 AND session_date > ? AND status = '200';",
+                    (min_date,),
+                )
                 urls = [clean_url(_[0]) for _ in cursor.fetchall()]
             else:
                 connection = self._connect_overview_db()
                 cursor = connection.cursor()
-                cursor.execute("SELECT url FROM Overview WHERE level = 0 AND session_date > ?;", (min_date,))
+                cursor.execute(
+                    "SELECT url FROM Overview WHERE level = 0 AND session_date > ? AND status = '200';",
+                    (min_date,),
+                )
                 urls = [clean_url(_[0]) for _ in cursor.fetchall()]
                 connection.commit()
                 connection.close()
@@ -1145,9 +1217,10 @@ class Crawler:
                     if level != "0":
                         continue
                     url = row[3]
+                    status = row[4]
                     min_date = datetime.date.today() - datetime.timedelta(days=self.min_days_between_crawls)
                     session_date = datetime.datetime.strptime(row[5], "%Y-%m-%d").date()
-                    if (session_date > min_date):
+                    if (session_date > min_date) and _status_is_success(status):
                         urls.append(clean_url(url))
 
         return set(urls)
@@ -1155,7 +1228,9 @@ class Crawler:
     def crawl_complement_base_urls(self, complement_date):
         """Re-crawl failed level-0 URLs from a specific crawl ``session_date``."""
         complement_date_str = str(complement_date)
-        failed_records = []
+        # Track per-url outcome in the selected session so we only retry URLs
+        # that have no successful row and at least one retryable failure row.
+        by_url = {}
 
         if self.overview_backend in {"sqlite", "duckdb"}:
             if self.overview_backend == "duckdb" and self._duckdb_connection is not None:
@@ -1185,11 +1260,21 @@ class Crawler:
                 session_date = str(row[4]).strip() if row[4] is not None else ""
                 if session_date != complement_date_str or level != "0":
                     continue
-                if _status_is_success(status):
-                    continue
                 if str(status).strip() == "":
                     continue
-                failed_records.append((url, identifier or None))
+                entry = by_url.setdefault(
+                    clean_url(url),
+                    {
+                        "url": url,
+                        "identifier": identifier or None,
+                        "has_success": False,
+                        "has_retryable_failure": False,
+                    },
+                )
+                if _status_is_success(status):
+                    entry["has_success"] = True
+                elif not _status_is_permanent_not_found(status):
+                    entry["has_retryable_failure"] = True
         else:
             with open(self.overview_path, "r", newline='') as f:
                 reader = csv.reader(f, delimiter='\t')
@@ -1207,18 +1292,28 @@ class Crawler:
                     # Re-crawl failed base URLs from this crawl date.
                     if session_date != complement_date_str or level != "0":
                         continue
-                    if _status_is_success(status) or status.strip() == "":
+                    if status.strip() == "":
                         continue
-                    failed_records.append((url, identifier or None))
+                    normalized = clean_url(url)
+                    entry = by_url.setdefault(
+                        normalized,
+                        {
+                            "url": url,
+                            "identifier": identifier or None,
+                            "has_success": False,
+                            "has_retryable_failure": False,
+                        },
+                    )
+                    if _status_is_success(status):
+                        entry["has_success"] = True
+                    elif not _status_is_permanent_not_found(status):
+                        entry["has_retryable_failure"] = True
 
-        urls = []
-        seen = set()
-        for url, identifier in failed_records:
-            normalized = clean_url(url)
-            if normalized in seen:
-                continue
-            seen.add(normalized)
-            urls.append((url, identifier))
+        urls = [
+            (entry["url"], entry["identifier"])
+            for entry in by_url.values()
+            if (not entry["has_success"]) and entry["has_retryable_failure"]
+        ]
 
         if len(urls) == 0:
             print(f"No failed level-0 URLs found for session_date={complement_date_str}.")

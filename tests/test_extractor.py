@@ -1,5 +1,6 @@
 from pathlib import Path
 import time
+import zipfile
 
 import pytest
 
@@ -83,3 +84,37 @@ def test_firmbackbone_addon_outside_core_package():
     metadata = unit.extracting()
     assert "email" in metadata
     assert "phone" in metadata
+
+
+def test_file_extractor_resolves_zip_from_archive_roots(tmp_path):
+    archive_root = tmp_path / "archive"
+    zip_dir = archive_root / "crawled_data"
+    zip_dir.mkdir(parents=True, exist_ok=True)
+    zip_path = zip_dir / "example.com.zip"
+    member = "example.com/2026-02-24/index"
+    html = "<html><body><p>Archive fallback works</p></body></html>"
+
+    with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_LZMA, allowZip64=True) as zf:
+        zf.writestr(member, html)
+
+    missing_path = (
+        tmp_path
+        / "missing_base"
+        / "crawled_data"
+        / "example.com"
+        / "example.com"
+        / "2026-02-24"
+        / "index"
+    )
+    info = [
+        "example.com",
+        "id-1",
+        0,
+        "https://example.com",
+        "2026-02-24",
+        str(missing_path),
+    ]
+
+    unit = FileExtractor(info, zip_search_roots=[archive_root])
+    metadata = unit.extracting()
+    assert "Archive fallback works" in metadata["text"]

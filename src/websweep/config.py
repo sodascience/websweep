@@ -45,6 +45,7 @@ def init_app(
     extractor_delete_files: bool,
     use_database: bool,
     extractor_addon_file: Optional[Path] = None,
+    storage_path: Optional[Path] = None,
 ) -> int:
     """Initialize the application."""
 
@@ -86,6 +87,10 @@ def init_app(
     use_database = _save_use_database(use_database)
     if use_database != SUCCESS:
         return use_database
+
+    storage_code = _save_storage_path(storage_path)
+    if storage_code != SUCCESS:
+        return storage_code
 
     return SUCCESS
 
@@ -161,6 +166,7 @@ def restore_app(target_folder_path: Path) -> int:
         get_source_file_path()
         get_extractor_delete()
         get_extractor_addon_file()
+        get_storage_path()
     except Exception:
         return FILE_ERROR
 
@@ -282,14 +288,6 @@ def get_extractor_delete(
     return _parse_bool(value, default=False)
 
 
-def _save_extractor_addon_file(extractor_addon_file: Optional[Path] = None) -> int:
-    """Persist optional extractor add-on file path in ``settings.ini``."""
-    return _save_extractor_settings(
-        extractor_delete_files=get_extractor_delete(),
-        extractor_addon_file=extractor_addon_file,
-    )
-
-
 def get_extractor_addon_file(
     config_file: Path = None,
 ) -> Optional[Path]:
@@ -332,3 +330,34 @@ def get_use_database(
     config_parser.read(config_file)
     value = config_parser.get("Database", "use_database", fallback=None)
     return _parse_bool(value, default=True)
+
+
+def _save_storage_path(storage_path: Optional[Path]) -> int:
+    """Persist optional large-storage archive path in ``settings.ini``."""
+    _truncate_section(current_websweep_instance() / "settings.ini", "Storage")
+    config_parser = configparser.ConfigParser()
+    config_parser.add_section("Storage")
+    config_parser.set(
+        "Storage",
+        "storage_path",
+        "" if storage_path is None else str(Path(storage_path)),
+    )
+    try:
+        with (current_websweep_instance() / "settings.ini").open("a") as file:
+            config_parser.write(file)
+    except OSError:
+        return FILE_ERROR
+    return SUCCESS
+
+
+def get_storage_path(config_file: Path = None) -> Optional[Path]:
+    """Return optional large-storage archive path, or ``None`` when unset."""
+    if config_file is None:
+        config_file = current_websweep_instance() / "settings.ini"
+    config_parser = configparser.ConfigParser()
+    config_parser.read(config_file)
+    raw_value = config_parser.get("Storage", "storage_path", fallback="")
+    value = str(raw_value).strip()
+    if value == "":
+        return None
+    return Path(value)

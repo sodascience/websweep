@@ -142,6 +142,16 @@ Leave it empty/No for the default (`None`).
 When provided, WebSweep copies the add-on into the instance folder (next to
 `settings.ini`) so extraction does not depend on the original source location.
 
+`target_folder_path` + `storage_path` mode (CLI):
+- During `websweep init`, you can set an optional `storage path`.
+- WebSweep keeps overview DB and default output in the instance folder
+  (`target_folder_path`).
+- If you pass `--target-temp-folder-path` during crawl, in-progress raw files
+  are staged there.
+- Completed domain `.zip` crawl files are moved to the large storage path
+  where archived files reside.
+- If unset, all files stay in the instance folder (default behavior).
+
 ## Core Options (Library)
 
 Most users only need these options:
@@ -151,6 +161,7 @@ Most users only need these options:
   - `max_pages_per_domain`: cap pages per domain
   - `extract=True` and `save_html=False`: one-pass crawl+extract mode
   - `allow_extensions` / `block_extensions`: file type filtering
+  - `storage_path`: optional large-storage location for completed `.zip` files
 - `Extractor(...)`
   - `workers`: extraction process count
   - `start_date`, `end_date`: session-date window for extraction

@@ -3,6 +3,7 @@ import datetime
 import pytest
 
 from websweep.crawler.crawler import Crawler
+from websweep.utils.utils import clean_url
 
 
 def _seed_overview_rows(crawler: Crawler) -> None:
@@ -27,7 +28,7 @@ def _seed_overview_rows(crawler: Crawler) -> None:
         level=0,
         url="https://nf.example",
         identifier="nf-id",
-        status="Website not found",
+        status="Website not found in __test_domain_robots",
         path="",
     )
     crawler._Crawler__update_overview_file(
@@ -36,6 +37,23 @@ def _seed_overview_rows(crawler: Crawler) -> None:
         url="https://failed.example/about",
         identifier="failed-id",
         status="404",
+        path="",
+    )
+    # Failed and then successful in same session: should not be retried.
+    crawler._Crawler__update_overview_file(
+        domain="recovered.example",
+        level=0,
+        url="https://recovered.example",
+        identifier="rec-id",
+        status="500",
+        path="",
+    )
+    crawler._Crawler__update_overview_file(
+        domain="recovered.example",
+        level=0,
+        url="https://recovered.example",
+        identifier="rec-id",
+        status="200",
         path="",
     )
 
@@ -70,11 +88,12 @@ def test_crawl_complement_recrawls_failed_level0_urls_only(tmp_path, backend, us
     crawler.crawl_complement_base_urls(complement_date)
 
     assert "urls" in captured
-    # Only failed level-0 URLs should be retried.
+    # Only retryable failed level-0 URLs should be retried.
+    # Permanent-not-found statuses and URLs that already recovered (200)
+    # in the same session are skipped.
     assert sorted(captured["urls"]) == sorted(
         [
             ("https://failed.example", "failed-id"),
-            ("https://nf.example", "nf-id"),
         ]
     )
     # Ensure tuple layout stays (url, identifier).
@@ -107,6 +126,49 @@ def test_crawl_complement_with_duckdb(tmp_path):
     assert sorted(captured["urls"]) == sorted(
         [
             ("https://failed.example", "failed-id"),
-            ("https://nf.example", "nf-id"),
         ]
     )
+
+
+@pytest.mark.parametrize(
+    ("backend", "use_database"),
+    [
+        ("csv", False),
+        ("sqlite", True),
+    ],
+)
+def test_downloaded_domains_only_include_recent_successful_level0(tmp_path, backend, use_database):
+    crawler = Crawler(
+        target_folder_path=tmp_path,
+        target_temp_folder_path=tmp_path,
+        save_html=False,
+        extract=False,
+        use_database=use_database,
+        overview_backend=backend,
+    )
+    _seed_overview_rows(crawler)
+
+    downloaded = crawler._Crawler__get_downloaded_domains()
+    assert clean_url("https://ok.example") in downloaded
+    assert clean_url("https://failed.example") not in downloaded
+    assert clean_url("https://nf.example") not in downloaded
+    assert clean_url("https://recovered.example") in downloaded
+
+
+def test_downloaded_domains_only_include_recent_successful_level0_duckdb(tmp_path):
+    pytest.importorskip("duckdb")
+    crawler = Crawler(
+        target_folder_path=tmp_path,
+        target_temp_folder_path=tmp_path,
+        save_html=False,
+        extract=False,
+        use_database=True,
+        overview_backend="duckdb",
+    )
+    _seed_overview_rows(crawler)
+
+    downloaded = crawler._Crawler__get_downloaded_domains()
+    assert clean_url("https://ok.example") in downloaded
+    assert clean_url("https://failed.example") not in downloaded
+    assert clean_url("https://nf.example") not in downloaded
+    assert clean_url("https://recovered.example") in downloaded

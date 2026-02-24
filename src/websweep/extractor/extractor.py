@@ -84,7 +84,7 @@ class FileExtractor:
             Defines methods that include the extendable extracting functionalities in subclasses.
         
     """
-    def __init__(self, info):
+    def __init__(self, info, zip_search_roots=None):
         self.metadata = dict()
         (
             self.metadata["domain"],
@@ -104,12 +104,57 @@ class FileExtractor:
             self.soup = info[-1]
             self.metadata["path"] = ""
         else:
-            # Read HTML to parse
-            next_slash = self.metadata["path"].find("/", self.metadata["path"].find("/crawled_data/") + len("/crawled_data/"))
-            with zipfile.ZipFile(self.metadata["path"][:next_slash] + ".zip", 'r') as zip_file:
-                with zip_file.open(self.metadata["path"][next_slash + 1:]) as file:
-                    self.text = file.read().decode("utf-8", "ignore")
-                    self.soup = _parse_html(self.text)
+            # Read HTML from archived domain zip; try configured roots as fallbacks.
+            stored_path = str(self.metadata["path"])
+            next_slash = stored_path.find(
+                "/",
+                stored_path.find("/crawled_data/") + len("/crawled_data/"),
+            )
+            zip_from_path = Path(stored_path[:next_slash] + ".zip")
+            member_from_path = stored_path[next_slash + 1:]
+
+            candidates = [zip_from_path]
+            if zip_search_roots:
+                rel_from_crawled = None
+                marker = "/crawled_data/"
+                marker_pos = stored_path.find(marker)
+                if marker_pos >= 0:
+                    rel_from_crawled = stored_path[marker_pos + len(marker):]
+                if rel_from_crawled:
+                    top_domain = rel_from_crawled.split("/", 1)[0]
+                    for root in zip_search_roots:
+                        if root is None:
+                            continue
+                        root_path = Path(root)
+                        candidates.append(root_path / "crawled_data" / f"{top_domain}.zip")
+
+            zip_candidates = []
+            seen = set()
+            for candidate in candidates:
+                key = str(candidate)
+                if key in seen:
+                    continue
+                seen.add(key)
+                zip_candidates.append(candidate)
+
+            loaded = False
+            for zip_path in zip_candidates:
+                if not zip_path.exists():
+                    continue
+                try:
+                    with zipfile.ZipFile(zip_path, "r") as zip_file:
+                        with zip_file.open(member_from_path) as file:
+                            self.text = file.read().decode("utf-8", "ignore")
+                            self.soup = _parse_html(self.text)
+                            loaded = True
+                            break
+                except Exception:
+                    continue
+
+            if not loaded:
+                raise FileNotFoundError(
+                    f"Could not resolve archived page in zip for path '{stored_path}'."
+                )
 
     def extracting(self):
         """Extract text and metadata for one page and return a record dictionary."""
@@ -256,6 +301,7 @@ class Extractor:
         imap_chunksize: int = 50,
         maxtasksperchild: int = 1000,
         extract_timeout_seconds: int = 10,
+        archive_paths=None,
         **kwargs,
     ):
         self.target_folder_path = Path(target_folder_path)
@@ -280,6 +326,7 @@ class Extractor:
         self.imap_chunksize = max(1, int(imap_chunksize))
         self.maxtasksperchild = max(1, int(maxtasksperchild))
         self.extract_timeout_seconds = max(1, int(extract_timeout_seconds))
+        self.archive_paths = list(archive_paths or [])
 
     def _connect_overview_db(self):
         """Open a connection to the configured overview backend database."""
@@ -317,9 +364,17 @@ class Extractor:
 
         try:
             extractor_class = self.file_extractor or FileExtractor
-            metadata = extractor_class(
-                [domain, identifier, level, url, date, stored_path]
-            ).extracting()
+            try:
+                extractor_instance = extractor_class(
+                    [domain, identifier, level, url, date, stored_path],
+                    zip_search_roots=self.archive_paths,
+                )
+            except TypeError:
+                # Backward compatibility with custom extractors that only accept `info`.
+                extractor_instance = extractor_class(
+                    [domain, identifier, level, url, date, stored_path]
+                )
+            metadata = extractor_instance.extracting()
             if metadata is None:
                 return self._error_metadata(path)
             return metadata
