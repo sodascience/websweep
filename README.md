@@ -1,34 +1,46 @@
 # WebSweep
 
-WebSweep is a Python library for high-throughput, research-focused web scraping.
+WebSweep is a Python library for high-throughput web scraping for researchers.
 It is designed to stay simple for beginners while still handling large URL lists.
 The primary objective is to run effectively on a single computer (laptop or workstation),
 without requiring cloud infrastructure or distributed orchestration.
 
-<b>Real-World Use Cases</b>
-- Tracking Corporate Climate Responsibility: With a list of corporate websites, you can use WebSweep to efficiently analyze how frequently and positively they mention green energies, helping you gauge their commitment to climate responsibility.
-- Analyzing Academic Collaboration Networks: WebSweep can be utilized to extract data from university websites and research databases, allowing you to identify patterns in academic collaboration, map research networks, and discover emerging interdisciplinary research fields.
-- Tracking Public Health Information: By scraping data from government websites, health organizations, and medical journals, WebSweep can help you monitor the spread of diseases, evaluate the effectiveness of public health campaigns, and analyze the impact of healthcare policies on population health.
+It is built for projects that start with a list of websites and need a workflow
+that is easy to rerun, inspect, and extend:
 
-## Side-by-side comparison of WebSweep and Scrapy
- 
-- Are you looking to download lots of information from one domain --> You may want to use [Scrapy](https://github.com/scrapy/scrapy)
-- Are you looking to download information from websites that require JavaScript --> You may want to use [selenium](https://pypi.org/project/selenium/)
-- Are you looking to download and analyze HTML code from many pages --> WebSweep is for you
+- crawl websites from a list of base URLs
+- follow only within-domain links up to a bounded depth
+- extract page-level text and metadata
+- consolidate results back to one record per domain
+- (if desired) repeat the same sweep monthly or quarterly with the same configured instance
 
+The goal is research infrastructure, not cloud orchestration. WebSweep is meant
+to work well on a laptop or workstation, with intermediate outputs that are easy
+to archive, validate, and analyse later.
 
-|                                       | WebSweep                                         | Scrapy                                                        |
-|---------------------------------------|-----------------------------------------------------|---------------------------------------------------------------|
-| Main use case                         | Download full HTML of many (up to 10,000,000) sites | Download specific elements of few websites (e.g. crawl Ebay)  |
-| Intended use                          | Research                                            | Any                                                           |
-| Use as beginner                    | Simple                                              | Complicated                                                   |
-| Processing of HTML                    | During or after crawling                            | Typically during crawling                                     |
-| Asynchronous                          |  Yes                                                | Yes                                                           |
-| Speed (consumer laptop/home internet) | ~50,000 pages/hour                           | ?                                                             |
-| JavaScript allowed                    | No                                                  | No (but extensions exist)                                     |
-| Consolidates results at domain level  | Yes                                                 | No                                                            |
+## What WebSweep Is Good For
 
+WebSweep fits best when you want to study many websites in a comparable,
+repeatable way.
 
+Typical research uses:
+
+- track how organisations discuss a topic over time across many domains
+- build corpora from university, company, NGO, or government websites
+- monitor recurring updates on the same website lists every few months
+- extract page text plus a few structured fields for downstream analysis
+
+It is especially useful when the unit of analysis is the domain or organisation,
+not one single large site.
+
+WebSweep is probably **not** the right tool when:
+
+- you need to interact with JavaScript-heavy websites
+- you want to scrape one very complex website with highly custom logic
+- you need browser automation rather than HTML crawling
+
+For those cases, tools such as [Scrapy](https://github.com/scrapy/scrapy) or
+[Selenium](https://pypi.org/project/selenium/) may be a better fit.
 
 ## Install
 
@@ -61,6 +73,8 @@ https://example2.org,example_org
   Python logic (custom extractors, analysis loops, notebooks).
 
 ## Workflow
+
+![WebSweep pipeline workflow](docs/source/_static/pipeline_workflow.svg)
 
 ```text
 Input URLs
