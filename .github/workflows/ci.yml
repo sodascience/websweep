@@ -1,4 +1,4 @@
-name: Lint
+name: CI
 
 on:
   push:
@@ -6,14 +6,14 @@ on:
   workflow_dispatch:
 
 jobs:
-  lint:
+  test:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ["3.11"]
+        python-version: ["3.10", "3.11", "3.12", "3.13"]
 
     steps:
-      - name: Checkout code
+      - name: Check out repository
         uses: actions/checkout@v4
 
       - name: Set up Python ${{ matrix.python-version }}
@@ -27,7 +27,16 @@ jobs:
           enable-cache: true
 
       - name: Install dependencies
-        run: uv sync --group dev
+        run: uv sync --group test --group dev
 
-      - name: Run ruff
+      - name: Lint with ruff
         run: uv run ruff check src tests
+
+      - name: Run tests with pytest
+        run: uv run pytest -q
+
+      - name: Build package
+        run: uv build --out-dir /tmp/dist
+
+      - name: Validate package metadata
+        run: uv run twine check /tmp/dist/*

@@ -1,0 +1,12 @@
+include LICENSE
+include README.md
+include pyproject.toml
+
+recursive-include src/websweep/utils *.json *.dat
+
+prune docs/build
+prune .venv
+prune examples/.ipynb_checkpoints
+prune .pytest_cache
+
+global-exclude __pycache__ *.py[cod] .DS_Store

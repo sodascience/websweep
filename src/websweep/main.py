@@ -1,38 +1,109 @@
-import asyncio
 import datetime
+import importlib.util
+import inspect
 import os
-import sqlite3 as sql
 import sys
 import time
-import typer #TODO: can we just import Typer?
+import typer
 import webbrowser
-from datetime import date as datelib
 from functools import wraps
-from importlib.resources import path
 from pathlib import Path
-from shutil import rmtree
-from typing import List, Optional
+from typing import Optional
 
 from websweep import ERRORS, __app_name__, __status__, __version__, config
-from .extractor.extractor import Extractor
-from .extractor.firmbackbone_extractor import FirmBackBoneFileExtractor
+from .extractor.extractor import Extractor, FileExtractor
 from .crawler.crawler import Crawler
-from .utils.utils import classify_url
+from .consolidator.consolidator import Consolidator
+from .utils.backend import resolve_overview_backend
+from .utils.source_urls import read_source_urls
 
 try:
     HEADLESS = False
     from tkinter import Tk
     from tkinter import filedialog as fd
-except:
+except Exception:
     HEADLESS = True
 
 app = typer.Typer()
 
 
-# Wrapping function (decorator) for operating application commands
-# Verifies whether the application is ready to receive various operational commands such as crawling and extracting as the application should first be configured
-# TODO: This function is of high importance for the stability of the application and should be extended with validity checks
+def _has_crawled_data(target_folder: Path) -> bool:
+    """Return ``True`` when the instance has crawl artifacts."""
+    crawled_data = Path(target_folder) / "crawled_data"
+    if crawled_data.exists() and crawled_data.is_dir() and any(crawled_data.iterdir()):
+        return True
+    return False
+
+
+def _parse_iso_date(value: str, option_name: str):
+    """Parse an ISO date string and print a user-friendly CLI error when invalid."""
+    try:
+        return datetime.date.fromisoformat(value)
+    except ValueError:
+        typer.secho(
+            f"Invalid {option_name}: '{value}'. Expected YYYY-MM-DD.",
+            fg=typer.colors.RED,
+        )
+        return None
+
+
+def _load_file_extractor_class(addon_file: Optional[Path]):
+    """Load one custom ``FileExtractor`` subclass from a Python file path."""
+    if addon_file is None:
+        return None
+
+    addon_path = Path(addon_file).expanduser().resolve()
+    if not addon_path.exists() or not addon_path.is_file():
+        typer.secho(
+            f"Extractor add-on file does not exist: {addon_path}",
+            fg=typer.colors.RED,
+        )
+        return None
+
+    try:
+        spec = importlib.util.spec_from_file_location("websweep_cli_extractor_addon", addon_path)
+        if spec is None or spec.loader is None:
+            raise RuntimeError("Could not load module specification.")
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+    except Exception as exc:
+        typer.secho(
+            f"Could not import extractor add-on file '{addon_path}': {exc}",
+            fg=typer.colors.RED,
+        )
+        return None
+
+    extractor_classes = []
+    for _, obj in inspect.getmembers(module, inspect.isclass):
+        if obj is FileExtractor:
+            continue
+        try:
+            if issubclass(obj, FileExtractor):
+                extractor_classes.append(obj)
+        except TypeError:
+            continue
+
+    if not extractor_classes:
+        typer.secho(
+            "Extractor add-on file must define a class that subclasses FileExtractor.",
+            fg=typer.colors.RED,
+        )
+        return None
+
+    if len(extractor_classes) > 1:
+        names = ", ".join(sorted(cls.__name__ for cls in extractor_classes))
+        typer.secho(
+            "Extractor add-on file defines multiple FileExtractor subclasses. "
+            f"Keep only one class in the file. Found: {names}",
+            fg=typer.colors.RED,
+        )
+        return None
+
+    return extractor_classes[0]
+
+
 def operate():
+    """Validate active instance configuration before running operational commands."""
     def deco_operate(f):
         @wraps(f)
         def f_operate(*args, **kwargs):
@@ -54,29 +125,36 @@ def operate():
                         fg=typer.colors.RED,
                     )
                     return
-                elif (
-                    config.get_source_file_path() is None
-                    or not config.get_source_file_path().exists()
-                ):
+                source_file = config.get_source_file_path()
+                if source_file is None or not source_file.exists() or not source_file.is_file():
                     typer.secho(
                         "Settings file does not contain essential instance data. Please initalise or restore an instance or use websweep --help",
                         fg=typer.colors.RED,
                     )
                     return
 
+                target_folder = config.get_target_folder_path()
+                if not target_folder.exists() or not target_folder.is_dir():
+                    typer.secho(
+                        "Configured instance folder does not exist. Please run websweep restore or websweep init.",
+                        fg=typer.colors.RED,
+                    )
+                    return
+
                 if (
                     f.__name__ == "extract"
-                    and not any((config.get_target_folder_path() / "crawled_data").iterdir())
+                    and not _has_crawled_data(target_folder)
                 ):
                     typer.secho(
-                        'There are no crawled files to extract from. Please start crawling using "crawl" or use websweep --help',
+                        'There are no crawled files to extract from the target folder. '
+                        'Please start crawling using "crawl" or use websweep --help',
                         fg=typer.colors.RED,
                     )
                     return
 
                 return f(*args, **kwargs)
 
-            except:
+            except Exception:
                 if __status__ == "development":
                     raise
                 else:
@@ -90,11 +168,6 @@ def operate():
     return deco_operate
 
 
-# Set up a new websweep instance
-# Creates system application websweep folder and creates config.ini file therein
-# Stores new websweep instance location in the system's application config.ini file
-# Stores a newly created settings.ini file in the websweep folder
-# Can be run at any time and does not need the operation verification
 @app.command(name="init")
 def init(headless: bool = typer.Option(HEADLESS, help="Run without GUI elements")) -> None:
     """
@@ -104,11 +177,11 @@ def init(headless: bool = typer.Option(HEADLESS, help="Run without GUI elements"
    
     """
 
-    if headless == False:
+    if not headless:
         try:
             if sys.stdin.isatty():
                 headless = False
-        except:
+        except Exception:
             headless = True
 
     typer.secho(
@@ -116,16 +189,16 @@ def init(headless: bool = typer.Option(HEADLESS, help="Run without GUI elements"
         fg=typer.colors.GREEN,
     )
 
-    if headless == True:
+    if headless:
         typer.secho("headless mode turned on\n", fg=typer.colors.YELLOW)
     else:
         typer.secho("headless mode turned off\n", fg=typer.colors.YELLOW)
 
     time.sleep(0.5)
 
-    if headless == False:
+    if not headless:
         ask_continue_folder = typer.confirm(
-            "SELECT a configuration and WebSweep output storage folder \nContinue?\n"
+            "SELECT a configuration and WebSweep output folder \nContinue?\n"
         )
         if not ask_continue_folder:
             typer.secho("Initalisation stopped\n", fg=typer.colors.RED)
@@ -133,7 +206,7 @@ def init(headless: bool = typer.Option(HEADLESS, help="Run without GUI elements"
         try:
             Tk().withdraw()
             folder = fd.askdirectory()
-        except:
+        except Exception:
             typer.secho("\nGUI Interface failed to load", fg=typer.colors.RED)
             folder = typer.prompt("ENTER target folder base PATH\n")
     else:
@@ -142,7 +215,7 @@ def init(headless: bool = typer.Option(HEADLESS, help="Run without GUI elements"
     typer.secho(f"Folder {folder} selected\n", fg=typer.colors.YELLOW)
     time.sleep(0.5)
 
-    if headless == False:
+    if not headless:
         ask_continue_folder = typer.confirm(
             "SELECT a source file urls (one url per file, with a header)\nContinue?\n"
         )
@@ -154,7 +227,7 @@ def init(headless: bool = typer.Option(HEADLESS, help="Run without GUI elements"
             file = fd.askopenfilename(
                 title="Choose a file", filetypes=[("csv files", ".csv")]
             )
-        except:
+        except Exception:
             typer.secho("\nGUI Interface failed to load", fg=typer.colors.RED)
             file = typer.prompt("ENTER source file location base PATH\n")
     else:
@@ -173,17 +246,51 @@ def init(headless: bool = typer.Option(HEADLESS, help="Run without GUI elements"
 
     time.sleep(0.5)
     
-    ask_use_sql = typer.confirm(
-        "SELECT do you want to use a SQL (Y) or CSV (n) database?\n"
+    ask_use_database = typer.confirm(
+        "SELECT overview storage backend:\n"
+        "- Database (Y): DuckDB by default, SQLite fallback if DuckDB is unavailable\n"
+        "- CSV/TSV file (n)\n",
+        default=True,
     )
     
     typer.secho(
-        f"A SQL database will be used: {ask_use_sql}\n", fg=typer.colors.YELLOW
+        f"Database mode enabled: {ask_use_database}"
+        + (" (DuckDB preferred, SQLite fallback)\n" if ask_use_database else " (CSV/TSV mode)\n"),
+        fg=typer.colors.YELLOW,
     )
 
     time.sleep(0.5)
 
-    app_init_error = config.init_app(str(folder), str(file), ask_delete_files, ask_use_sql)
+    ask_use_extractor_addon = typer.confirm(
+        "SELECT a custom extractor add-on file?\n",
+        default=False,
+    )
+    extractor_addon_file = None
+    if ask_use_extractor_addon:
+        addon_candidate = typer.prompt("ENTER extractor add-on Python file PATH\n")
+        addon_candidate_path = Path(addon_candidate).expanduser().resolve()
+        addon_extractor_class = _load_file_extractor_class(addon_candidate_path)
+        if addon_extractor_class is None:
+            typer.secho("Initialisation stopped (invalid extractor add-on file).", fg=typer.colors.RED)
+            raise typer.Exit(1)
+        extractor_addon_file = addon_candidate_path
+        typer.secho(
+            "Extractor add-on source selected: "
+            f"{extractor_addon_file} (it will be copied into the instance folder)\n",
+            fg=typer.colors.YELLOW,
+        )
+    else:
+        typer.secho("Extractor add-on configured: None\n", fg=typer.colors.YELLOW)
+
+    time.sleep(0.5)
+
+    app_init_error = config.init_app(
+        str(folder),
+        str(file),
+        ask_delete_files,
+        ask_use_database,
+        extractor_addon_file=extractor_addon_file,
+    )
     if app_init_error:
         typer.secho(
             f'Creating config file failed with "{ERRORS[app_init_error]}"',
@@ -191,20 +298,24 @@ def init(headless: bool = typer.Option(HEADLESS, help="Run without GUI elements"
         )
         raise typer.Exit(1)
     else:
+        if extractor_addon_file is not None:
+            typer.secho(
+                f"Extractor add-on copied to: {config.get_extractor_addon_file()}",
+                fg=typer.colors.YELLOW,
+            )
         typer.secho(
             "WebSweep is initialised and ready to use \nUse the --help command for instructions\n ",
             fg=typer.colors.GREEN,
         )
 
 
-# Helper method for main callback of Typer app
 def _version_callback(value: bool) -> None:
+    """Print version and exit when ``--version`` is requested."""
     if value:
         typer.echo(f"{__app_name__} v{__version__}")
         raise typer.Exit()
 
 
-# Main Typer app callback
 @app.callback()
 def main(
     version: Optional[bool] = typer.Option(
@@ -216,27 +327,23 @@ def main(
         is_eager=True,
     )
 ) -> None:
+    """Typer root callback."""
     return
 
 
-# Restores an existing websweep instance as the active instance which can be worked on
-# Creates system application websweep folder and creates config.ini file therein
-# Stores the existing websweep instance location in the system's application config.ini file and overwrites any previous ones
-# Verifies whether the expected values are within the settings.ini file
-# Can be run at any time and does not need the operation verification
 @app.command(name="restore")
-def init(headless: bool = typer.Option(HEADLESS, help="Run without GUI elements")) -> None:
+def restore(headless: bool = typer.Option(HEADLESS, help="Run without GUI elements")) -> None:
     """
     Restore configuration of existing WebSweep instance.
     The exisiting location is stored in the application config file and the exisiting settings in the settings file are validated.
     
     """
 
-    if headless == False:
+    if not headless:
         try:
             if sys.stdin.isatty():
                 headless = False
-        except:
+        except Exception:
             headless = True
 
     typer.secho(
@@ -244,14 +351,14 @@ def init(headless: bool = typer.Option(HEADLESS, help="Run without GUI elements"
         fg=typer.colors.GREEN,
     )
 
-    if headless == True:
+    if headless:
         typer.secho("headless mode turned on\n", fg=typer.colors.YELLOW)
     else:
         typer.secho("headless mode turned off\n", fg=typer.colors.YELLOW)
 
     time.sleep(0.5)
 
-    if headless == False:
+    if not headless:
         ask_continue_folder = typer.confirm(
             "SELECT a WebSweep instance folder \nContinue?\n"
         )
@@ -261,7 +368,7 @@ def init(headless: bool = typer.Option(HEADLESS, help="Run without GUI elements"
         try:
             Tk().withdraw()
             folder = fd.askdirectory()
-        except:
+        except Exception:
             typer.secho("\nGUI Interface failed to load", fg=typer.colors.RED)
             folder = typer.prompt("ENTER WebSweep instance folder base PATH\n")
     else:
@@ -285,8 +392,6 @@ def init(headless: bool = typer.Option(HEADLESS, help="Run without GUI elements"
         )
 
 
-# Allows for the modification of the settings.ini file in the active working websweep instance folder
-# Allows modification of the source file and target folder locations + whether extracted documents are deleted
 @app.command(name="config")
 def cli_config(
     delete_processed_files: bool = typer.Option(
@@ -327,23 +432,22 @@ def cli_config(
             f"- delete extracted files: {config.get_extractor_delete()}\n",
             fg=typer.colors.YELLOW,
         )
+        typer.secho(
+            f"- extractor add-on file: {config.get_extractor_addon_file()}",
+            fg=typer.colors.YELLOW,
+        )
     else:
         if delete_processed_files is not None:
             if delete_processed_files:
                 config._save_extractor_delete(True)
             else:
                 config._save_extractor_delete(False)
-        # TODO: Verify what happens when the target folder location is changed, the folder should be moved as well
-        # if target_folder_path is not None:
-        #     config._save_target_folder(target_folder_path)
         if source_file_path is not None:
             config._save_source_file(source_file_path)
 
         typer.secho("Config settings saved", fg=typer.colors.GREEN)
 
 
-# Opens the current websweep working folder that is stored in the system's application config.ini file
-# Does not work in headless operation mode as it involves GUI commands
 @app.command(name="instance")
 @operate()
 def websweep_address() -> None:
@@ -353,36 +457,48 @@ def websweep_address() -> None:
     """
     try:
         webbrowser.open(f"file:////{config.current_websweep_instance()}")
-    except:
+    except Exception:
         typer.secho("Could not open WebSweep instance folder\n", fg=typer.colors.RED)
 
 
-# Starts the crawling of targets from the set source file in the settings.ini file in the active working websweep instance settings folder
-# Calls a Crawl instance which handles the crawling procedure
-# Crawled documents are stored in the active working websweep instance folder under 'data'
-# Can only be run when the application has been initialised
 @app.command(name="crawl")
 @operate()
 def crawl(
     complement: str = typer.Option(
         None,
-        help="Complement the folder with failed pages, takes the crawl date as argument",
+        help="Complement the folder with failed pages, takes the crawl date (e.g. '2019-12-04') as argument",
     ),
     sock_connect: int = typer.Option(
         120,
-        help="Timeout value (ms) for establishing a connection to remote server",
+        help="Timeout in seconds for establishing a connection to remote server.",
     ),
     extract: bool = typer.Option(
         False,
         help="Extract files instead of saving HTML",
     ),
     classification_file: Path = typer.Option(
-        None,
-        help="Use a custom classification file with page title terms (plain .txt with ';' delimitation)",
+        os.path.join(os.path.dirname(os.path.abspath(__file__)), 'utils', 'default_regex.json'),
+        help="Path to custom JSON URL classification rules (see default_regex.json).",
     ),
+    allow_extensions: str = typer.Option(
+        None,
+        help="Comma-separated file extensions to allow (e.g. pdf,png), overriding blocked extensions.",
+    ),
+    block_extensions: str = typer.Option(
+        None,
+        help="Comma-separated file extensions to block explicitly.",
+    ),
+    target_temp_folder_path: Path = typer.Option(
+        None,
+        help=(
+            "Path for temporary in-progress crawl files. "
+            "Final .zip archives and overview DB/TSV remain in target folder."
+        ),
+    ),
+
 ) -> None:
     """
-    Start caching websites
+    Start crawling websites.
     
     """
     typer.secho("Crawler is started with instructions:", fg=typer.colors.GREEN)
@@ -393,69 +509,159 @@ def crawl(
     typer.secho(
         f"- target folder: {config.get_target_folder_path()}\n", fg=typer.colors.YELLOW
     )
-
-
-    worker = Crawler(
-        target_folder_path=config.get_target_folder_path(), 
-        classification_file_path=classification_file,
-        use_sqlite=config.get_use_database(),
-        sock_connect=sock_connect,
-        extract=extract,
-        save_html=not extract,
+    effective_temp_folder = (
+        Path(target_temp_folder_path).expanduser().resolve()
+        if target_temp_folder_path is not None
+        else Path(config.get_target_folder_path()).expanduser().resolve()
+    )
+    typer.secho(
+        f"- temp crawl folder (staging): {effective_temp_folder}\n",
+        fg=typer.colors.YELLOW,
     )
 
+    if target_temp_folder_path is not None and not Path.exists(target_temp_folder_path):
+        typer.secho(
+            "Given temporary folder does not exist, Crawler was terminated",
+            fg=typer.colors.RED,
+        )
+        return
+
+    addon_extractor_class = None
+    addon_file = config.get_extractor_addon_file()
+    if extract and addon_file is not None:
+        addon_extractor_class = _load_file_extractor_class(addon_file)
+        if addon_extractor_class is None:
+            typer.secho(
+                "Configured extractor add-on file is invalid. "
+                "Fix it by running websweep init again with a valid path.",
+                fg=typer.colors.RED,
+            )
+            return
+        typer.secho(
+            f"- extractor add-on class: {addon_extractor_class.__name__}",
+            fg=typer.colors.YELLOW,
+        )
+    
     if classification_file is not None and not Path.exists(classification_file):
         typer.secho(
-            f"Given classification file does not exist, Crawler was terminated",
+            "Given classification file does not exist, Crawler was terminated",
             fg=typer.colors.RED,
         )
         return
     elif complement is not None:
+        overview_folder = config.get_target_folder_path()
+        resolved_backend = resolve_overview_backend(
+            base_folder=Path(overview_folder),
+            use_database=config.get_use_database(),
+            override_backend=None,
+        )
+        worker = Crawler(
+            target_folder_path=config.get_target_folder_path(),
+            target_temp_folder_path=target_temp_folder_path,
+            classification_file_path=classification_file,
+            allow_extensions=allow_extensions,
+            block_extensions=block_extensions,
+            use_database=config.get_use_database(),
+            overview_backend=resolved_backend,
+            sock_connect=sock_connect,
+            extract=extract,
+            file_extractor=addon_extractor_class,
+            save_html=not extract,
+        )
+
         try:
             complement_date = datetime.date.fromisoformat(complement)
             worker.crawl_complement_base_urls(complement_date)
-        except:
+        except ValueError:
             typer.secho(
-                f"Given date does not conform to the YYYY-MM-DD format, Crawler was terminated",
+                "Given date does not conform to the YYYY-MM-DD format, Crawler was terminated",
                 fg=typer.colors.RED,
             )
             return
 
         
     else:
-        with open(config.get_source_file_path(), "r") as f:
-            f.readline()
-            lines = [line.split(",") for line in f.readlines() if len(line) > 1]
-            urls = sorted([(line[0].strip(), line[1].strip() if len(line) > 1 else None) for line in lines])
+        urls = read_source_urls(Path(config.get_source_file_path()))
+        if len(urls) == 0:
+            typer.secho(
+                "No valid URLs found in source CSV. Expected a header with at least a 'url' column.",
+                fg=typer.colors.RED,
+            )
+            return
+        typer.secho(
+            f"- normalized base URLs to crawl: {len(urls)}",
+            fg=typer.colors.YELLOW,
+        )
 
+        overview_folder = config.get_target_folder_path()
+        resolved_backend = resolve_overview_backend(
+            base_folder=Path(overview_folder),
+            use_database=config.get_use_database(),
+            override_backend=None,
+            urls_count=len(urls),
+        )
+        typer.secho(
+            f"- overview backend: {resolved_backend}",
+            fg=typer.colors.YELLOW,
+        )
 
+        def _build_crawler_worker():
+            return Crawler(
+                target_folder_path=config.get_target_folder_path(),
+                target_temp_folder_path=target_temp_folder_path,
+                classification_file_path=classification_file,
+                allow_extensions=allow_extensions,
+                block_extensions=block_extensions,
+                use_database=config.get_use_database(),
+                overview_backend=resolved_backend,
+                sock_connect=sock_connect,
+                extract=extract,
+                file_extractor=addon_extractor_class,
+                save_html=not extract,
+            )
+
+        worker = _build_crawler_worker()
         worker.crawl_base_urls(urls)
+        if worker.count_downloads == 0 and len(urls) > 0:
+            typer.secho(
+                "0 pages were downloaded in this crawl run. "
+                "This can happen during transient DNS/network outages. Retrying once...",
+                fg=typer.colors.YELLOW,
+            )
+            time.sleep(2)
+            worker = _build_crawler_worker()
+            worker.crawl_base_urls(urls)
+            if worker.count_downloads == 0:
+                typer.secho(
+                    "Retry also downloaded 0 pages. Check network/DNS connectivity "
+                    "or input URL availability.",
+                    fg=typer.colors.RED,
+                )
 
-    typer.secho(f"Crawler finished successfully\n", fg=typer.colors.GREEN)
+    typer.secho("Crawler finished successfully\n", fg=typer.colors.GREEN)
 
-# Starts the extracting of files in the active working websweep instance folder
-# Calls an Extractor instance which handles the extracting procedure
-# Extracted data is stored in the active working websweep instance folder under 'crawled_data'
-# Can only be run when the application has been initialised
-# Can only be run when the crawl function has been called before and there are extractable documents in the 'data' folder
 @app.command(name="extract")
 @operate()
 def extract(
     start_date: str = typer.Option(
         None,
-        help="Date on which the files are retreieved and extracted should start extracting",
+        help="Start date (YYYY-MM-DD) for crawl sessions to extract.",
     ),
     end_date: str = typer.Option(
         None,
-        help="Date on which the files are retreieved and extractor should stop extracting",
+        help="End date (YYYY-MM-DD) for crawl sessions to extract.",
+    ),
+    workers: int = typer.Option(
+        None,
+        help="Number of worker processes for extraction. Defaults to CPU count.",
     ),
 ) -> None:
     """
-    Start extracting data from the fetched files
+    Start extracting data from fetched files.
     
     """
 
-    typer.secho(f"Extractor is started with instructions:", fg=typer.colors.GREEN)
+    typer.secho("Extractor is started with instructions:", fg=typer.colors.GREEN)
     typer.secho(
         f"- source folder: {config.get_target_folder_path()}", fg=typer.colors.YELLOW
     )
@@ -463,35 +669,132 @@ def extract(
         f"- delete extracted files: {config.get_extractor_delete()}\n",
         fg=typer.colors.YELLOW,
     )
+    resolved_backend = resolve_overview_backend(
+        base_folder=Path(config.get_target_folder_path()),
+        use_database=config.get_use_database(),
+        override_backend=None,
+    )
+    typer.secho(
+        f"- overview backend: {resolved_backend}\n",
+        fg=typer.colors.YELLOW,
+    )
 
-    # TODO: Build check whether the provided dates are conform the format and if not indicate that
+    addon_file = config.get_extractor_addon_file()
+    addon_extractor_class = _load_file_extractor_class(addon_file)
+    if addon_file is not None and addon_extractor_class is None:
+        typer.secho(
+            "Configured extractor add-on file is invalid. "
+            "Fix it by running websweep init again with a valid path.",
+            fg=typer.colors.RED,
+        )
+        return
+    if addon_extractor_class is not None:
+        typer.secho(
+            f"- extractor add-on class: {addon_extractor_class.__name__}\n",
+            fg=typer.colors.YELLOW,
+        )
+
     if start_date is None and end_date is None:
         worker = Extractor(
             target_folder_path=config.get_target_folder_path(),
-            use_sqlite=config.get_use_database(),
+            use_database=config.get_use_database(),
+            overview_backend=resolved_backend,
             extractor_delete_files=config.get_extractor_delete(),
-            file_extractor=FirmBackBoneFileExtractor
+            workers=workers,
+            file_extractor=addon_extractor_class,
 
         )
         worker.extract_urls()
     else:
-        try:
-            start_date = datetime.date.fromisoformat(start_date)
-            end_date = datetime.date.fromisoformat(end_date)
-        except:
+        if (start_date is None) != (end_date is None):
             typer.secho(
-            "Given start and/or end date do(es) not conform to the YYYY-MM-DD format, extractor was terminated",
-            fg=typer.colors.RED,
-        )
- 
+                "Please provide both --start-date and --end-date, or neither.",
+                fg=typer.colors.RED,
+            )
+            return
+
+        parsed_start_date = _parse_iso_date(start_date, "--start-date")
+        parsed_end_date = _parse_iso_date(end_date, "--end-date")
+        if parsed_start_date is None or parsed_end_date is None:
+            return
+        if parsed_start_date > parsed_end_date:
+            typer.secho(
+                "--start-date must be earlier than or equal to --end-date.",
+                fg=typer.colors.RED,
+            )
+            return
+
         worker = Extractor(
             target_folder_path=config.get_target_folder_path(),
-            use_sqlite=config.get_use_database(),
+            use_database=config.get_use_database(),
+            overview_backend=resolved_backend,
             extractor_delete_files=config.get_extractor_delete(),
-            start_date=start_date,
-            end_date=end_date
+            start_date=parsed_start_date,
+            end_date=parsed_end_date,
+            workers=workers,
+            file_extractor=addon_extractor_class,
         )
         worker.extract_urls()
     
-    typer.secho(f"Extractor finished successfully\n", fg=typer.colors.GREEN)
+    typer.secho("Extractor finished successfully\n", fg=typer.colors.GREEN)
+        
+@app.command(name="consolidate")
+@operate()
+def consolidate(
+    input_file: Optional[Path] = typer.Option(
+        None,
+        help="Path to extracted NDJSON file. Defaults to latest file in extracted_data/.",
+    ),
+    output_file: Optional[Path] = typer.Option(
+        None,
+        help="Output NDJSON path. Defaults to consolidated_data/consolidated.ndjson.",
+    ),
+    chunk_size: int = typer.Option(
+        10000,
+        help="Number of extracted rows processed per consolidation chunk.",
+    ),
+) -> None:
+    """
+    Consolidate page-level extracted NDJSON into domain-level NDJSON.
+    """
+    target_folder = Path(config.get_target_folder_path())
+    extracted_dir = target_folder / "extracted_data"
+
+    if input_file is None:
+        extracted_files = sorted(
+            extracted_dir.glob("*.ndjson"),
+            key=lambda p: p.stat().st_mtime,
+        )
+        if not extracted_files:
+            typer.secho(
+                "No extracted NDJSON files found. Run websweep extract first.",
+                fg=typer.colors.RED,
+            )
+            return
+        input_file = extracted_files[-1]
+
+    if not input_file.exists() or not input_file.is_file():
+        typer.secho(
+            f"Input file does not exist: {input_file}",
+            fg=typer.colors.RED,
+        )
+        return
+
+    if output_file is None:
+        output_file = target_folder / "consolidated_data" / "consolidated.ndjson"
+    output_file.parent.mkdir(parents=True, exist_ok=True)
+
+    typer.secho("Consolidator is started with instructions:", fg=typer.colors.GREEN)
+    typer.secho(f"- input file: {input_file}", fg=typer.colors.YELLOW)
+    typer.secho(f"- output file: {output_file}", fg=typer.colors.YELLOW)
+    typer.secho(f"- chunk size: {chunk_size}\n", fg=typer.colors.YELLOW)
+
+    Consolidator(
+        input_file=input_file,
+        target_folder_path=target_folder,
+        output_file=output_file,
+        chunk_size=max(1, int(chunk_size)),
+    ).consolidate()
+
+    typer.secho("Consolidator finished successfully\n", fg=typer.colors.GREEN)
         

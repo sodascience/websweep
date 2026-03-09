@@ -1,16 +1,68 @@
-.scrapy/*
-*.db
-*.log
-*.pyc
-*.key
-data/*
-data*
-dist/*
-.vscode/*
+# OS / editor
+.DS_Store
 **/.DS_Store
-sidn_test_kopie.csv
-init files/*
-examples/data/*
+Thumbs.db
+.vscode/
+.idea/
+
+# Python caches
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.pyre/
+.hypothesis/
+.coverage
+.coverage.*
+htmlcov/
+
+# Virtual environments / local libs
+.venv/
+venv/
+env/
+ENV/
+lib/
+
+# Build / packaging
+build/
+dist/
+*.egg-info/
+.eggs/
+pip-wheel-metadata/
+
+# Docs build outputs
+docs/build/
+site/
+
+# Logs / local outputs
+*.log
+logs/
+tmp/
+*.db
+*.sqlite
+*.sqlite3
 *.ndjson
-scraper_data_actually/*
+
+# Project-specific generated data
+data/
+examples/data/
+examples/.ipynb_checkpoints/
+crawled_data/
+extracted_data/
+consolidated_data/
+overview_urls.db
+overview_urls.duckdb
+overview_urls.tsv
+scraper_data_actually/
 examples/test*
+
+# Legacy local files
+sidn_test_kopie.csv
+init files/
+.scrapy/
+
+# Internal tooling
+/scripts/

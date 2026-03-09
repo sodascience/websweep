@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="360" viewBox="0 0 1200 360" role="img" aria-labelledby="title desc">
+  <title id="title">WebSweep Pipeline</title>
+  <desc id="desc">Workflow diagram from URL List to Crawler to Extractor to Consolidator, plus one-pass crawler and extractor route.</desc>
+  <defs>
+    <style>
+      .label { font: 600 24px Arial, Helvetica, sans-serif; fill: #0f172a; }
+      .sub { font: 400 16px Arial, Helvetica, sans-serif; fill: #334155; }
+      .small { font: 400 14px Arial, Helvetica, sans-serif; fill: #334155; }
+      .box { stroke: #2563eb; stroke-width: 2.5; rx: 14; ry: 14; }
+      .arrow { stroke: #2563eb; stroke-width: 3; fill: none; marker-end: url(#arrowhead); }
+      .arrow-alt { stroke: #0f766e; stroke-width: 3; fill: none; stroke-dasharray: 8 6; marker-end: url(#arrowhead-alt); }
+    </style>
+    <marker id="arrowhead" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+      <polygon points="0,0 10,4 0,8" fill="#2563eb"/>
+    </marker>
+    <marker id="arrowhead-alt" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+      <polygon points="0,0 10,4 0,8" fill="#0f766e"/>
+    </marker>
+  </defs>
+
+  <rect x="20" y="20" width="1160" height="320" fill="#f8fafc" stroke="#cbd5e1" rx="18" ry="18"/>
+
+  <rect class="box" x="60" y="125" width="210" height="110" fill="#e0f2fe"/>
+  <text class="label" x="165" y="168" text-anchor="middle">URL List</text>
+  <text class="sub" x="165" y="196" text-anchor="middle">CSV/TSV or Python list</text>
+
+  <rect class="box" x="330" y="125" width="220" height="110" fill="#dbeafe"/>
+  <text class="label" x="440" y="168" text-anchor="middle">Crawler</text>
+  <text class="sub" x="440" y="196" text-anchor="middle">Download + status overview</text>
+
+  <rect class="box" x="610" y="125" width="220" height="110" fill="#dcfce7"/>
+  <text class="label" x="720" y="168" text-anchor="middle">Extractor</text>
+  <text class="sub" x="720" y="196" text-anchor="middle">Page-level fields</text>
+
+  <rect class="box" x="890" y="125" width="250" height="110" fill="#fef3c7"/>
+  <text class="label" x="1015" y="168" text-anchor="middle">Consolidator</text>
+  <text class="sub" x="1015" y="196" text-anchor="middle">Domain-level output</text>
+
+  <path class="arrow" d="M270 180 L330 180"/>
+  <path class="arrow" d="M550 180 L610 180"/>
+  <path class="arrow" d="M830 180 L890 180"/>
+
+  <text class="small" x="440" y="100" text-anchor="middle">crawled_data/*.zip + overview_urls.{duckdb|db|tsv}</text>
+  <text class="small" x="720" y="100" text-anchor="middle">extracted_data/*.ndjson</text>
+  <text class="small" x="1015" y="100" text-anchor="middle">consolidated_data/*.ndjson</text>
+
+  <path class="arrow-alt" d="M550 235 C620 300, 770 300, 830 235"/>
+  <text class="small" x="690" y="324" text-anchor="middle">One-pass option: Crawler(extract=True, save_html=False)</text>
+</svg>

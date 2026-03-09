@@ -3,109 +3,80 @@
 Examples
 ========
 
-This page provides examples of how to use `websweep` both as a command line interface (CLI) tool and as a Python package.
+CLI Examples
+------------
 
-Command Line Interface Examples
--------------------------------
-
-Initialize a new WebSweep instance:
+Initialize:
 
 .. code-block:: bash
 
-   $ websweep init
-     --headless
+   websweep init --headless
 
-Restore an existing WebSweep instance:
-
-.. code-block:: bash
-
-   $ websweep restore
-     --headless
-
-Configure WebSweep settings:
+Crawl:
 
 .. code-block:: bash
 
-   $ websweep config
-     --delete-processed-files
-     --target-folder-path /path/to/new/output
-     --source-file-path /path/to/new/source/file.csv
+   websweep crawl
 
-View active WebSweep instance:
+Crawl and extract in one go (lower disk usage):
 
 .. code-block:: bash
 
-   $ websweep instance
+   websweep crawl --extract
 
-Start crawling process:
-
-.. code-block:: bash
-
-   $ websweep crawl
-     --sock-connect 150
-
-Start extracting process:
+Extract:
 
 .. code-block:: bash
 
-   $ websweep extract
-     --start-date YYYY-MM-DD
-     --end-date YYYY-MM-DD
+   websweep extract
 
+Consolidate:
 
-Python Package Examples
-----------------------
+.. code-block:: bash
 
-Scraping and extracting at the same time (no HTML saved):
+   websweep consolidate
 
-.. code-block:: python
+Recurring cycle example (e.g., monthly):
 
-   from websweep import Crawler
+.. code-block:: bash
 
-   urls = ['https://firmbackbone.nl', 'https://uu.nl/', 'https://odissei-soda.nl']
+   websweep crawl
+   websweep extract --start-date 2026-04-01 --end-date 2026-04-30
+   websweep consolidate
 
-   crawler_unit = Crawler(target_folder_path=Path("your/data/folder"), save_html=False, extract=True)
-   crawler_unit.crawl_base_urls(urls)
+Filtering controls:
 
-Only scraping (saving HTML):
+.. code-block:: bash
 
-.. code-block:: python
+   websweep crawl --allow-extensions pdf,png
+   websweep crawl --block-extensions pdf,png,zip
 
-   from websweep import Crawler
+Backend note:
 
-   urls = ['https://firmbackbone.nl', 'https://uu.nl/', 'https://odissei-soda.nl']
+- choose SQL vs TSV during ``websweep init`` (stored in ``settings.ini``)
+- in SQL mode, WebSweep auto-picks DuckDB (preferred) or SQLite fallback
 
-   crawler_unit = Crawler(target_folder_path=Path("your/data/folder"))
-   crawler_unit.crawl_base_urls(urls)
+Featured Notebook (Parsed)
+--------------------------
 
-Only extracting (using HTML):
+Primary end-to-end example (crawler -> extractor -> consolidator), rendered
+directly in the documentation and synced from
+``examples/example_scraper_extractor.ipynb``:
 
-.. code-block:: python
+.. toctree::
+   :maxdepth: 1
 
-   from websweep import FileExtractor
+   example_scraper_extractor
 
-   extractor = FileExtractor(target_folder_path=Path("your/data/folder"))
-   extractor.extract_urls()
+The notebook uses real websites and shows:
 
-Only extracting with custom Extractor methods (using HTML):
-
-.. code-block:: python
-
-   from websweep import FileExtractor
-   from pathlib import Path
-   import re
-
-   class MyCustomFileExtractor(FileExtractor):
-       def __init__(self, *args, **kwargs):
-           super().__init__(*args, **kwargs)
-
-       def _extract_something(self) -> list:
-           """
-           Extract something from the input file, and add found somethings to self.something in set form
-           """
-           pattern = re.compile(r'\b\d{5,}\b', re.VERBOSE)
-           somethings = list(set(re.findall(pattern, self.text)))
-           return somethings
-
-   extractor_unit = MyCustomFileExtractor(target_folder_path=Path("your/data/folder"))
-   extractor_unit.extract_urls()
+- input URLs
+- how the crawler downloads pages and follows within-domain links up to
+  ``max_level=3`` by default (with exclusions)
+- how the extractor keeps page-level fields (text, metadata, postcode/address)
+- how the consolidator merges page-level rows into one domain-level row with
+  postcode counts and concatenated text
+- crawler output
+- extractor output sample
+- consolidator output sample
+- custom ``FileExtractor`` add-on usage

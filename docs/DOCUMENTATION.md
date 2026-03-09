@@ -1,52 +1,52 @@
-# Creating documentation files for WebSweep
+# WebSweep Docs Workflow
 
-In case of changes to the code or working of the WebSweep package, consult the following instructions.
+## Stack
 
-## Alter documentation source files
+- Sphinx config: `docs/source/conf.py`
+- Build entry points: `Makefile`, `make.bat`
+- Read the Docs config: `.readthedocs.yml`
 
-If you need to make changes to the documentation source files (typically `.rst` files), follow these steps:
+## Local build
 
-1. Navigate to the `docs/source` directory.
+From repository root:
 
-2. Locate the relevant `.rst` file that you need to modify, according to the changes that you have made to the code.
+```bash
+make docs
+```
 
-3. Make the necessary changes to the content of the `.rst` file. RST files have a specific markup syntax which you can read more about [here](https://sphinx-tutorial.readthedocs.io/step-1/). 
+This runs:
 
-4. Save the changes to the `.rst` file.
+1. `sphinx-apidoc` against `src/websweep`
+2. HTML build into `docs/build/html`
 
-## Generate the new documentation
+## CI docs build
 
-Once you have made changes to the documentation source files, you need to regenerate the documentation to reflect the updates. Follow these steps to generate the new documentation:
+Workflow: `.github/workflows/docs.yml`
 
-1. Open a terminal or command prompt.
+Trigger paths:
 
-2. Navigate to the root directory of the WebSweep repository.
+- `src/**`
+- `docs/source/**`
+- `examples/**`
+- `README.md`
+- `Makefile`
+- `make.bat`
+- `pyproject.toml`
+- `.github/workflows/docs.yml`
 
-3. Run the following command to generate the HTML documentation using Sphinx:
+Workflow behavior:
 
-   ```bash
-   make html
-   
-Sphinx will process the .rst files and generate the HTML documentation in the docs/build/html directory.
+- syncs docs dependencies with `uv`
+- validates notebook example integrity
+- builds docs
+- uploads `docs/build/html` artifact
+- uploads `examples/example_scraper_extractor.ipynb` artifact
 
-Verify that the documentation has been generated successfully and review the changes.
+## Read the Docs
 
-## Publish the documentation on Read the Docs
+RTD uses `.readthedocs.yml` and installs:
 
-After generating the updated documentation locally, you can publish it on Read the Docs to make it accessible to the public. Follow these steps to publish the documentation on Read the Docs:
+- package from repository root
+- docs extra dependencies
 
-1. Log in to your Read the Docs account or sign up if you haven't already.
-
-2. Navigate to your project's dashboard on Read the Docs.
-
-3. Click on the "Settings" or "Admin" tab for your project.
-
-4. Scroll down to the "Documentation" section and locate the "Set up documentation" or "Edit" button.
-
-5. Follow the instructions to connect your project repository to Read the Docs and configure the documentation settings.
-
-6. Once configured, Read the Docs will automatically build and publish your documentation whenever changes are pushed to the repository.
-
-Verify that the documentation is accessible on Read the Docs and review it to ensure it appears as expected.
-
-That's it! The webSweep documentation is now updated and available for public access on Read the Docs.
+No local absolute paths should appear in docs pages.
