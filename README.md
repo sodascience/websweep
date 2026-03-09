@@ -1,5 +1,10 @@
 # WebSweep
 
+[![CI](https://github.com/sodascience/websweep/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/sodascience/websweep/actions/workflows/ci.yml)
+[![Docs](https://readthedocs.org/projects/websweep/badge/?version=latest)](https://websweep.readthedocs.io/en/latest/)
+[![Python 3.10-3.13](https://img.shields.io/badge/python-3.10--3.13-blue.svg)](https://pypi.org/project/websweep/)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+
 WebSweep is a Python library for high-throughput web scraping for researchers.
 It is designed to stay simple for beginners while still handling large URL lists.
 The primary objective is to run effectively on a single computer (laptop or workstation),
