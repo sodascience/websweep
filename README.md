@@ -274,15 +274,28 @@ selection is instance-level setup, not a required `websweep crawl` argument.
 
 ## Recurring CLI Runs (Every X Months)
 
-For periodic updates, keep one instance and run:
+WebSweep CLI does **not** schedule recurring crawls by itself.
+You run the commands manually, or schedule them with your own tool
+(for example cron, systemd timers, Windows Task Scheduler, or GitHub Actions).
+
+For periodic updates, keep one configured instance and run:
 
 ```bash
+END_DATE=$(uv run python -c "from datetime import date; print(date.today().isoformat())")
+START_DATE=$(uv run python -c "from datetime import date, timedelta; print((date.today()-timedelta(days=90)).isoformat())")
 websweep crawl
-websweep extract --start-date 2026-04-01 --end-date 2026-04-30
+websweep extract --start-date "$START_DATE" --end-date "$END_DATE"
 websweep consolidate
 ```
 
-This keeps crawling simple and lets you extract only the new crawl sessions.
+This keeps crawling simple while extracting only a rolling recent window
+(last 90 days in this example). Adjust `timedelta(days=90)` as needed.
+
+Example (Linux cron, first day of every 3rd month at 02:00):
+
+```cron
+0 2 1 */3 * cd /path/to/websweep && END_DATE=$(HOME=/path/to/home uv run python -c "from datetime import date; print(date.today().isoformat())") && START_DATE=$(HOME=/path/to/home uv run python -c "from datetime import date, timedelta; print((date.today()-timedelta(days=90)).isoformat())") && HOME=/path/to/home uv run websweep crawl && HOME=/path/to/home uv run websweep extract --start-date "$START_DATE" --end-date "$END_DATE" && HOME=/path/to/home uv run websweep consolidate
+```
 
 To retry failed base URLs from a specific crawl session date:
 
@@ -323,7 +336,6 @@ For historical domain lists, many failures can be expected because domains may h
 ## Development
 
 ```bash
-pip install uv
 uv sync --group test --group docs --group dev
 uv run pytest -q
 uv run make docs

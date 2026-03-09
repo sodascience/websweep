@@ -34,7 +34,6 @@ Install from Source (Developers)
 
    git clone https://github.com/sodascience/websweep.git
    cd websweep
-   pip install uv
    uv sync --group test --group docs --group dev
 
 Run tests:

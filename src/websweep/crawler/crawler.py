@@ -232,7 +232,7 @@ class Crawler:
         concurrency_pages: Optional[int] = None,
         page_batch_size: int = 500,
         base_url_batch_size: int = 1000,
-        max_concurrency_per_domain: int = 2,
+        max_concurrency_per_domain: int = 1,
         overview_create_indexes: Optional[bool] = None,
         duckdb_deduplicate: bool = False,
         **kwargs,
@@ -337,12 +337,17 @@ class Crawler:
         self.threads_bs4 = threads_bs4
         self.threads_download = threads_download
         self.sock_connect = sock_connect
-        self.domain_wait_decay = 0.7
-        self.domain_wait_on_429 = 2.0
-        self.domain_wait_on_403 = 1.0
-        self.domain_wait_on_transient_error = 0.75
-        self.max_domain_wait = 8.0
-        self.retry_waits = (0, 2, 5)
+        # Default politeness/backoff profile:
+        # favor fewer blocks over peak throughput.
+        self.domain_wait_decay = 0.85
+        self.domain_wait_on_429 = 6.0
+        self.domain_wait_on_403 = 3.0
+        self.domain_wait_on_transient_error = 1.5
+        self.max_domain_wait = 30.0
+        self.retry_waits = (0, 6, 18)
+        # Apply a small pause for follow-up pages in a domain even before
+        # any explicit block status is observed.
+        self.domain_wait_on_followup = 0.35
 
         self.waits = dict()
         self.domain_semaphores = dict()
@@ -744,7 +749,13 @@ class Crawler:
                     return []
 
                 # Respect adaptive per-domain wait (non blocking).
-                current_wait = self.waits.get(wait_key, 0.0)
+                current_wait = self.waits.get(wait_key)
+                if current_wait is None:
+                    try:
+                        current_level = int(level)
+                    except Exception:
+                        current_level = 0
+                    current_wait = self.domain_wait_on_followup if current_level > 0 else 0.0
                 if current_wait > 0:
                     await asyncio.sleep(current_wait)
 

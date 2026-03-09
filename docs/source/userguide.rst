@@ -35,71 +35,62 @@ Disk-saving one-pass mode:
 What each component does
 ------------------------
 
-- ``Crawler``: starts from base URLs (one domain per row), downloads pages,
-  follows only within-domain links, applies URL/file exclusion rules, and
-  stops at depth ``max_level`` (default ``3``).
-- ``Extractor``: reads crawled pages and extracts page-level fields such as
-  cleaned text (``text``), metadata (``meta_*``), and location fields
-  (``zipcode``, ``address``).
-- ``Consolidator``: merges page-level records into one domain-level record,
-  keeping aggregated postcode counts (the most frequent can be treated as the
-  main postcode, with the others as additional postcodes) and concatenated
-  domain text.
+- ``Crawler``: takes seed domains from your input file, normalizes URLs,
+  downloads pages, follows only within-domain links, and records one status row
+  per fetched page in ``overview_urls.{duckdb|db|tsv}``. It also stores raw
+  pages in domain ``.zip`` files (unless one-pass mode is used). URL/file
+  inclusion and exclusion behavior is documented in
+  :ref:`url-filtering-rules`.
+- ``Extractor``: reads successful crawled pages (status ``200``) from the
+  overview + ``crawled_data/*.zip``, then writes page-level structured records
+  to ``extracted_data/*.ndjson`` (text, metadata, postcode/address, plus any
+  custom add-on fields).
+- ``Consolidator``: reads extracted page-level rows and merges them back to one
+  row per domain in ``consolidated_data/*.ndjson`` (concatenated text + grouped
+  fields such as postcode/address frequencies).
 
 
-Library Quickstart
-------------------
-
-.. code-block:: python
-
-   from pathlib import Path
-   from websweep import Crawler, Extractor
-
-   urls = [
-       "https://www.dggrootverbruik.nl/",
-       "https://www.gosliga.nl/",
-       "https://www.heeren2.nl/",
-   ]
-
-   output_dir = Path("./research_output")
-
-   crawler = Crawler(target_folder_path=output_dir)
-   crawler.crawl_base_urls(urls)
-
-   extractor = Extractor(target_folder_path=output_dir)
-   extractor.extract_urls()
-
-
-Library Workflow (Detailed)
----------------------------
-
-Standard 3-step run:
+Library Quickstart and Workflow
+-------------------------------
 
 .. code-block:: python
 
    from pathlib import Path
    from websweep import Crawler, Extractor, Consolidator
 
-   urls = ["https://example.com", "https://example.org"]
+   # Step 0: Define your input domains and output folder.
+   urls = [
+       "https://www.dggrootverbruik.nl/",
+       "https://www.gosliga.nl/",
+       "https://www.heeren2.nl/",
+   ]
    out = Path("./research_output")
 
+   # Step 1: Crawl pages inside each domain.
    Crawler(target_folder_path=out).crawl_base_urls(urls)
+
+   # Step 2: Extract page-level fields from crawled pages.
    Extractor(target_folder_path=out).extract_urls()
+
+   # Step 3: Consolidate page-level rows into one row per domain.
    Consolidator(target_folder_path=out).consolidate()
 
-One-pass run (crawl + extract together, less disk usage):
+One-pass alternative (crawl + extract together, lower disk usage):
 
 .. code-block:: python
 
    from pathlib import Path
-   from websweep import Crawler
+   from websweep import Crawler, Consolidator
 
-   urls = ["https://example.com", "https://example.org"]
-   Crawler(
-       target_folder_path=Path("./research_output"),
-       save_html=False,
-       extract=True,
-   ).crawl_base_urls(urls)
+   # Step 0: Same inputs.
+   urls = ["https://www.dggrootverbruik.nl/", "https://www.gosliga.nl/"]
+   out = Path("./research_output")
+
+   # Steps 1 + 2: Crawl and extract in one pass.
+   Crawler(target_folder_path=out, save_html=False, extract=True).crawl_base_urls(urls)
+
+   # Step 3: Consolidate extracted output.
+   Consolidator(target_folder_path=out).consolidate()
 
 Common library options (most used)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -247,6 +238,12 @@ Common options by command:
   Set optional add-on path once per instance (default: None).
   The selected file is copied into the instance folder (next to
   ``settings.ini``) to avoid accidental loss from external file moves/deletes.
+- ``websweep consolidate --input-file /path/to/extracted.ndjson``
+  Consolidate a specific extracted file.
+- ``websweep consolidate --output-file /path/to/consolidated.ndjson``
+  Write consolidated output to a custom destination.
+- ``websweep consolidate --chunk-size 20000``
+  Set consolidation chunk size.
 
 How ``target_temp_folder_path`` works
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -260,12 +257,6 @@ How ``target_temp_folder_path`` works
 
 This lets you use a small fast local disk for active crawling while keeping the
 final outputs in one stable instance folder.
-- ``websweep consolidate --input-file /path/to/extracted.ndjson``
-  Consolidate a specific extracted file.
-- ``websweep consolidate --output-file /path/to/consolidated.ndjson``
-  Write consolidated output to a custom destination.
-- ``websweep consolidate --chunk-size 20000``
-  Set consolidation chunk size.
 
 Extractor date windows (how dates are used)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -288,16 +279,28 @@ one-pass ``websweep crawl --extract``).
 Recurring CLI pattern (every X months)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Keep one configured instance and run the same sequence on each update cycle:
+WebSweep CLI does **not** include an internal scheduler.
+Recurring runs are external orchestration: run manually, or use cron/systemd
+timers/Windows Task Scheduler/GitHub Actions.
+
+Keep one configured instance and run the same sequence each cycle:
 
 .. code-block:: bash
 
+   END_DATE=$(uv run python -c "from datetime import date; print(date.today().isoformat())")
+   START_DATE=$(uv run python -c "from datetime import date, timedelta; print((date.today()-timedelta(days=90)).isoformat())")
    websweep crawl
-   websweep extract --start-date 2026-04-01 --end-date 2026-04-30
+   websweep extract --start-date "$START_DATE" --end-date "$END_DATE"
    websweep consolidate
 
-This pattern keeps recrawling simple while limiting extraction to the target
-time window.
+This pattern keeps recrawling simple while extracting a rolling recent window
+(last 90 days in this example). Adjust ``timedelta(days=90)`` as needed.
+
+Example cron entry (Linux, first day of every 3rd month at 02:00):
+
+.. code-block:: text
+
+   0 2 1 */3 * cd /path/to/websweep && END_DATE=$(HOME=/path/to/home uv run python -c "from datetime import date; print(date.today().isoformat())") && START_DATE=$(HOME=/path/to/home uv run python -c "from datetime import date, timedelta; print((date.today()-timedelta(days=90)).isoformat())") && HOME=/path/to/home uv run websweep crawl && HOME=/path/to/home uv run websweep extract --start-date "$START_DATE" --end-date "$END_DATE" && HOME=/path/to/home uv run websweep consolidate
 
 To retry previously failed base URLs from a specific crawl date:
 
@@ -362,6 +365,8 @@ For one-pass mode:
 Once configured in the instance, the add-on is applied automatically by both
 ``websweep extract`` and one-pass ``websweep crawl --extract``.
 
+
+.. _url-filtering-rules:
 
 URL Filtering Rules
 -------------------

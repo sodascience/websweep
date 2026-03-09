@@ -27,7 +27,6 @@ if "%1" == "" goto help
 
 if "%1" == "docs" (
 	python -m sphinx.ext.apidoc -o %SOURCEDIR% src/websweep --force
-	python docs/scripts/clean_apidoc.py
 	%SPHINXBUILD% -M html %SOURCEDIR% %BUILDDIR% %SPHINXOPTS% %O%
 	goto end
 )

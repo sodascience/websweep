@@ -17,7 +17,6 @@ help:
 apidoc:
 	@$(PYTHON) docs/scripts/sync_featured_notebook.py
 	@$(PYTHON) -m sphinx.ext.apidoc -o "$(SOURCEDIR)" "$(APIPKGDIR)" --force
-	@$(PYTHON) docs/scripts/clean_apidoc.py
 
 docs: apidoc html
 
