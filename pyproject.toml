@@ -49,7 +49,7 @@ dependencies = [
 
 [project.urls]
 Homepage = "https://github.com/sodascience/websweep"
-Documentation = "https://websweep.readthedocs.io/"
+Documentation = "https://websweep.readthedocs.io/en/latest/"
 Repository = "https://github.com/sodascience/websweep"
 Issues = "https://github.com/sodascience/websweep/issues"
 Releases = "https://github.com/sodascience/websweep/releases"
