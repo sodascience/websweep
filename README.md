@@ -2,6 +2,7 @@
 
 [![CI](https://github.com/sodascience/websweep/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/sodascience/websweep/actions/workflows/ci.yml)
 [![Docs](https://readthedocs.org/projects/websweep/badge/?version=latest)](https://websweep.readthedocs.io/en/latest/)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.18980899.svg)](https://doi.org/10.5281/zenodo.18980899)
 [![Python 3.10-3.13](https://img.shields.io/badge/python-3.10--3.13-blue.svg)](https://pypi.org/project/websweep/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
@@ -378,7 +379,12 @@ file for more information on issues and pull requests.
 
 The package `websweep` is published under an MIT license. When using `websweep` for academic work, please cite:
 
-    XXX
+    ODISSEI Social Data Science (SoDa). (2026). WebSweep (v0.1) [Software].
+    Zenodo. https://doi.org/10.5281/zenodo.18980899
+
+Zenodo record:
+
+- https://zenodo.org/records/18980899
 
 
 ## Contact
